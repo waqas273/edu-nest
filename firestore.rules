@@ -1,0 +1,160 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // --- HELPER FUNCTIONS ---
+    
+    // Check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    // Check if user is accessing their own data (generic userId check)
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Check if user has 'admin' role
+    function isAdmin() {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Check if user has 'university_manager' role
+    function isManager() {
+      return isAuthenticated() && 
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'university_manager';
+    }
+
+    // --- COLLECTION RULES ---
+
+    // 1. Users Collection
+    match /users/{userId} {
+      // Allow read for all authenticated users (needed for University Directory, Community, Reviews)
+      allow read: if isAuthenticated();
+      // Write: Owner or Admin
+      allow write: if isOwner(userId) || isAdmin();
+    }
+
+    // 2. Universities (Public Read, Admin/Manager Write)
+    match /universities/{uniId} {
+      allow read: if true;
+      // Admin can write any, Manager can write if it's their university
+      allow write: if isAdmin() || (isManager() && request.auth.uid == uniId);
+    }
+    
+    // 3. Degrees / Programs
+    match /degrees/{degreeId} {
+      allow read: if true;
+      // Admin can write
+      // Manager can write if they are the university owner (universityId field matches uid)
+      allow write: if isAdmin() || (isManager() && (
+        (resource == null && request.resource.data.universityId == request.auth.uid) || 
+        (resource != null && resource.data.universityId == request.auth.uid)
+      ));
+    }
+
+    // 4. Admissions / Applications
+    match /admissions/{admissionId} {
+      // Authenticated users (students) can create applications
+      allow create: if isAuthenticated();
+      
+      // Read: Admin, Owner (Student), or Target University Manager
+      allow read: if isAdmin() || 
+                  (isAuthenticated() && resource.data.studentId == request.auth.uid) || 
+                  (isManager() && resource.data.universityId == request.auth.uid);
+      
+      // Write: Admin, Owner (Student - e.g. cancel), or University Manager (e.g. approve/reject)
+      allow write: if isAdmin() || 
+                   (isAuthenticated() && (resource == null || resource.data.studentId == request.auth.uid)) || 
+                   (isManager() && resource.data.universityId == request.auth.uid);
+    }
+    
+    // 5. Reviews / Ratings
+    match /reviews/{reviewId} {
+      allow read: if true;
+      allow create: if isAuthenticated();
+      // Update/Delete: Admin or the student who wrote it
+      allow update, delete: if isAdmin() || (isAuthenticated() && resource.data.studentId == request.auth.uid);
+    }
+
+    // 6. Faculty
+    match /faculty/{facultyId} {
+      allow read: if true;
+      // Manager can write if they own the university
+      allow write: if isAdmin() || (isManager() && (
+        (resource == null && request.resource.data.universityId == request.auth.uid) || 
+        (resource != null && resource.data.universityId == request.auth.uid)
+      ));
+    }
+
+    // 7. Transport
+    match /transport/{transportId} {
+      allow read: if true;
+      // Manager can write if they own the university
+      allow write: if isAdmin() || (isManager() && (
+        (resource == null && request.resource.data.universityId == request.auth.uid) || 
+        (resource != null && resource.data.universityId == request.auth.uid)
+      ));
+    }
+
+    // 8. Banned Users (Security)
+    match /banned_users/{docId} {
+      allow read: if isAuthenticated(); // Needed for login check
+      allow write: if isAdmin();
+    }
+
+    // 9. Approvals (Manager Registration)
+    match /approvals/{docId} {
+      allow create: if isAuthenticated();
+      allow read, write: if isAdmin();
+    }
+
+    // 10. Certificates
+    match /certificates/{docId} {
+      allow read: if isAdmin() || (resource.data.userId == request.auth.uid);
+      allow write: if isAdmin();
+    }
+
+    // 11. Community Posts
+    match /posts/{postId} {
+      allow read, create: if isAuthenticated();
+      // Author (authorId) or Admin can update/delete
+      // Author (authorId) or Admin can update/delete full post
+      // authenticated users can update ONLY 'replyCount' (for comments)
+      allow update: if isAdmin() || 
+                    (resource.data.authorId == request.auth.uid) || 
+                    (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['replyCount']));
+      
+      allow delete: if isAdmin() || (resource.data.authorId == request.auth.uid);
+      
+      // Threaded Comments
+      match /comments/{commentId} {
+        allow read, create: if isAuthenticated();
+        allow update, delete: if isAdmin() || (resource.data.authorId == request.auth.uid);
+      }
+    }
+
+    // 12. Test History & Roadmaps
+    match /test_history/{docId} {
+      allow read, write: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid);
+      allow read: if isAdmin();
+    }
+    match /roadmaps/{docId} {
+      allow read, write: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid);
+      allow read: if isAdmin();
+    }
+    
+    // 13. Chats (Real-time messaging)
+    match /chats/{chatId} {
+      // Check 'participants' array [uid1, uid2]
+      allow read, write: if isAuthenticated() && (request.auth.uid in resource.data.participants);
+      allow create: if isAuthenticated();
+      
+      match /messages/{msgId} {
+         // Parent chat participants check
+         allow read, write: if isAuthenticated() && (request.auth.uid in get(/databases/$(database)/documents/chats/$(chatId)).data.participants);
+      }
+    }
+  }
+}

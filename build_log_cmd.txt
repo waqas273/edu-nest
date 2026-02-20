@@ -1,0 +1,31 @@
+
+> antiedunest@0.0.0 build
+> vite build
+
+[36mvite v7.3.1 [32mbuilding client environment for production...[36m[39m
+transforming...
+[32m✓[39m 384 modules transformed.
+[31m✗[39m Build failed in 2.18s
+[31merror during build:
+[31m[vite:esbuild] Transform failed with 1 error:
+D:/FYP/AntiEDUNEST/src/components/UserProfileModal.jsx:544:44: ERROR: Expected ")" but found "{"[31m
+file: [36mD:/FYP/AntiEDUNEST/src/components/UserProfileModal.jsx:544:44[31m
+[33m
+[33mExpected ")" but found "{"[33m
+542 |                                          </div>
+543 |  
+544 |                                              {/* View Full Profile Button */}
+    |                                              ^
+545 |                                      <motion.button
+546 |                                          whileHover={{ scale: 1.02 }}
+[31m
+    at failureErrorWithLog (D:\FYP\AntiEDUNEST\node_modules\esbuild\lib\main.js:1467:15)
+    at D:\FYP\AntiEDUNEST\node_modules\esbuild\lib\main.js:736:50
+    at responseCallbacks.<computed> (D:\FYP\AntiEDUNEST\node_modules\esbuild\lib\main.js:603:9)
+    at handleIncomingPacket (D:\FYP\AntiEDUNEST\node_modules\esbuild\lib\main.js:658:12)
+    at Socket.readFromStdout (D:\FYP\AntiEDUNEST\node_modules\esbuild\lib\main.js:581:7)
+    at Socket.emit (node:events:518:28)
+    at addChunk (node:internal/streams/readable:561:12)
+    at readableAddChunkPushByteMode (node:internal/streams/readable:512:3)
+    at Readable.push (node:internal/streams/readable:392:5)
+    at Pipe.onStreamRead (node:internal/stream_base_commons:189:23)[39m
