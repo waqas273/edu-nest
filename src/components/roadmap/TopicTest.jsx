@@ -131,21 +131,6 @@ const TopicTest = ({
         }
     };
 
-    const handleCheat = async () => {
-        setScore(questions.length);
-        setTestStatus('submitted');
-        setShowResult(true);
-
-        const finalPercentage = 100;
-        const passed = true;
-
-        await saveTestHistory('pass', { correctCount: questions.length, percentage: 100 });
-
-        if (!isGrandTest && onTestComplete) {
-            await updateRoadmapProgress(passed);
-        }
-    };
-
     const handleFinishTest = async () => {
         setTestStatus('submitted');
         setShowResult(true);
@@ -431,14 +416,7 @@ const TopicTest = ({
                         </div>
 
                         <div className="flex items-center gap-4">
-                            {/* TODO: REMOVE CHEAT BUTTON LATER */}
-                            <button
-                                onClick={handleCheat}
-                                className="px-3 py-1 bg-red-500/10 hover:bg-red-500/20 text-red-500 rounded-lg text-xs font-bold border border-red-500/20"
-                                title="For Testing Only"
-                            >
-                                ⚡ Cheat (100%)
-                            </button>
+
                             <div className="bg-white dark:bg-slate-800 px-6 py-3 rounded-2xl border border-slate-200 dark:border-slate-700 shadow-sm flex flex-col items-end">
                                 <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Current Score</span>
                                 <span className="text-2xl font-black text-slate-900 dark:text-white">{score}</span>

@@ -46,13 +46,15 @@ const ChangePassword = () => {
 
         setLoading(true);
         try {
-            await updatePassword(passwords.new);
+            await updatePassword(passwords.current, passwords.new);
             toast.success("Password updated successfully!");
             setPasswords({ current: '', new: '', confirm: '' });
         } catch (error) {
             console.error("Change Password Error:", error);
-            if (error.code === 'auth/requires-recent-login') {
-                toast.error("Security check failed. Please logout and login again.");
+            if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+                toast.error("Invalid current password.");
+            } else if (error.code === 'auth/requires-recent-login') {
+                toast.error("Session expired. Please logout and login again.");
             } else {
                 toast.error(error.message || "Failed to update password");
             }

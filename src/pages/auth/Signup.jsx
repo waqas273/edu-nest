@@ -116,20 +116,10 @@ const Signup = () => {
         setLoading(true);
 
         try {
-            // 2. Database Check
-            const usersRef = collection(db, 'users');
-            const q = query(usersRef, where("email", "==", email.toLowerCase()));
-            const snapshot = await getDocs(q);
-
-            if (!snapshot.empty) {
-                toast.error("Account already exists. Please login.", { id: loader });
-                return;
-            }
-
-            // 3. Auth Check
+            // 2. Auth Check (This confirms if the email is already registered without querying protected Firestore)
             const methods = await fetchSignInMethodsForEmail(auth, email);
             if (methods.length > 0) {
-                toast.error("Email identity registered but unlinked. Contact Admin.", { id: loader });
+                toast.error("Account already exists. Please login.", { id: loader });
                 return;
             }
 

@@ -129,6 +129,7 @@ const ManagerDashboard = () => {
     const [stats, setStats] = useState({
         totalDegrees: 0,
         totalPosts: 0,
+        totalStudents: 0,
         profileStatus: userProfile?.profileCompleted ? 'Verified' : 'Incomplete'
     });
     const [recentActivity, setRecentActivity] = useState([]);
@@ -151,10 +152,21 @@ const ManagerDashboard = () => {
                 const postsSnap = await getDocs(postsQuery);
                 const postsCount = postsSnap.size;
 
+                // Approved Admissions Count
+                const admissionsRef = collection(db, 'admissions');
+                const admissionsQuery = query(
+                    admissionsRef,
+                    where('universityId', '==', currentUser.uid),
+                    where('status', '==', 'accepted')
+                );
+                const admissionsSnap = await getDocs(admissionsQuery);
+                const approvedCount = admissionsSnap.size;
+
                 setStats(prev => ({
                     ...prev,
                     totalDegrees: degreesCount,
                     totalPosts: postsCount,
+                    totalStudents: approvedCount,
                     profileStatus: userProfile?.profileCompleted ? 'Verified' : 'Incomplete'
                 }));
             } catch (error) {
@@ -248,10 +260,11 @@ const ManagerDashboard = () => {
                             trend="High engagement"
                         />
                         <StatCard
-                            title="Total Students"
-                            value={0} // Placeholder as requested to map stats.totalApplications if available, keeping 0 for now
+                            title="Enrolled Students"
+                            value={stats.totalStudents}
                             icon={Users}
                             colorClass="bg-orange-500/10 text-orange-500"
+                            trend={stats.totalStudents > 0 ? `${stats.totalStudents} approved` : undefined}
                         />
                     </div>
 

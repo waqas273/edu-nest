@@ -27,6 +27,7 @@ const MockExam = () => {
     const [answers, setAnswers] = useState({});
     const [timeLeft, setTimeLeft] = useState(DURATION);
     const [isFinished, setIsFinished] = useState(false);
+    const [hasStarted, setHasStarted] = useState(false);
     const [showWarning, setShowWarning] = useState(false);
     const [tabSwitchCount, setTabSwitchCount] = useState(0);
     const [isSubmitting, setIsSubmitting] = useState(false);
@@ -102,11 +103,6 @@ const MockExam = () => {
         document.addEventListener('contextmenu', handleContextMenu);
         window.addEventListener('beforeunload', handleBeforeUnload);
 
-        // Fullscreen
-        if (document.documentElement.requestFullscreen) {
-            document.documentElement.requestFullscreen().catch(() => { });
-        }
-
         return () => {
             document.removeEventListener('visibilitychange', handleVisibilityChange);
             document.removeEventListener('contextmenu', handleContextMenu);
@@ -125,7 +121,7 @@ const MockExam = () => {
 
     // Timer
     useEffect(() => {
-        if (isFinished) return;
+        if (isFinished || !hasStarted) return;
         const timer = setInterval(() => {
             setTimeLeft(prev => {
                 if (prev <= 1) {
@@ -136,7 +132,7 @@ const MockExam = () => {
             });
         }, 1000);
         return () => clearInterval(timer);
-    }, [isFinished]);
+    }, [isFinished, hasStarted]);
 
     const formatTime = (s) => {
         const h = Math.floor(s / 3600);
@@ -247,6 +243,38 @@ const MockExam = () => {
     }
 
     if (questions.length === 0) return <div className="p-10 text-center">Loading Questions...</div>;
+
+    if (!hasStarted) {
+        return (
+            <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 p-6 relative overflow-hidden">
+                <div className="absolute inset-0 bg-grid-slate-200/[0.04] bg-[bottom_1px_center] dark:bg-grid-slate-400/[0.05]" />
+                <motion.div
+                    initial={{ scale: 0.9, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    className="relative z-10 w-full max-w-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 shadow-2xl text-center"
+                >
+                    <div className="w-20 h-20 mx-auto bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center mb-6">
+                        <Flag size={32} />
+                    </div>
+                    <h1 className="text-3xl font-black text-slate-800 dark:text-white mb-4">Exam Ready</h1>
+                    <p className="text-slate-500 dark:text-slate-400 mb-8 leading-relaxed">
+                        This is a timed mock exam. For anti-cheat purposes, the exam will open in fullscreen mode. Do not switch tabs or exit fullscreen, or your exam may be automatically submitted.
+                    </p>
+                    <button
+                        onClick={() => {
+                            if (document.documentElement.requestFullscreen) {
+                                document.documentElement.requestFullscreen().catch(() => { });
+                            }
+                            setHasStarted(true);
+                        }}
+                        className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-xl hover:-translate-y-1"
+                    >
+                        Start Exam
+                    </button>
+                </motion.div>
+            </div>
+        );
+    }
 
     // --- WARNING MODAL ---
     const WarningModal = () => (

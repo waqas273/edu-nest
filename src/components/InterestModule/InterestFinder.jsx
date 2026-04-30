@@ -10,16 +10,18 @@ import { QUESTION_BANK } from '../../data/questionBank';
 
 const FLASK_API_URL = 'http://localhost:5001';
 
-// Mapping categories to the specific indices in the 15-float vector expected by backend
-const VECTOR_MAPPING = {
-    "Computer Science": [0, 1, 2],
-    "Mathematics": [3, 4],
-    "Physics": [5, 6],
-    "Biology": [7, 8],
-    "Chemistry": [9, 10],
-    "Psychology": [11, 12],
-    "Graphics / Design": [13, 14]
-};
+// The order of categories matching the actual dataset columns (7 features)
+// The order of categories MUST strictly match the trained pandas dataset columns:
+// ['Logic_Coding', 'Math_Calc', 'Bio_Life', 'Chem_React', 'Human_Behavior', 'Design_Visuals', 'Physics_Nature']
+const CATEGORY_ORDER = [
+    "Computer Science",  // Logic_Coding
+    "Mathematics",       // Math_Calc
+    "Biology",           // Bio_Life
+    "Chemistry",         // Chem_React
+    "Psychology",        // Human_Behavior
+    "Graphics / Design", // Design_Visuals
+    "Physics"            // Physics_Nature
+];
 
 const InterestFinder = () => {
     const navigate = useNavigate();
@@ -92,7 +94,8 @@ const InterestFinder = () => {
         try {
             const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY;
             if (!apiKey) {
-                // Console warning suppressed to avoid user confusion
+                // Fallback to original text if missing key
+                setAiQuestionText(baseText);
                 setLoading(false);
                 return;
             }
@@ -110,7 +113,7 @@ const InterestFinder = () => {
                     messages: [
                         {
                             role: "system",
-                            content: "You are a friendly counselor. Rephrase this question for a student using VERY SIMPLE English (A1/A2). Use emojis. Keep it under 20 words."
+                            content: "You are a friendly counselor. Rephrase this question for a student using SIMPLE English (A1/A2). Use emojis. Keep it under 35 words."
                         },
                         { role: "user", content: `Question: \"${baseText}\"` }
                     ],
@@ -124,10 +127,14 @@ const InterestFinder = () => {
                 const aiText = data.choices[0].message.content.replace(/^["']|["']$/g, '');
                 setAiQuestionText(aiText);
             } else {
-                // Fallback silently
+                // Fallback to original text on API error
+                console.warn("OpenRouter API Error:", response.status);
+                setAiQuestionText(baseText);
             }
         } catch (e) {
-            // Fallback silently
+            // Fallback to original text on network error
+            console.warn("Network Error:", e);
+            setAiQuestionText(baseText);
         } finally {
             setLoading(false);
         }
@@ -169,19 +176,13 @@ const InterestFinder = () => {
         const newHistory = [...history, { id: currentQuestion.id, val: score }];
         setHistory(newHistory);
 
-        // 3. Construct Vector for Backend (15 floats)
-        const vector = Array(15).fill(0.0); // Default NO (0.0)
-
-        Object.keys(VECTOR_MAPPING).forEach(category => {
+        // 3. Construct Vector for Backend (7 floats based on exact dataset pattern)
+        const vector = CATEGORY_ORDER.map(category => {
             if (newAggregates[category]) {
-                // Ensure avg doesn't go below 0 or exceed 1 (though logic shouldn't exceed 1)
                 let avg = newAggregates[category].total / newAggregates[category].count;
-                avg = Math.max(0, Math.min(1, avg));
-                const indices = VECTOR_MAPPING[category];
-                indices.forEach(idx => {
-                    vector[idx] = avg;
-                });
+                return Math.max(0, Math.min(1, avg));
             }
+            return 0.0; // Default if not asked yet
         });
 
         // 4. Predict
@@ -228,14 +229,7 @@ const InterestFinder = () => {
                     setPhase(2);
                     setPreviousTopCategory(topCat);
                     console.log(`[Phase Switch] Early Exit Phase 1 due to high confidence (${topProb.toFixed(2)})`);
-                    // Create dummy event to force re-evaluation in Phase 2 logic (or just let next loop handle it)
-                    // Actually, we just fall through to Phase 2 logic below? No, because of 'return'.
-                    // We need to set up the next question for Phase 2 immediately.
-
-                    // Let's call the Phase 2 logic directly or just return to let next render cycle pick it up?
-                    // The issue is we are inside 'handleAnswer'. We need to set 'NextQuestionObj'.
-
-                    // Manually trigger Phase 2 logic for next question selection
+                    
                     const questions = QUESTION_BANK[topCat] || [];
                     const askedIds = newHistory.map(h => h.id);
                     const unasked = questions.filter(q => !askedIds.includes(q.id));
@@ -566,22 +560,7 @@ const InterestFinder = () => {
                             </span>
                         </div>
 
-                        {/* Category & Confidence Bar */}
-                        {currentQuestion && (
-                            <div className="mb-8 p-4 bg-slate-50 dark:bg-slate-700/30 rounded-2xl border border-slate-100 dark:border-slate-700/50">
-                                <div className="flex justify-end items-center mb-3">
-                                    <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-100 dark:bg-emerald-900/30 px-2 py-1 rounded-md">
-                                        {currentProbabilities ? (Math.max(...Object.values(currentProbabilities)) * 100).toFixed(0) : '---'}% Confident
-                                    </span>
-                                </div>
-                                <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                                    <div
-                                        className="h-full bg-gradient-to-r from-emerald-400 via-teal-500 to-cyan-600 transition-all duration-700 ease-out shadow-[0_0_10px_rgba(16,185,129,0.5)]"
-                                        style={{ width: `${currentProbabilities ? (Math.max(...Object.values(currentProbabilities)) * 100) : 0}%` }}
-                                    />
-                                </div>
-                            </div>
-                        )}
+
 
                         <AnimatePresence mode="wait">
                             {loading || !aiQuestionText ? (

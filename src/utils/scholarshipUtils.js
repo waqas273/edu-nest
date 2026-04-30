@@ -35,25 +35,30 @@ export const getBestScholarship = (scholarships, studentProfile) => {
     let bestMatch = null;
 
     scholarships.forEach(scholarship => {
-        const minReq = parseFloat(scholarship.minPercentage);
-        if (isNaN(minReq)) return;
+        const type = scholarship.type || 'merit';
 
-        // Check against all student education records
-        const hasQualifyingDegree = studentProfile.educationHistory.some(edu => {
-            const studentPct = parseGrade(edu.percentage || edu.cgpa);
-            if (studentPct === 0) return false;
+        // Only evaluate merit-based automatically for "best match" calculations.
+        if (type === 'merit') {
+            const minReq = parseFloat(scholarship.minPercentage);
+            if (isNaN(minReq)) return;
+            const maxReq = scholarship.maxPercentage ? parseFloat(scholarship.maxPercentage) : Infinity;
 
-            // Match degree type AND percentage
-            // CHECK BOTH degree AND degreeName properties
-            const degreeTitle = edu.degree || edu.degreeName;
-            const titleMatch = isDegreeMatch(scholarship.criteriaTitle, degreeTitle);
+            // Check against all student education records
+            const hasQualifyingDegree = studentProfile.educationHistory.some(edu => {
+                const studentPct = parseGrade(edu.percentage || edu.cgpa);
+                if (studentPct === 0) return false;
 
-            return titleMatch && studentPct >= minReq;
-        });
+                // Match degree type AND percentage range
+                const degreeTitle = edu.degree || edu.degreeName;
+                const titleMatch = isDegreeMatch(scholarship.criteriaTitle, degreeTitle);
 
-        if (hasQualifyingDegree) {
-            if (!bestMatch || parseFloat(scholarship.grantPercentage) > parseFloat(bestMatch.grantPercentage)) {
-                bestMatch = scholarship;
+                return titleMatch && (studentPct >= minReq && studentPct <= maxReq);
+            });
+
+            if (hasQualifyingDegree) {
+                if (!bestMatch || parseFloat(scholarship.grantPercentage) > parseFloat(bestMatch.grantPercentage)) {
+                    bestMatch = scholarship;
+                }
             }
         }
     });
@@ -63,9 +68,16 @@ export const getBestScholarship = (scholarships, studentProfile) => {
 
 // Helper to check if a specific single scholarship is eligible (for table rows)
 export const isScholarshipEligible = (scholarship, studentProfile) => {
+    const type = scholarship.type || 'merit';
+
+    // Non-merit scholarships are conditionally eligible as they require manual verification
+    if (type !== 'merit') return 'conditional';
+
     if (!studentProfile?.educationHistory || studentProfile.educationHistory.length === 0) return false;
+
     const minReq = parseFloat(scholarship.minPercentage);
     if (isNaN(minReq)) return false;
+    const maxReq = scholarship.maxPercentage ? parseFloat(scholarship.maxPercentage) : Infinity;
 
     return studentProfile.educationHistory.some(edu => {
         const studentPct = parseGrade(edu.percentage || edu.cgpa);
@@ -74,6 +86,6 @@ export const isScholarshipEligible = (scholarship, studentProfile) => {
         const degreeTitle = edu.degree || edu.degreeName;
         const titleMatch = isDegreeMatch(scholarship.criteriaTitle, degreeTitle);
 
-        return titleMatch && studentPct >= minReq;
+        return titleMatch && (studentPct >= minReq && studentPct <= maxReq);
     });
 }

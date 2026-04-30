@@ -407,16 +407,61 @@ const ManagerPrograms = () => {
                             />
                         </div>
 
-                        {/* Add Button */}
-                        <motion.button
-                            whileHover={{ scale: 1.05, boxShadow: "0 20px 40px rgba(6, 182, 212, 0.3)" }}
-                            whileTap={{ scale: 0.95 }}
-                            onClick={() => setIsModalOpen(true)}
-                            className="bg-gradient-to-r from-slate-900 to-slate-800 dark:from-cyan-500 dark:to-blue-500 text-white px-6 py-3.5 rounded-2xl font-bold shadow-xl shadow-slate-900/20 dark:shadow-cyan-500/20 flex items-center gap-2.5 transition-all whitespace-nowrap"
-                        >
-                            <Plus size={20} strokeWidth={3} />
-                            <span>Add Program</span>
-                        </motion.button>
+                        {/* Admisson Toggle and Add Button Group */}
+                        <div className="flex items-center gap-4">
+                            {/* Global Admissions Toggle */}
+                            <motion.div
+                                whileHover={{ scale: 1.02 }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={async () => {
+                                    if (!currentUser) return;
+                                    const currentStatus = userProfile?.isAdmissionOpen !== false;
+                                    const newStatus = !currentStatus;
+                                    try {
+                                        await updateDoc(doc(db, 'users', currentUser.uid), {
+                                            isAdmissionOpen: newStatus
+                                        });
+                                        // Update local context manually or rely on context listener
+                                        if (userProfile) userProfile.isAdmissionOpen = newStatus;
+                                        // force re-render (since useAuth might not trigger immediately on local mutate)
+                                        setPrograms([...programs]);
+                                    } catch (err) {
+                                        console.error("Failed to update admission status:", err);
+                                        alert("Failed to update admission status.");
+                                    }
+                                }}
+                                className={cn(
+                                    "flex items-center gap-3 px-5 py-3 border-2 rounded-2xl cursor-pointer transition-all font-bold shadow-sm whitespace-nowrap",
+                                    userProfile?.isAdmissionOpen !== false
+                                        ? "bg-emerald-50 dark:bg-emerald-900/10 border-emerald-200 dark:border-emerald-800 text-emerald-700 dark:text-emerald-400"
+                                        : "bg-rose-50 dark:bg-rose-900/10 border-rose-200 dark:border-rose-800 text-rose-700 dark:text-rose-400"
+                                )}
+                            >
+                                <div className={cn(
+                                    "w-10 h-6 flex items-center rounded-full p-1 transition-colors duration-300",
+                                    userProfile?.isAdmissionOpen !== false ? "bg-emerald-500" : "bg-slate-300 dark:bg-slate-600"
+                                )}>
+                                    <div className={cn(
+                                        "bg-white w-4 h-4 rounded-full shadow-md transform transition-transform duration-300",
+                                        userProfile?.isAdmissionOpen !== false ? "translate-x-4" : "translate-x-0"
+                                    )} />
+                                </div>
+                                <span>
+                                    {userProfile?.isAdmissionOpen !== false ? "Admissions Open" : "Admissions Closed"}
+                                </span>
+                            </motion.div>
+
+                            {/* Add Button */}
+                            <motion.button
+                                whileHover={{ scale: 1.05, boxShadow: "0 20px 40px rgba(6, 182, 212, 0.3)" }}
+                                whileTap={{ scale: 0.95 }}
+                                onClick={() => setIsModalOpen(true)}
+                                className="bg-gradient-to-r from-slate-900 to-slate-800 dark:from-cyan-500 dark:to-blue-500 text-white px-6 py-3.5 rounded-2xl font-bold shadow-xl shadow-slate-900/20 dark:shadow-cyan-500/20 flex items-center gap-2.5 transition-all whitespace-nowrap"
+                            >
+                                <Plus size={20} strokeWidth={3} />
+                                <span>Add Program</span>
+                            </motion.button>
+                        </div>
                     </motion.div>
                 </motion.header>
 
@@ -582,6 +627,29 @@ const ManagerPrograms = () => {
                                         <motion.div
                                             initial={{ opacity: 0, x: -20 }}
                                             animate={{ opacity: 1, x: 0 }}
+                                            transition={{ delay: 0.15 }}
+                                        >
+                                            <label className="block text-xs font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest mb-2">
+                                                Degree Level
+                                            </label>
+                                            <div className="relative">
+                                                <select
+                                                    className="w-full px-5 py-4 bg-slate-50 dark:bg-slate-900/50 border-2 border-slate-200 dark:border-slate-700 rounded-2xl text-slate-900 dark:text-white focus:outline-none focus:border-cyan-500 dark:focus:border-cyan-400 focus:ring-4 focus:ring-cyan-500/10 transition-all appearance-none cursor-pointer font-medium shadow-sm"
+                                                    value={formData.degreeType}
+                                                    onChange={e => setFormData({ ...formData, degreeType: e.target.value })}
+                                                >
+                                                    <option value="Associate">Associate Degree</option>
+                                                    <option value="BS">Bachelor's (BS)</option>
+                                                    <option value="MS">Master's (MS)</option>
+                                                    <option value="PhD">Doctorate (PhD)</option>
+                                                </select>
+                                                <Layers size={18} className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
+                                            </div>
+                                        </motion.div>
+
+                                        <motion.div
+                                            initial={{ opacity: 0, x: -20 }}
+                                            animate={{ opacity: 1, x: 0 }}
                                             transition={{ delay: 0.2 }}
                                         >
                                             <label className="block text-xs font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest mb-2">
@@ -718,74 +786,192 @@ const ManagerPrograms = () => {
                 )}
             </AnimatePresence>
 
-            {/* VIEW MODAL */}
+            {/* VIEW MODAL (ULTRA PRO MAX) */}
             <AnimatePresence>
                 {isViewModalOpen && selectedProgram && (
                     <motion.div
                         initial={{ opacity: 0 }}
                         animate={{ opacity: 1 }}
                         exit={{ opacity: 0 }}
-                        className="fixed inset-0 z-50 flex items-center justify-center p-4"
+                        className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6"
                     >
                         <motion.div
                             onClick={() => setIsViewModalOpen(false)}
-                            className="absolute inset-0 bg-black/70 backdrop-blur-md"
+                            className="absolute inset-0 bg-slate-900/60 dark:bg-black/80 backdrop-blur-xl"
                         />
                         <motion.div
-                            initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                            initial={{ opacity: 0, scale: 0.95, y: 30 }}
                             animate={{ opacity: 1, scale: 1, y: 0 }}
-                            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 30 }}
                             transition={{ type: "spring", stiffness: 300, damping: 30 }}
-                            className="relative w-full max-w-lg bg-white dark:bg-[#0f172a] border-2 border-slate-200 dark:border-white/10 rounded-3xl shadow-2xl overflow-hidden p-8"
+                            className="relative w-full max-w-5xl bg-white dark:bg-[#0f172a] border border-slate-200 dark:border-slate-800 rounded-[2rem] shadow-2xl overflow-hidden flex flex-col h-[90vh] md:h-auto md:max-h-[90vh]"
                         >
-                            <div className="text-center mb-8">
-                                <motion.div
-                                    initial={{ scale: 0, rotate: -180 }}
-                                    animate={{ scale: 1, rotate: 0 }}
-                                    transition={{ type: "spring", stiffness: 400, damping: 20 }}
-                                    className="w-20 h-20 bg-gradient-to-br from-cyan-100 to-blue-100 dark:from-cyan-500/20 dark:to-purple-500/20 rounded-2xl flex items-center justify-center mx-auto mb-5 border-2 border-cyan-200 dark:border-white/10 shadow-xl"
-                                >
-                                    <GraduationCap size={40} className="text-cyan-600 dark:text-white" />
-                                </motion.div>
-                                <h2 className="text-3xl font-black text-slate-900 dark:text-white mb-2">{selectedProgram.title}</h2>
-                                <p className="text-cyan-600 dark:text-cyan-400 font-bold uppercase tracking-widest text-xs">{selectedProgram.degreeType} PROGRAM</p>
-                            </div>
+                            {/* Header Gradient Strip */}
+                            <div className="absolute top-0 left-0 right-0 h-2 bg-gradient-to-r from-cyan-500 via-purple-500 to-pink-500 z-10" />
 
-                            <div className="space-y-4 mb-8">
-                                {[
-                                    { label: "Duration", value: selectedProgram.duration },
-                                    { label: "Total Semesters", value: selectedProgram.totalSemesters },
-                                    { label: "Estimated Fee", value: selectedProgram.estimatedFee }
-                                ].map((item, idx) => (
-                                    <motion.div
-                                        key={idx}
-                                        initial={{ opacity: 0, x: -20 }}
-                                        animate={{ opacity: 1, x: 0 }}
-                                        transition={{ delay: idx * 0.1 }}
-                                        className="flex justify-between p-5 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-white/10"
-                                    >
-                                        <span className="text-sm font-bold text-slate-600 dark:text-slate-400">{item.label}</span>
-                                        <span className="text-sm font-black text-slate-900 dark:text-white">{item.value}</span>
-                                    </motion.div>
-                                ))}
-                                <motion.div
-                                    initial={{ opacity: 0, y: 20 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    transition={{ delay: 0.3 }}
-                                    className="p-5 bg-slate-50 dark:bg-slate-900/50 rounded-2xl border border-slate-200 dark:border-white/10 max-h-40 overflow-y-auto custom-scrollbar"
+                            <div className="flex-1 overflow-y-auto custom-scrollbar relative">
+                                {/* Close Button */}
+                                <motion.button
+                                    whileHover={{ scale: 1.1, rotate: 90 }}
+                                    whileTap={{ scale: 0.9 }}
+                                    onClick={() => setIsViewModalOpen(false)}
+                                    className="absolute top-6 right-6 p-2 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:text-red-500 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all z-20"
                                 >
-                                    <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">{selectedProgram.description}</p>
-                                </motion.div>
-                            </div>
+                                    <X size={20} strokeWidth={3} />
+                                </motion.button>
 
-                            <motion.button
-                                whileHover={{ scale: 1.02 }}
-                                whileTap={{ scale: 0.98 }}
-                                onClick={() => setIsViewModalOpen(false)}
-                                className="w-full py-4 bg-gradient-to-r from-slate-100 to-slate-200 hover:from-slate-200 hover:to-slate-300 dark:from-white/10 dark:to-white/5 dark:hover:from-white/20 dark:hover:to-white/10 text-slate-900 dark:text-white font-bold rounded-2xl transition-all shadow-lg"
-                            >
-                                Close Details
-                            </motion.button>
+                                <div className="p-8 md:p-10">
+                                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+
+                                        {/* Left Column: Core Identity & Quick Stats */}
+                                        <div className="lg:col-span-5 space-y-8">
+                                            <div>
+                                                <motion.div
+                                                    initial={{ scale: 0, rotate: -180 }}
+                                                    animate={{ scale: 1, rotate: 0 }}
+                                                    transition={{ type: "spring", stiffness: 400, damping: 20 }}
+                                                    className="w-24 h-24 bg-gradient-to-br from-cyan-100 to-blue-200 dark:from-cyan-500/20 dark:to-blue-600/20 rounded-3xl flex items-center justify-center mb-6 border-2 border-cyan-200 dark:border-cyan-500/30 shadow-2xl shadow-cyan-500/20"
+                                                >
+                                                    <GraduationCap size={44} className="text-cyan-600 dark:text-cyan-400" />
+                                                </motion.div>
+
+                                                <motion.div
+                                                    initial={{ opacity: 0, x: -20 }}
+                                                    animate={{ opacity: 1, x: 0 }}
+                                                    transition={{ delay: 0.1 }}
+                                                >
+                                                    <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-50 dark:bg-cyan-500/10 border border-cyan-200 dark:border-cyan-500/20 mb-3">
+                                                        <Award size={14} className="text-cyan-600 dark:text-cyan-400" />
+                                                        <span className="text-xs font-black text-cyan-600 dark:text-cyan-400 uppercase tracking-widest">{selectedProgram.degreeType} PROGRAM</span>
+                                                    </div>
+                                                    <h2 className="text-3xl md:text-4xl font-black text-slate-900 dark:text-white leading-tight mb-2">
+                                                        {selectedProgram.title}
+                                                    </h2>
+                                                </motion.div>
+                                            </div>
+
+                                            {/* Quick Stats Grid */}
+                                            <motion.div
+                                                initial={{ opacity: 0, y: 20 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                transition={{ delay: 0.2 }}
+                                                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 gap-4"
+                                            >
+                                                {[
+                                                    { icon: Clock, label: "Duration", value: selectedProgram.duration, color: "text-blue-500", bg: "bg-blue-50 dark:bg-blue-500/10" },
+                                                    { icon: Calendar, label: "Total Semesters", value: selectedProgram.totalSemesters, color: "text-amber-500", bg: "bg-amber-50 dark:bg-amber-500/10" },
+                                                    { icon: DollarSign, label: "Estimated Fee", value: selectedProgram.estimatedFee, color: "text-emerald-500", bg: "bg-emerald-50 dark:bg-emerald-500/10" }
+                                                ].map((stat, idx) => (
+                                                    <motion.div
+                                                        whileHover={{ scale: 1.02 }}
+                                                        key={idx}
+                                                        className="flex items-center gap-4 p-4 rounded-2xl bg-white dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700/50 shadow-sm"
+                                                    >
+                                                        <div className={`p-3 rounded-xl ${stat.bg}`}>
+                                                            <stat.icon size={20} className={stat.color} />
+                                                        </div>
+                                                        <div>
+                                                            <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider mb-0.5">{stat.label}</p>
+                                                            <p className="text-sm font-black text-slate-900 dark:text-white">{stat.value}</p>
+                                                        </div>
+                                                    </motion.div>
+                                                ))}
+                                            </motion.div>
+                                        </div>
+
+                                        {/* Right Column: Description & Scholarships */}
+                                        <div className="lg:col-span-7 space-y-8 lg:pl-6 border-t pt-8 lg:border-t-0 lg:pt-0 lg:border-l border-slate-200 dark:border-slate-800">
+
+                                            {/* Program Overview */}
+                                            <motion.div
+                                                initial={{ opacity: 0, y: 20 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                transition={{ delay: 0.3 }}
+                                            >
+                                                <div className="flex items-center gap-2 mb-4">
+                                                    <BookOpen className="text-cyan-500" size={20} />
+                                                    <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-wider">Program Overview</h3>
+                                                </div>
+                                                <div className="p-6 bg-slate-50 dark:bg-slate-800/30 rounded-3xl border border-slate-200 dark:border-slate-700/50 leading-relaxed text-slate-700 dark:text-slate-300 font-medium whitespace-pre-wrap">
+                                                    {selectedProgram.description}
+                                                </div>
+                                            </motion.div>
+
+                                            {/* Scholarships Section */}
+                                            <motion.div
+                                                initial={{ opacity: 0, y: 20 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                transition={{ delay: 0.4 }}
+                                            >
+                                                <div className="flex items-center justify-between mb-4 mt-2">
+                                                    <div className="flex items-center gap-2">
+                                                        <Sparkles className="text-yellow-500" size={20} fill="currentColor" />
+                                                        <h3 className="text-lg font-black text-slate-900 dark:text-white uppercase tracking-wider">Scholarships & Aid</h3>
+                                                    </div>
+                                                    {selectedProgram.scholarships?.length > 0 && (
+                                                        <span className="px-3 py-1 bg-yellow-100 dark:bg-yellow-500/20 text-yellow-700 dark:text-yellow-400 text-xs font-black rounded-full uppercase tracking-wider">
+                                                            {selectedProgram.scholarships.length} Available
+                                                        </span>
+                                                    )}
+                                                </div>
+
+                                                {(!selectedProgram.scholarships || selectedProgram.scholarships.length === 0) ? (
+                                                    <div className="text-center p-8 bg-slate-50 dark:bg-slate-800/30 rounded-3xl border border-dashed border-slate-300 dark:border-slate-700 lg:h-40 flex flex-col items-center justify-center">
+                                                        <Layers className="text-slate-400 mb-2" size={32} />
+                                                        <p className="text-sm font-semibold text-slate-500 dark:text-slate-400">No scholarships configured for this program.</p>
+                                                    </div>
+                                                ) : (
+                                                    <div className="space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar pr-2 pb-6">
+                                                        {selectedProgram.scholarships.map((scholarship, sIdx) => (
+                                                            <div
+                                                                key={sIdx}
+                                                                className="relative overflow-hidden bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl group hover:border-cyan-300 dark:hover:border-cyan-500/50 transition-colors shadow-sm"
+                                                            >
+                                                                {/* Decorative Type Indicator */}
+                                                                <div className="absolute top-0 bottom-0 left-0 w-1.5 bg-gradient-to-b from-yellow-300 to-amber-500" />
+
+                                                                <div className="p-5 pl-7">
+                                                                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+                                                                        <h4 className="font-bold text-slate-900 dark:text-white text-base">
+                                                                            {scholarship.criteriaTitle || scholarship.scholarshipTitle || "Scholarship"}
+                                                                        </h4>
+
+                                                                        {scholarship.grantPercentage && (
+                                                                            <span className="inline-flex items-center justify-center px-3 py-1 bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-xs font-black rounded-full shadow-md whitespace-nowrap">
+                                                                                {String(scholarship.grantPercentage).includes('%') ? scholarship.grantPercentage : `${scholarship.grantPercentage}%`} WAIVER
+                                                                            </span>
+                                                                        )}
+                                                                    </div>
+
+                                                                    <div className="bg-slate-50 dark:bg-slate-900/50 rounded-xl p-3 border border-slate-100 dark:border-slate-700/50">
+                                                                        <div className="flex items-start gap-2">
+                                                                            <CheckCircle size={14} className="text-emerald-500 mt-0.5 shrink-0" />
+                                                                            <p className="text-sm text-slate-600 dark:text-slate-300 font-medium">
+                                                                                <span className="text-slate-500 dark:text-slate-400 uppercase text-[10px] tracking-wider block mb-1">Requirement</span>
+                                                                                {scholarship.type === 'merit' || !scholarship.type ? (
+                                                                                    `Minimum of ${scholarship.minPercentage}% Marks` + (scholarship.maxPercentage ? ` up to ${scholarship.maxPercentage}%` : '')
+                                                                                ) : scholarship.type === 'position' ? (
+                                                                                    scholarship.position || 'Specific Position Required'
+                                                                                ) : scholarship.type === 'kinship' ? (
+                                                                                    scholarship.condition || 'Sibling/Kinship Verification Required'
+                                                                                ) : scholarship.type === 'need' ? (
+                                                                                    scholarship.condition || 'Need-based Financial Assessment'
+                                                                                ) : (
+                                                                                    "Meeting specific criteria"
+                                                                                )}
+                                                                            </p>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </motion.div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </motion.div>
                     </motion.div>
                 )}

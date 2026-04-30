@@ -218,7 +218,13 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
 
     const menuItems = getMenuItems();
     const userRoleDisplay = userProfile?.role === 'university_manager' ? 'Uni Manager' : (userProfile?.role || 'User');
-    const userName = userProfile?.fullName || currentUser?.email?.split('@')[0] || 'User';
+
+    let userName = userProfile?.fullName || currentUser?.email?.split('@')[0] || 'User';
+    if (userProfile?.role === 'admin') {
+        userName = 'EduNest Admin';
+    } else if (userProfile?.role === 'university_manager') {
+        userName = userProfile?.universityName || userName;
+    }
 
     return (
         <>
@@ -353,8 +359,8 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
                         </nav>
 
                         {/* Footer (User & Settings) */}
-                        <div className="p-4 mt-auto">
-                            <div className="relative" ref={settingsRef}>
+                        <div className="p-4 mt-auto relative z-50">
+                            <div className="relative z-50" ref={settingsRef}>
                                 {/* Settings Popover */}
                                 <AnimatePresence>
                                     {isSettingsOpen && (
@@ -364,7 +370,7 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
                                             exit={{ opacity: 0, y: 10, scale: 0.95 }}
                                             transition={{ type: "spring", stiffness: 300 }}
                                             className={clsx(
-                                                "absolute bottom-full left-0 w-full mb-3 p-2 rounded-2xl shadow-2xl overflow-hidden border",
+                                                "absolute bottom-full left-0 w-full mb-3 p-2 rounded-2xl shadow-2xl overflow-hidden border z-50",
                                                 "bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl",
                                                 "border-slate-200 dark:border-white/10"
                                             )}

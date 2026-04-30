@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MessageSquare, Send, Trash2, AlertTriangle, Shield, Loader2, User, Heart, MessageCircle, CornerDownRight } from 'lucide-react';
-import { collection, addDoc, deleteDoc, doc, orderBy, query, serverTimestamp, onSnapshot, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { collection, addDoc, deleteDoc, doc, orderBy, query, serverTimestamp, onSnapshot, updateDoc, arrayUnion, arrayRemove, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import UserAvatar from './UserAvatar';
@@ -28,6 +28,7 @@ const CommunityFeed = () => {
     const [toast, setToast] = useState(null);
     const [expandedPosts, setExpandedPosts] = useState(new Set()); // Tracks which posts have comments open
     const [profileModal, setProfileModal] = useState({ isOpen: false, userId: null, userData: null });
+    const [usersMap, setUsersMap] = useState({}); // Stores fetched user profiles for dynamic name resolution
 
     const openProfileModal = (userId, userData) => {
         setProfileModal({ isOpen: true, userId, userData });
@@ -41,11 +42,36 @@ const CommunityFeed = () => {
         const postsRef = collection(db, 'posts');
         const postsQuery = query(postsRef, orderBy('createdAt', 'desc'));
 
-        const unsubscribe = onSnapshot(postsQuery, (snapshot) => {
+        const unsubscribe = onSnapshot(postsQuery, async (snapshot) => {
             const postsList = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
             }));
+
+            // Identify unique authors whose details we might need (for retroactive name masking)
+            const uniqueAuthorIds = [...new Set(postsList.map(p => p.authorId))];
+
+            // If we have authors, optionally fetch their profile data to populate usersMap
+            if (uniqueAuthorIds.length > 0) {
+                try {
+                    // Firebase 'in' queries only support up to 10 items.
+                    // Instead of a complex query, we can just fetch all users once if the community is small, 
+                    // or fetch them individually. Since this is a demo, let's fetch individual missing ones slowly,
+                    // OR we can just fetch all users once when component mounts.
+                    // For safety and simplicity, let's fetch all users who are in this list.
+                    const usersCollection = collection(db, 'users');
+                    const usersSnapshot = await getDocs(usersCollection);
+                    const newUsersMap = {};
+                    usersSnapshot.forEach(doc => {
+                        newUsersMap[doc.id] = doc.data();
+                    });
+                    setUsersMap(newUsersMap);
+
+                } catch (err) {
+                    console.error("Error fetching users for name resolution:", err);
+                }
+            }
+
             setPosts(postsList);
             setLoading(false);
         }, (error) => {
@@ -85,10 +111,17 @@ const CommunityFeed = () => {
 
             setModerationStatus('safe');
 
+            let finalAuthorName = userProfile?.fullName || 'Anonymous';
+            if (userProfile?.role === 'admin') {
+                finalAuthorName = 'EduNest Admin';
+            } else if (userProfile?.role === 'university_manager') {
+                finalAuthorName = userProfile?.universityName || 'University Representative';
+            }
+
             const postData = {
                 content: newPost,
                 authorId: currentUser.uid,
-                authorName: userProfile?.fullName || 'Anonymous',
+                authorName: finalAuthorName,
                 authorRole: userProfile?.role || 'user',
                 authorPhoto: userProfile?.photoURL || userProfile?.profilePic || userProfile?.profilePictureUrl || null,
                 createdAt: serverTimestamp(),
@@ -182,6 +215,28 @@ const CommunityFeed = () => {
         return date.toLocaleString();
     };
 
+    // For the "Share something..." box, we want to show their appropriate name
+    // Even if their userProfile.fullName is "Waqas Awan", we display the University or Admin name
+    let currentUserDisplayAuthName = userProfile?.fullName;
+    if (userProfile?.role === 'admin') currentUserDisplayAuthName = 'EduNest Admin';
+    if (userProfile?.role === 'university_manager') currentUserDisplayAuthName = userProfile?.universityName || userProfile?.fullName;
+
+    const getDisplayAuthorName = (post) => {
+        if (post.authorRole === 'admin') return 'EduNest Admin';
+        if (post.authorRole === 'university_manager') {
+            // Priority 1: Did we explicitly save the university name exactly inside authorName?
+            // If authorName contains "University", it's probably already masked properly by our new logic.
+            // Priority 2: fetch from usersMap (for retroactively masking old posts where authorName was "Waqas Awan")
+            const mappedUser = usersMap[post.authorId];
+            if (mappedUser && mappedUser.universityName) {
+                return mappedUser.universityName;
+            }
+            // Fallback to original name
+            return post.authorName || 'University Representative';
+        }
+        return post.authorName || 'Anonymous';
+    };
+
     return (
         <div className="w-full">
             {/* Toast Notification */}
@@ -209,7 +264,7 @@ const CommunityFeed = () => {
                         <UserAvatar
                             userId={currentUser?.uid}
                             src={userProfile?.photoURL || userProfile?.profilePic}
-                            name={userProfile?.fullName || currentUser?.displayName}
+                            name={currentUserDisplayAuthName}
                             size="md"
                             className="shrink-0"
                         />
@@ -307,11 +362,11 @@ const CommunityFeed = () => {
                                         <UserAvatar
                                             userId={post.authorId}
                                             src={post.authorPhoto}
-                                            name={post.authorName}
+                                            name={getDisplayAuthorName(post)}
                                             size="lg"
                                             onClick={() => openProfileModal(post.authorId, {
                                                 id: post.authorId,
-                                                fullName: post.authorName,
+                                                fullName: getDisplayAuthorName(post),
                                                 role: post.authorRole,
                                                 photoURL: post.authorPhoto
                                             })}
@@ -320,7 +375,9 @@ const CommunityFeed = () => {
                                         <div className="flex-1 min-w-0">
                                             {/* Author Info */}
                                             <div className="flex items-center flex-wrap gap-2 mb-1">
-                                                <p className="font-semibold text-slate-900 dark:text-white">{post.authorName}</p>
+                                                <p className="font-semibold text-slate-900 dark:text-white">
+                                                    {getDisplayAuthorName(post)}
+                                                </p>
                                                 <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border uppercase tracking-wider ${getRoleBadgeStyle(post.authorRole)}`}>
                                                     {getRoleDisplayName(post.authorRole)}
                                                 </span>
@@ -367,6 +424,7 @@ const CommunityFeed = () => {
                                                             postId={post.id}
                                                             currentUser={currentUser}
                                                             userProfile={userProfile}
+                                                            openProfileModal={openProfileModal}
                                                         />
                                                     </motion.div>
                                                 )}

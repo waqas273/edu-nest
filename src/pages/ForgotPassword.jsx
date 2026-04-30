@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { Mail, ArrowLeft, Send, CheckCircle, AlertCircle } from 'lucide-react';
-import { sendPasswordResetEmail } from 'firebase/auth';
+import { sendPasswordResetEmail, fetchSignInMethodsForEmail } from 'firebase/auth';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 
@@ -24,12 +24,11 @@ const ForgotPassword = () => {
             setError('');
             setLoading(true);
 
-            // Step 1: Check if user exists in Firestore
-            const usersRef = collection(db, 'users');
-            const userQuery = query(usersRef, where('email', '==', email.toLowerCase()));
-            const querySnapshot = await getDocs(userQuery);
+            // Fetch sign-in methods to check if the account exists
+            // This prevents the 400 Bad Request console error from sendPasswordResetEmail
+            const signInMethods = await fetchSignInMethodsForEmail(auth, email);
 
-            if (querySnapshot.empty) {
+            if (signInMethods.length === 0) {
                 setError('Account does not exist. Please Register.');
                 setLoading(false);
                 return;
@@ -44,10 +43,15 @@ const ForgotPassword = () => {
             await sendPasswordResetEmail(auth, email, actionCodeSettings);
             setSuccess(true);
         } catch (err) {
-            console.error('Password reset error:', err);
+            if (err.code !== 'auth/user-not-found') {
+                console.error('Password reset error:', err);
+            }
             switch (err.code) {
                 case 'auth/invalid-email':
                     setError('Please enter a valid email address.');
+                    break;
+                case 'auth/user-not-found':
+                    setError('Account does not exist. Please Register.');
                     break;
                 case 'auth/too-many-requests':
                     setError('Too many requests. Please try again later.');

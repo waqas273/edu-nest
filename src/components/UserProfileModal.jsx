@@ -81,12 +81,15 @@ const UserProfileModal = ({ isOpen, onClose, userId, userData = null, hideChatBu
     };
 
     const fetchContextualData = async () => {
-        if (!profile?.id) return;
+        if (!profile?.id || !currentUser) return;
+
+        const isOwner = currentUser.uid === profile.id;
+        const isAdmin = viewerProfile?.role === 'admin';
+        const isManager = viewerProfile?.role === 'university_manager';
 
         setLoadingExtras(true);
         try {
-            // Always fetch test history for students
-            if (profile?.role === 'student') {
+            if (profile?.role === 'student' && (isOwner || isAdmin)) {
                 // Fetch test results
                 const testsQuery = query(
                     collection(db, 'test_history'),
@@ -94,9 +97,13 @@ const UserProfileModal = ({ isOpen, onClose, userId, userData = null, hideChatBu
                     orderBy('timestamp', 'desc'),
                     limit(10)
                 );
-                const testsSnap = await getDocs(testsQuery);
-                const testsData = testsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                setTestHistory(testsData);
+                try {
+                    const testsSnap = await getDocs(testsQuery);
+                    const testsData = testsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    setTestHistory(testsData);
+                } catch (e) {
+                    console.warn("Could not fetch test history:", e.message);
+                }
 
                 // Fetch applications
                 const appsQuery = query(
@@ -104,9 +111,13 @@ const UserProfileModal = ({ isOpen, onClose, userId, userData = null, hideChatBu
                     where('studentId', '==', profile.id),
                     limit(5)
                 );
-                const appsSnap = await getDocs(appsQuery);
-                const appsData = appsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                setApplications(appsData);
+                try {
+                    const appsSnap = await getDocs(appsQuery);
+                    const appsData = appsSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+                    setApplications(appsData);
+                } catch (e) {
+                    console.warn("Could not fetch applications:", e.message);
+                }
             }
         } catch (error) {
             console.error('Error fetching contextual data:', error);
@@ -289,8 +300,8 @@ const UserProfileModal = ({ isOpen, onClose, userId, userData = null, hideChatBu
                                                 <span>Edit Profile</span>
                                             </motion.button>
                                         )}
-                                        {/* Chat Button - Always rendered but disabled if self or hidden */}
-                                        {!hideChatButton && !readOnly && (
+                                        {/* Chat Button - Hidden if profile is Admin and viewer is not Admin */}
+                                        {!hideChatButton && !readOnly && !(profile?.role === 'admin' && viewerProfile?.role !== 'admin') && (
                                             <motion.button
                                                 whileHover={canChat ? { scale: 1.05 } : {}}
                                                 whileTap={canChat ? { scale: 0.95 } : {}}

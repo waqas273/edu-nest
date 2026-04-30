@@ -11,7 +11,9 @@ const CommentItem = ({
     onLike,
     onDelete,
     currentUserId,
-    userProfile
+    userProfile,
+    usersMap = {},
+    openProfileModal
 }) => {
     const [isReplying, setIsReplying] = useState(false);
     const [replyText, setReplyText] = useState('');
@@ -34,6 +36,19 @@ const CommentItem = ({
     const hasChildren = comment.children && comment.children.length > 0;
     const isLiked = comment.likes?.includes(currentUserId);
 
+    // Helper for displaying names
+    const getDisplayAuthorName = (commentObj) => {
+        if (commentObj.authorRole === 'admin') return 'EduNest Admin';
+        if (commentObj.authorRole === 'university_manager') {
+            const mappedUser = usersMap[commentObj.authorId];
+            if (mappedUser && mappedUser.universityName) {
+                return mappedUser.universityName;
+            }
+            return commentObj.authorName || 'University Representative';
+        }
+        return commentObj.authorName || 'Anonymous';
+    };
+
     // Indentation limit to avoid too much nesting UI
     const nextLevel = level < 3 ? level + 1 : level;
 
@@ -53,16 +68,31 @@ const CommentItem = ({
                 <UserAvatar
                     userId={comment.authorId}
                     src={comment.authorPhoto}
-                    name={comment.authorName}
+                    name={getDisplayAuthorName(comment)}
                     size={level === 0 ? "sm" : "xs"}
+                    onClick={openProfileModal ? () => openProfileModal(comment.authorId, {
+                        id: comment.authorId,
+                        fullName: getDisplayAuthorName(comment),
+                        role: comment.authorRole,
+                        photoURL: comment.authorPhoto
+                    }) : undefined}
+                    className={openProfileModal ? "cursor-pointer hover:opacity-80 transition-opacity" : ""}
                 />
 
                 <div className="flex-1 min-w-0">
                     <div className="bg-slate-100 dark:bg-white/5 p-3 rounded-2xl rounded-tl-none">
                         <div className="flex items-center justify-between mb-1">
                             <div className="flex items-center gap-2">
-                                <span className="font-bold text-sm text-slate-800 dark:text-gray-200">
-                                    {comment.authorName}
+                                <span
+                                    className={`font-bold text-sm text-slate-800 dark:text-gray-200 ${openProfileModal ? 'cursor-pointer hover:underline' : ''}`}
+                                    onClick={openProfileModal ? () => openProfileModal(comment.authorId, {
+                                        id: comment.authorId,
+                                        fullName: getDisplayAuthorName(comment),
+                                        role: comment.authorRole,
+                                        photoURL: comment.authorPhoto
+                                    }) : undefined}
+                                >
+                                    {getDisplayAuthorName(comment)}
                                 </span>
                                 {comment.authorRole === 'admin' && (
                                     <span className="text-[10px] bg-purple-100 text-purple-600 px-1.5 py-0.5 rounded-full font-bold">Admin</span>
@@ -118,7 +148,7 @@ const CommentItem = ({
                                     autoFocus
                                     value={replyText}
                                     onChange={(e) => setReplyText(e.target.value)}
-                                    placeholder={`Replying to ${comment.authorName}...`}
+                                    placeholder={`Replying to ${getDisplayAuthorName(comment)}...`}
                                     className="flex-1 bg-slate-50 dark:bg-black/20 border border-slate-200 dark:border-white/10 rounded-xl px-3 py-2 text-sm focus:outline-none focus:border-cyan-500 transition-colors"
                                     onKeyDown={(e) => e.key === 'Enter' && handleSubmitReply()}
                                 />
@@ -170,6 +200,8 @@ const CommentItem = ({
                                 onDelete={onDelete}
                                 currentUserId={currentUserId}
                                 userProfile={userProfile}
+                                usersMap={usersMap}
+                                openProfileModal={openProfileModal}
                             />
                         ))}
                     </motion.div>

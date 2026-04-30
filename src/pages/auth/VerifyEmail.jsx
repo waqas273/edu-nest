@@ -9,9 +9,11 @@ import {
 import { useAuth } from '../../context/AuthContext';
 import { useTheme } from '../../context/ThemeContext';
 import { doc, updateDoc } from 'firebase/firestore';
-import { db } from '../../firebase';
+import { db, auth } from '../../firebase';
+import { signOut } from 'firebase/auth';
 import emailjs from '@emailjs/browser';
 import logo from '../../assets/EduNest.png';
+import toast from 'react-hot-toast';
 
 // --- CONFIGURATION ---
 const EMAILJS_SERVICE_ID = 'service_dzmanwf';
@@ -140,10 +142,12 @@ const VerifyEmail = () => {
         try {
             await emailjs.send(EMAILJS_SERVICE_ID, OTP_TEMPLATE_ID, templateParams, EMAILJS_PUBLIC_KEY);
             setSuccessMsg(`New verification code sent to ${email}`);
+            toast.success(`New verification code sent to ${email}`);
             setTimer(30);
         } catch (error) {
             console.error('EmailJS Error:', error);
             setGlobalError('Failed to send email. Please check your connection.');
+            toast.error('Failed to send email.');
         } finally {
             setLoading(false);
         }
@@ -152,13 +156,18 @@ const VerifyEmail = () => {
     const handleVerify = async () => {
         setGlobalError('');
 
-        if (otpCode.length !== 6) return setGlobalError('Please enter the full 6-digit code.');
+        if (otpCode.length !== 6) {
+            toast.error('Please enter the full 6-digit code.');
+            return setGlobalError('Please enter the full 6-digit code.');
+        }
 
         // VERIFY OTP Logic
         if (otpCode !== currentValidOtp) {
+            toast.error('Invalid verification code. Please try again.');
             return setGlobalError('Invalid verification code. Please try again.');
         }
 
+        const loader = toast.loading("Verifying code & completing signup...");
         setLoading(true);
         try {
             // Create Firebase Account (Auth + Firestore)
@@ -172,29 +181,30 @@ const VerifyEmail = () => {
                 await updateDoc(userRef, { emailVerified: true });
             }
 
-            // Send Welcome Email
-            try {
-                await emailjs.send(
-                    EMAILJS_SERVICE_ID,
-                    WELCOME_TEMPLATE_ID,
-                    { to_name: fullName, to_email: email },
-                    EMAILJS_PUBLIC_KEY
-                );
-            } catch (emailErr) {
-                console.error("Welcome email failed:", emailErr);
-                // Continue login flow even if email fails
-            }
+            // Welcome Email disabled as the template ('template_welcome') does not exist yet.
+            // Leaving it out prevents the HTTP 400 Bad request.
 
-            navigate('/dashboard');
+            toast.success("Account verified successfully! Please sign in.", { id: loader });
+
+            // Hard redirect to clear React state and ensure login page renders cleanly
+            setTimeout(() => {
+                window.location.href = '/login';
+            }, 1500);
 
         } catch (err) {
             console.error('Registration Error:', err);
-            let msg = err.message;
+            let msg = err.message || 'An unexpected error occurred during signup.';
+
             if (err.code === 'auth/email-already-in-use') {
-                // "Zombie Auth" Case: User is in Auth but NOT in Firestore (checked in Signup)
-                msg = 'This email is registered in Auth but missing profile. Contact Support.';
+                // In cases where the Auth object was created successfully but network failed midway 
+                // through the Firestore object creation on a previous attempt.
+                msg = 'This email is already registered. Please navigate to the Login page.';
+                toast.error(msg, { id: loader });
+                navigate('/login');
+                return;
             }
             setGlobalError(msg);
+            toast.error(msg, { id: loader });
         } finally {
             setLoading(false);
         }

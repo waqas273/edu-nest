@@ -4,7 +4,10 @@ import {
     signInWithEmailAndPassword,
     signOut,
     onAuthStateChanged,
-    sendEmailVerification
+    sendEmailVerification,
+    updatePassword as firebaseUpdatePassword,
+    EmailAuthProvider,
+    reauthenticateWithCredential
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { auth, db } from '../firebase';
@@ -55,6 +58,16 @@ export const AuthProvider = ({ children }) => {
     const logout = () => {
         setUserProfile(null);
         return signOut(auth);
+    };
+
+    // Update Password
+    const updatePassword = async (currentPassword, newPassword) => {
+        if (currentUser) {
+            const credential = EmailAuthProvider.credential(currentUser.email, currentPassword);
+            await reauthenticateWithCredential(currentUser, credential);
+            return firebaseUpdatePassword(currentUser, newPassword);
+        }
+        return Promise.reject(new Error("No user logged in"));
     };
 
     // Update Manager Details
@@ -144,6 +157,7 @@ export const AuthProvider = ({ children }) => {
         updateUserProfile,
         uploadProfileImage,
         resendVerificationEmail,
+        updatePassword,
         loading
     };
 

@@ -119,26 +119,34 @@ service cloud.firestore {
     // 11. Community Posts
     match /posts/{postId} {
       allow read, create: if isAuthenticated();
-      // Author (authorId) or Admin can update/delete
       // Author (authorId) or Admin can update/delete full post
-      // authenticated users can update ONLY 'replyCount' (for comments)
+      // Authenticated users can update ONLY 'replyCount' and 'likes'
       allow update: if isAdmin() || 
                     (resource.data.authorId == request.auth.uid) || 
-                    (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['replyCount']));
+                    (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasAny(['replyCount', 'likes']));
       
       allow delete: if isAdmin() || (resource.data.authorId == request.auth.uid);
       
       // Threaded Comments
       match /comments/{commentId} {
         allow read, create: if isAuthenticated();
-        allow update, delete: if isAdmin() || (resource.data.authorId == request.auth.uid);
+        // Author or Admin can update full comment
+        // Authenticated users can update ONLY 'likes'
+        allow update: if isAdmin() || 
+                      (resource.data.authorId == request.auth.uid) || 
+                      (isAuthenticated() && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['likes']));
+        allow delete: if isAdmin() || (resource.data.authorId == request.auth.uid);
       }
     }
 
     // 12. Test History & Roadmaps
     match /test_history/{docId} {
-      allow read, write: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid);
-      allow read: if isAdmin();
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid);
+    }
+    match /tests/{docId} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid);
     }
     match /roadmaps/{docId} {
       allow read, write: if isAuthenticated() && (resource == null || resource.data.userId == request.auth.uid);

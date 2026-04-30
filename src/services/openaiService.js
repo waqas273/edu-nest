@@ -22,7 +22,10 @@ let isOfflineMode = false;
 function parseJSON(content) {
     try {
         // 1. Remove <think>...</think> blocks common in DeepSeek R1
-        const cleanContent = content.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+        let cleanContent = content.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+
+        // 1.5 Fix unquoted letters (A-D) from AI
+        cleanContent = cleanContent.replace(/"correctIndex":\s*([A-Da-d])/g, '"correctIndex": "$1"');
 
         // 2. Extract JSON Array [...]
         const firstBracket = cleanContent.indexOf('[');
@@ -265,13 +268,20 @@ export async function generateTestQuestions(topic, skill, count = 15, difficulty
 
         const questions = parseJSON(content);
         if (questions.length === 0) throw new Error('Empty');
-        return questions.slice(0, count).map((q, index) => ({
-            id: index + 1,
-            question: q.question,
-            options: q.options || ['A', 'B', 'C', 'D'],
-            correctIndex: q.correctIndex,
-            explanation: q.explanation || 'Correct answer highlighted.'
-        }));
+        return questions.slice(0, count).map((q, index) => {
+            let cIndex = q.correctIndex;
+            if (typeof cIndex === 'string') {
+                const map = { 'A': 0, 'a': 0, 'B': 1, 'b': 1, 'C': 2, 'c': 2, 'D': 3, 'd': 3, '1': 0, '2': 1, '3': 2, '4': 3 };
+                cIndex = map[cIndex] !== undefined ? map[cIndex] : parseInt(cIndex);
+            }
+            return {
+                id: index + 1,
+                question: q.question,
+                options: q.options || ['A', 'B', 'C', 'D'],
+                correctIndex: typeof cIndex === 'number' && !isNaN(cIndex) ? cIndex : 0,
+                explanation: q.explanation || 'Correct answer highlighted.'
+            };
+        });
 
     } catch (error) {
         // Fallback
@@ -286,5 +296,19 @@ export async function generateTestQuestions(topic, skill, count = 15, difficulty
 }
 
 export async function generateGrandTestQuestions(skill, topics, count = 50) {
-    return generateTestQuestions('Assessment', skill, count, 'Mixed');
+    const topicNames = Array.isArray(topics) ? topics.map(t => typeof t === 'string' ? t : t.title).join(', ') : 'Mixed Topics';
+    try {
+        const qs = await generateTestQuestions(topicNames, skill, count, 'Mixed');
+        if (!qs || qs.length === 0) throw new Error('Empty responses');
+        return qs;
+    } catch (err) {
+        console.error('Grand test AI failed:', err);
+        return Array.from({ length: count }, (_, i) => ({
+            id: i + 1,
+            question: `Grand Test Question ${i + 1} for ${skill}`,
+            options: ['Option A', 'Option B', 'Option C', 'Option D'],
+            correctIndex: 0,
+            explanation: 'Fallback explanation for grand test.'
+        }));
+    }
 }

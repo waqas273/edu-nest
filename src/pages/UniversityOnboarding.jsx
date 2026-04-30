@@ -5,7 +5,8 @@ import { Building2, MapPin, Globe, Mail, FileText, Hash, Send, Upload, X, Image 
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
-import { uploadToCloudinary, uploadMultipleToCloudinary, validateImageFile } from '../utils/uploadToCloudinary';
+import { uploadToCloudinary, uploadMultipleToCloudinary } from '../utils/cloudinaryUpload';
+import { validateImageFile } from '../utils/uploadToCloudinary';
 
 const UniversityOnboarding = () => {
     const { currentUser, userProfile } = useAuth();
@@ -110,7 +111,8 @@ const UniversityOnboarding = () => {
             if (logoFile) {
                 setUploadProgress({ current: 0, total: 1 + infrastructureFiles.length });
                 try {
-                    logoUrl = await uploadToCloudinary(logoFile, 'edunest/university-logos');
+                    // Removed 'folder' argument to match student profile logic perfectly
+                    logoUrl = await uploadToCloudinary(logoFile);
                     setUploadProgress(prev => ({ ...prev, current: 1 }));
                 } catch (uploadError) {
                     setError('Failed to upload logo. Please try again.');
@@ -122,11 +124,12 @@ const UniversityOnboarding = () => {
             // Upload infrastructure images if selected
             if (infrastructureFiles.length > 0) {
                 try {
+                    // Removed 'folder' argument to match student profile logic perfectly
                     infrastructureUrls = await uploadMultipleToCloudinary(
-                        infrastructureFiles,
-                        'edunest/university-infrastructure',
-                        (current, total) => setUploadProgress({ current: (logoFile ? 1 : 0) + current, total: (logoFile ? 1 : 0) + total })
+                        infrastructureFiles
                     );
+                    // Progress callback removed as cloudinaryUpload.js doesn't support it yet
+                    setUploadProgress({ current: (logoFile ? 1 : 0) + infrastructureFiles.length, total: (logoFile ? 1 : 0) + infrastructureFiles.length });
                 } catch (uploadError) {
                     setError('Failed to upload infrastructure images. Please try again.');
                     setLoading(false);

@@ -16,13 +16,16 @@ app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
 
 # --- Load Model ---
-# --- Load Model ---
 MODEL_PATH = 'interest_model.pkl'  # Updated to Random Forest model
 model = None
 
 try:
     if os.path.exists(MODEL_PATH):
-        model = joblib.load(MODEL_PATH)
+        loaded_data = joblib.load(MODEL_PATH)
+        if isinstance(loaded_data, dict) and 'model' in loaded_data:
+            model = loaded_data['model']
+        else:
+            model = loaded_data
         print(f"Model loaded successfully from {MODEL_PATH}")
     else:
         print(f"WARNING: Model file not found at {MODEL_PATH}. Prediction endpoint will fail.")
@@ -44,55 +47,21 @@ else:
     print("WARNING: VITE_OPENROUTER_API_KEY environment variable not found. Dynamic generation might fail.")
 
 
-@app.route('/predict-initial', methods=['POST'])
-def predict_initial():
-    """
-    Legacy endpoint specific to static filled form.
-    Kept for backward compatibility if needed, but primary logic moving to /predict-step.
-    """
-    try:
-        data = request.get_json()
-        answers = data.get('answers')
-        # ... existing implementation or simple bridge ...
-        # For now, just reusing the logic but ensuring we handle 15 inputs
-        if not answers or len(answers) != 15:
-             return jsonify({"error": "Invalid input. Expected 15 answers."}), 400
-        
-        if not model:
-            return jsonify({"error": "Model not loaded properly."}), 500
 
-        input_vector = np.array(answers).reshape(1, -1)
-        probs = model.predict_proba(input_vector)[0]
-        classes = model.classes_
-        prob_dict = {cls: float(prob) for cls, prob in zip(classes, probs)}
-        return jsonify({"probabilities": prob_dict})
-
-    except Exception as e:
-        traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
 
 
 @app.route('/predict-step', methods=['POST'])
 def predict_step():
     """
-    Akinator-style incremental prediction.
-    Expects current vector (size 15), where 0.0 indicates 'No' or 'Not asked yet'.
-    Actually, for a RandomForest, 'Not asked' usually needs a specific neutral value or 
-    we must interpret the partial vector. 
-    However, the request simply says: "After every answer, calculate prediction probability".
-    
-    If the model was trained on 1-3 scale (or similar), we must honor that input space.
-    The user requirement says: "Map user responses (Yes/No/Maybe) to numerical values (1.0 / 0.0 / 0.5)".
-    
-    So we accept the full 15 features vector. Unanswered questions should be 0.5 (Neutral) or 0.0?
-    Logic: We'll assume the client sends the 'current state' of the vector.
+    Incremental prediction for the Interest Assessment Module.
+    Expects current vector (size 7).
     """
     try:
         data = request.get_json()
-        current_vector = data.get('vector') # List of 15 floats
+        current_vector = data.get('vector') # List of 7 floats
 
-        if not current_vector or len(current_vector) != 15:
-            return jsonify({"error": "Invalid vector. Expected 15 values."}), 400
+        if not current_vector or len(current_vector) != 7:
+            return jsonify({"error": "Invalid vector. Expected 7 values."}), 400
 
         if not model:
              return jsonify({"error": "Model not loaded."}), 500

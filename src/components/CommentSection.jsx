@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { collection, query, orderBy, onSnapshot, writeBatch, doc, serverTimestamp, arrayUnion, arrayRemove, increment, updateDoc } from 'firebase/firestore';
+import { collection, query, orderBy, onSnapshot, writeBatch, doc, serverTimestamp, arrayUnion, arrayRemove, increment, updateDoc, getDocs } from 'firebase/firestore';
 import { db } from '../firebase';
 import { Send, Loader2, MessageSquare } from 'lucide-react';
 import CommentItem from './CommentItem';
@@ -7,12 +7,13 @@ import UserAvatar from './UserAvatar';
 import { moderateContent } from '../services/aiModeration';
 import { AnimatePresence, motion } from 'framer-motion';
 
-const CommentSection = ({ postId, currentUser, userProfile }) => {
+const CommentSection = ({ postId, currentUser, userProfile, openProfileModal }) => {
     const [comments, setComments] = useState([]);
     const [loading, setLoading] = useState(true);
     const [newComment, setNewComment] = useState('');
     const [submitting, setSubmitting] = useState(false);
     const [error, setError] = useState(null);
+    const [usersMap, setUsersMap] = useState({}); // Stores fetched user profiles for dynamic name resolution
 
     useEffect(() => {
         const q = query(
@@ -20,11 +21,29 @@ const CommentSection = ({ postId, currentUser, userProfile }) => {
             orderBy('createdAt', 'asc')
         );
 
-        const unsubscribe = onSnapshot(q, (snapshot) => {
+        const unsubscribe = onSnapshot(q, async (snapshot) => {
             const commentsData = snapshot.docs.map(doc => ({
                 id: doc.id,
                 ...doc.data()
             }));
+
+            // Identify unique authors whose details we might need
+            const uniqueAuthorIds = [...new Set(commentsData.map(c => c.authorId))];
+
+            if (uniqueAuthorIds.length > 0) {
+                try {
+                    const usersCollection = collection(db, 'users');
+                    const usersSnapshot = await getDocs(usersCollection);
+                    const newUsersMap = {};
+                    usersSnapshot.forEach(doc => {
+                        newUsersMap[doc.id] = doc.data();
+                    });
+                    setUsersMap(newUsersMap);
+                } catch (err) {
+                    console.error("Error fetching users for name resolution:", err);
+                }
+            }
+
             setComments(commentsData);
             setLoading(false);
         }, (err) => {
@@ -80,24 +99,31 @@ const CommentSection = ({ postId, currentUser, userProfile }) => {
     const handleAddComment = async (parentId = null, text = newComment) => {
         if (!text.trim()) return;
 
+        if (!parentId) setSubmitting(true);
+
         // Safety Check
         const moderationResult = await moderateContent(text);
         if (!moderationResult.isSafe) {
+            if (!parentId) setSubmitting(false);
             alert(moderationResult.message || "Your comment was flagged as unsafe/toxic provided by AI Moderation.");
             return;
         }
-
-        if (!parentId) setSubmitting(true);
 
         try {
             const batch = writeBatch(db);
             const newCommentRef = doc(collection(db, 'posts', postId, 'comments'));
 
+            let finalAuthorName = userProfile?.fullName || currentUser.displayName || 'Anonymous';
+            if (userProfile?.role === 'admin') {
+                finalAuthorName = 'EduNest Admin';
+            } else if (userProfile?.role === 'university_manager') {
+                finalAuthorName = userProfile?.universityName || 'University Representative';
+            }
 
             const commentData = {
                 text: text,
                 authorId: currentUser.uid,
-                authorName: userProfile?.fullName || currentUser.displayName || 'Anonymous',
+                authorName: finalAuthorName,
                 authorPhoto: userProfile?.photoURL || userProfile?.profilePic || null,
                 authorRole: userProfile?.role || 'user',
                 parentId: parentId,
@@ -171,7 +197,7 @@ const CommentSection = ({ postId, currentUser, userProfile }) => {
                 <UserAvatar
                     userId={currentUser?.uid}
                     src={userProfile?.photoURL || userProfile?.profilePic}
-                    name={userProfile?.fullName}
+                    name={userProfile?.universityName || userProfile?.fullName || currentUser?.displayName}
                     size="md"
                 />
                 <div className="flex-1 relative">
@@ -220,6 +246,8 @@ const CommentSection = ({ postId, currentUser, userProfile }) => {
                                 onDelete={handleDelete}
                                 currentUserId={currentUser?.uid}
                                 userProfile={userProfile}
+                                usersMap={usersMap}
+                                openProfileModal={openProfileModal}
                             />
                         ))}
                     </AnimatePresence>

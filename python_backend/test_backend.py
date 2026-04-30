@@ -4,7 +4,7 @@ import json
 url = "http://127.0.0.1:5001/predict-step"
 headers = {"Content-Type": "application/json"}
 data = {
-    "vector": [0.5] * 15
+    "vector": [0.5] * 7
 }
 
 try:

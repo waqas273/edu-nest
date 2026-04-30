@@ -5,9 +5,10 @@ import {
     ClipboardList, Loader2, CheckCircle2,
     ShieldCheck, Sparkles, Fingerprint, BookOpen, Award, Image as ImageIcon, ExternalLink
 } from 'lucide-react';
-import { collection, addDoc, serverTimestamp, query, where, getDocs, doc, getDoc } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, query, where, getDocs, doc, getDoc, updateDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
+import { isScholarshipEligible } from '../../utils/scholarshipUtils';
 
 const ApplyModal = ({ isOpen, onClose, university, program, studentId, onApplySuccess }) => {
     const { currentUser, userProfile } = useAuth();
@@ -31,41 +32,63 @@ const ApplyModal = ({ isOpen, onClose, university, program, studentId, onApplySu
     const [isSuccess, setIsSuccess] = useState(false);
     const [loadingProfile, setLoadingProfile] = useState(true);
 
+    // Compute best eligible scholarship for this program
+    const eligibleScholarship = (() => {
+        if (!program?.scholarships || program.scholarships.length === 0) return null;
+        if (!studentData.educationHistory && !userProfile) return null;
+        let best = null;
+        let maxGrant = 0;
+        program.scholarships.forEach(s => {
+            if (isScholarshipEligible(s, { ...userProfile, ...studentData }) === true) {
+                const val = parseFloat(s.grantPercentage || 0);
+                if (val > maxGrant) { maxGrant = val; best = s; }
+            }
+        });
+        return best;
+    })();
+
     // Fetch student profile and test history
     useEffect(() => {
         const fetchStudentData = async () => {
             if (!isOpen || !studentId) return;
 
             setLoadingProfile(true);
-            try {
-                // Fetch user profile
-                const userDoc = await getDoc(doc(db, 'users', studentId));
-                const userData = userDoc.exists() ? userDoc.data() : {};
+            let userData = {};
+            let tests = [];
 
-                // Fetch test history
+            try {
+                const userDoc = await getDoc(doc(db, 'users', studentId));
+                if (userDoc.exists()) {
+                    userData = userDoc.data();
+                }
+            } catch (error) {
+                console.error("Error fetching user profile:", error);
+            }
+
+            try {
                 const testsQ = query(
                     collection(db, 'tests'),
                     where('userId', '==', studentId)
                 );
                 const testsSnap = await getDocs(testsQ);
-                const tests = testsSnap.docs.map(d => ({
+                tests = testsSnap.docs.map(d => ({
                     id: d.id,
                     ...d.data()
                 }));
-
-                setStudentData({
-                    fullName: userData.fullName || userProfile?.fullName || currentUser?.displayName || '',
-                    email: userData.email || currentUser?.email || '',
-                    profilePic: userData.profilePic || userData.photoURL || userProfile?.profilePic || currentUser?.photoURL || '',
-                    educationHistory: userData.educationHistory || [],
-                    testHistory: tests,
-                    interest: userData.interest || '' // Added Interest Field
-                });
             } catch (error) {
-                console.error("Error fetching student data:", error);
-            } finally {
-                setLoadingProfile(false);
+                console.error("Error fetching test history:", error);
             }
+
+            setStudentData({
+                fullName: userData.fullName || userProfile?.fullName || currentUser?.displayName || '',
+                email: userData.email || userProfile?.email || currentUser?.email || '',
+                profilePic: userData.profilePic || userData.photoURL || userProfile?.profilePic || currentUser?.photoURL || '',
+                educationHistory: userData.educationHistory || userProfile?.educationHistory || [],
+                testHistory: tests,
+                interest: userData.interest || userProfile?.interest || ''
+            });
+
+            setLoadingProfile(false);
         };
 
         fetchStudentData();
@@ -87,7 +110,21 @@ const ApplyModal = ({ isOpen, onClose, university, program, studentId, onApplySu
         try {
             setIsSubmitting(true);
 
-            await addDoc(collection(db, 'admissions'), {
+            // Check if there's an existing application (specifically a rejected one we are retrying)
+            const existQ = query(
+                collection(db, 'admissions'),
+                where('studentId', '==', studentId),
+                where('programId', '==', program.id)
+            );
+            const existSnap = await getDocs(existQ);
+
+            let newAttempts = 1;
+            if (!existSnap.empty) {
+                const existingDoc = existSnap.docs[0].data();
+                newAttempts = (existingDoc.attempts || 1) + 1;
+            }
+
+            const applicationData = {
                 studentId: studentId,
                 universityId: university.id,
                 degreeId: program.id,
@@ -96,9 +133,18 @@ const ApplyModal = ({ isOpen, onClose, university, program, studentId, onApplySu
                 programName: program.programName || program.name || program.title,
                 universityName: university.universityName || university.displayName,
                 studentName: studentData.fullName,
+                studentPhoto: studentData.profilePic,
                 status: 'pending',
-                submittedAt: serverTimestamp(),
                 appliedAt: serverTimestamp(),
+
+                // Track number of attempts (max 3 allowed)
+                attempts: newAttempts,
+
+                // Clear out manager feedback on re-apply
+                managerFeedback: null,
+
+                // Attach scholarship info if eligible
+                ...(eligibleScholarship ? { scholarshipInfo: eligibleScholarship } : {}),
 
                 // Complete student profile snapshot
                 studentProfile: {
@@ -115,9 +161,21 @@ const ApplyModal = ({ isOpen, onClose, university, program, studentId, onApplySu
                         passed: t.passed || false,
                         completedAt: t.completedAt || null
                     })),
-                    submissionSource: 'v3_enhanced'
+                    submissionSource: 'v3_enhanced_reapply' // helps track successful reapplies
                 }
-            });
+            };
+
+            if (!existSnap.empty) {
+                // Update the existing rejected application
+                const docId = existSnap.docs[0].id;
+                await updateDoc(doc(db, 'admissions', docId), applicationData);
+            } else {
+                // Create new application
+                await addDoc(collection(db, 'admissions'), {
+                    ...applicationData,
+                    submittedAt: serverTimestamp() // Only set on initial creation
+                });
+            }
 
             setIsSuccess(true);
 
@@ -325,6 +383,29 @@ const ApplyModal = ({ isOpen, onClose, university, program, studentId, onApplySu
                                                     )}
                                                 </div>
                                             </div>
+                                        )}
+
+                                        {/* Scholarship Eligibility Banner */}
+                                        {!loadingProfile && eligibleScholarship && (
+                                            <motion.div
+                                                initial={{ opacity: 0, y: -8 }}
+                                                animate={{ opacity: 1, y: 0 }}
+                                                className="flex items-center gap-4 p-4 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-yellow-900/20 dark:to-amber-900/10 rounded-xl border border-yellow-300 dark:border-yellow-600/40 shadow-sm"
+                                            >
+                                                <div className="w-11 h-11 rounded-full bg-yellow-100 dark:bg-yellow-500/20 flex items-center justify-center shrink-0">
+                                                    <Award size={22} className="text-yellow-600 dark:text-yellow-400" />
+                                                </div>
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-xs font-bold uppercase tracking-widest text-yellow-600 dark:text-yellow-500 mb-0.5">🎉 Scholarship Eligible</p>
+                                                    <p className="text-sm font-black text-slate-800 dark:text-white">
+                                                        {eligibleScholarship.criteriaTitle || eligibleScholarship.scholarshipTitle || 'Merit Waiver'}
+                                                    </p>
+                                                    <p className="text-xs text-slate-500 mt-0.5">This scholarship will be auto-attached to your application</p>
+                                                </div>
+                                                <span className="shrink-0 px-3 py-1.5 bg-gradient-to-r from-yellow-400 to-amber-500 text-white text-sm font-black rounded-full shadow-md shadow-yellow-400/30">
+                                                    {String(eligibleScholarship.grantPercentage).includes('%') ? eligibleScholarship.grantPercentage : `${eligibleScholarship.grantPercentage}%`} OFF
+                                                </span>
+                                            </motion.div>
                                         )}
                                     </div>
 

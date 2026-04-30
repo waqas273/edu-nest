@@ -192,7 +192,7 @@ const Universities = () => {
                                     {/* Image Container */}
                                     <div className="h-52 overflow-hidden relative">
                                         <img
-                                            src={uni.profilePic || uni.photoURL || 'https://images.unsplash.com/photo-1541339907198-e08756ebafe3?auto=format&fit=crop&w=800&q=80'}
+                                            src={uni.profilePic || uni.photoURL || 'https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=800&q=80'}
                                             alt={uni.universityName}
                                             crossOrigin="anonymous"
                                             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"

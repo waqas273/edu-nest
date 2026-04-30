@@ -15,6 +15,7 @@ import { db } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
 import UserAvatar from '../../components/UserAvatar';
 import UserProfileModal from '../../components/UserProfileModal';
+import { sendStudentAdmissionEmail } from '../../utils/emailService';
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import eduNestLogo from '../../assets/EduNest.png';
@@ -801,7 +802,7 @@ const ApplicationCard = ({ app, expanded, onToggle, onStatusUpdate, statusInfo, 
                                         <motion.button
                                             whileHover={{ scale: 1.1, rotate: 5 }}
                                             whileTap={{ scale: 0.9 }}
-                                            onClick={() => onStatusUpdate(app.id, 'accepted')}
+                                            onClick={() => onStatusUpdate(app, 'accepted')}
                                             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white font-bold shadow-lg shadow-emerald-500/30 transition-all"
                                             title="Approve"
                                         >
@@ -811,7 +812,7 @@ const ApplicationCard = ({ app, expanded, onToggle, onStatusUpdate, statusInfo, 
                                         <motion.button
                                             whileHover={{ scale: 1.1, rotate: -5 }}
                                             whileTap={{ scale: 0.9 }}
-                                            onClick={() => onStatusUpdate(app.id, 'rejected')}
+                                            onClick={() => onStatusUpdate(app, 'rejected')}
                                             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-gradient-to-r from-red-500 to-rose-600 hover:from-red-600 hover:to-rose-700 text-white font-bold shadow-lg shadow-red-500/30 transition-all"
                                             title="Reject"
                                         >
@@ -842,8 +843,32 @@ const ApplicationCard = ({ app, expanded, onToggle, onStatusUpdate, statusInfo, 
                                 className="overflow-hidden"
                             >
                                 <div className="mt-6 pt-6 border-t-2 border-slate-200 dark:border-white/10">
+                                    {/* --- Application Reference Banner (for accepted) --- */}
+                                    {app.status === 'accepted' && (() => {
+                                        const shortUni = (app.universityName || '').split(' ')[0].toUpperCase() || 'UNI';
+                                        const seqNum = app.approvalNumber
+                                            ? String(app.approvalNumber).padStart(4, '0')
+                                            : String((app.id || '').split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) % 9000 + 1000);
+                                        const refId = `EDUNEST-${shortUni}-${seqNum}`;
+                                        return (
+                                            <div className="mb-5 flex flex-wrap items-center gap-3 px-5 py-4 rounded-2xl bg-gradient-to-r from-emerald-50 to-cyan-50 dark:from-emerald-900/20 dark:to-cyan-900/20 border border-emerald-200 dark:border-emerald-500/30">
+                                                <CheckCircle2 size={20} className="text-emerald-500 shrink-0" />
+                                                <div className="flex-1 min-w-0">
+                                                    <p className="text-xs font-bold uppercase tracking-widest text-emerald-600 dark:text-emerald-400 mb-0.5">Application Reference</p>
+                                                    <p className="text-base font-black text-slate-900 dark:text-white font-mono tracking-wider">{refId}</p>
+                                                </div>
+                                                <div className="text-right">
+                                                    <p className="text-xs text-slate-500">Approved On</p>
+                                                    <p className="text-sm font-bold text-slate-900 dark:text-white">
+                                                        {app.processedAt ? new Date(app.processedAt).toLocaleDateString('en-GB') : 'N/A'}
+                                                    </p>
+                                                </div>
+                                            </div>
+                                        );
+                                    })()}
+
                                     <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                                        {/* Academic Info */}
+                                        {/* Column 1: Quick Summary */}
                                         <motion.div
                                             initial={{ opacity: 0, x: -20 }}
                                             animate={{ opacity: 1, x: 0 }}
@@ -852,50 +877,89 @@ const ApplicationCard = ({ app, expanded, onToggle, onStatusUpdate, statusInfo, 
                                         >
                                             <div className="flex items-center gap-2 mb-3">
                                                 <BookOpen size={16} className="text-cyan-500" />
-                                                <p className="text-xs font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest">Quick Summary</p>
+                                                <p className="text-xs font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest">Student Info</p>
                                             </div>
                                             <div className="space-y-2">
                                                 {[
                                                     { label: 'Phone', value: app.studentProfile?.phoneNumber || 'N/A' },
-                                                    { label: 'Education', value: `${app.studentProfile?.educationHistory?.length || 0} records` },
-                                                    { label: 'Tests', value: `${app.studentProfile?.testHistory?.length || 0} completed` }
+                                                    { label: 'Education Records', value: `${app.studentProfile?.educationHistory?.length || 0} entries` },
+                                                    { label: 'Tests Taken', value: `${app.studentProfile?.testHistory?.length || 0} completed` },
+                                                    { label: 'Submission Date', value: app.submittedAt?.toDate ? app.submittedAt.toDate().toLocaleDateString('en-GB') : 'N/A' },
+                                                    ...(app.status === 'rejected' && app.rejectionReason ? [{ label: 'Reject Reason', value: app.rejectionReason }] : [])
                                                 ].map((item, idx) => (
                                                     <div key={idx} className="flex justify-between p-3 bg-slate-50 dark:bg-slate-800/30 rounded-xl border border-slate-200 dark:border-white/5">
-                                                        <span className="text-sm text-slate-600 dark:text-slate-400">{item.label}</span>
-                                                        <span className="text-sm font-bold text-slate-900 dark:text-white">{item.value}</span>
+                                                        <span className="text-xs text-slate-500 dark:text-slate-400 font-semibold">{item.label}</span>
+                                                        <span className="text-xs font-bold text-slate-900 dark:text-white text-right max-w-[55%] break-words">{item.value}</span>
                                                     </div>
                                                 ))}
                                             </div>
                                         </motion.div>
 
-                                        {/* Contact Info */}
+                                        {/* Column 2-3: Details */}
                                         <motion.div
                                             initial={{ opacity: 0, y: 20 }}
                                             animate={{ opacity: 1, y: 0 }}
                                             transition={{ delay: 0.2 }}
-                                            className="md:col-span-2 space-y-3"
+                                            className="md:col-span-2 space-y-4"
                                         >
                                             <div className="flex items-center gap-2 mb-3">
                                                 <Mail size={16} className="text-cyan-500" />
                                                 <p className="text-xs font-black text-slate-600 dark:text-slate-400 uppercase tracking-widest">Application Details</p>
                                             </div>
-                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
                                                 <div className="p-4 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800/30 dark:to-slate-900/30 rounded-2xl border border-slate-200 dark:border-white/5">
-                                                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-1.5 font-bold">Email Address</p>
+                                                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-1 font-bold">Email Address</p>
                                                     <p className="text-sm text-slate-900 dark:text-white font-semibold truncate">{app.studentProfile?.email || app.studentEmail || 'N/A'}</p>
                                                 </div>
                                                 <div className="p-4 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800/30 dark:to-slate-900/30 rounded-2xl border border-slate-200 dark:border-white/5">
-                                                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-1.5 font-bold">Applied Date</p>
-                                                    <div className="flex items-center gap-2 text-sm text-slate-900 dark:text-white font-semibold">
-                                                        <Calendar size={14} className="text-cyan-500" />
-                                                        {app.submittedAt?.toDate ? app.submittedAt.toDate().toLocaleDateString() : 'N/A'}
-                                                    </div>
+                                                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-1 font-bold">Program Applied</p>
+                                                    <p className="text-sm text-cyan-600 dark:text-cyan-400 font-bold">{app.programName || app.degreeName || 'N/A'}</p>
+                                                </div>
+                                                <div className="p-4 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800/30 dark:to-slate-900/30 rounded-2xl border border-slate-200 dark:border-white/5">
+                                                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-1 font-bold">Application Status</p>
+                                                    <span className={`text-xs font-black uppercase px-3 py-1 rounded-full ${app.status === 'accepted' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' :
+                                                        app.status === 'rejected' ? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400' :
+                                                            'bg-yellow-100 text-yellow-700 dark:bg-yellow-500/20 dark:text-yellow-400'
+                                                        }`}>{app.status || 'Pending'}</span>
+                                                </div>
+                                                <div className="p-4 bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-800/30 dark:to-slate-900/30 rounded-2xl border border-slate-200 dark:border-white/5">
+                                                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-1 font-bold">Latest Education</p>
+                                                    <p className="text-sm text-slate-900 dark:text-white font-semibold">
+                                                        {app.studentProfile?.educationHistory?.[0]?.degreeName || 'N/A'}
+                                                        {app.studentProfile?.educationHistory?.[0]?.cgpa ? ` — ${app.studentProfile.educationHistory[0].cgpa}` : ''}
+                                                    </p>
                                                 </div>
                                             </div>
+
+                                            {/* Personal Statement */}
                                             {app.studentProfile?.description && (
                                                 <div className="p-4 bg-cyan-50 dark:bg-cyan-500/5 rounded-2xl border border-cyan-100 dark:border-cyan-500/10">
-                                                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-1.5 font-bold">Personal Statement</p>
-                                                    <p className="text-sm text-slate-700 dark:text-slate-300 line-clamp-2">{app.studentProfile.description}</p>
+                                                    <p className="text-xs text-slate-500 dark:text-slate-400 mb-1.5 font-bold uppercase tracking-wider">Personal Statement</p>
+                                                    <p className="text-sm text-slate-700 dark:text-slate-300 line-clamp-3">{app.studentProfile.description}</p>
+                                                </div>
+                                            )}
+
+                                            {/* Scholarship eligibility — visible for all statuses */}
+                                            {app.scholarshipInfo && (
+                                                <div className="p-4 bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-yellow-900/20 dark:to-amber-900/10 rounded-2xl border border-yellow-200 dark:border-yellow-700/30 flex items-center gap-4">
+                                                    <div className="w-10 h-10 rounded-full bg-yellow-100 dark:bg-yellow-500/20 flex items-center justify-center shrink-0">
+                                                        <Award className="text-yellow-600 dark:text-yellow-400" size={20} />
+                                                    </div>
+                                                    <div className="flex-1">
+                                                        <p className="text-xs font-bold uppercase tracking-widest text-yellow-600 dark:text-yellow-500 mb-0.5">
+                                                            {app.status === 'accepted' ? '🏅 Scholarship Awarded' : '🎓 Scholarship Eligible'}
+                                                        </p>
+                                                        <p className="text-sm font-black text-slate-800 dark:text-white">
+                                                            {app.scholarshipInfo.criteriaTitle || app.scholarshipInfo.scholarshipTitle || 'Merit Waiver'}
+                                                            <span className="ml-2 bg-yellow-500 text-white text-xs px-2 py-0.5 rounded-full inline-block align-middle">
+                                                                {String(app.scholarshipInfo.grantPercentage).includes('%') ? app.scholarshipInfo.grantPercentage : `${app.scholarshipInfo.grantPercentage}%`} OFF
+                                                            </span>
+                                                        </p>
+                                                        {app.status !== 'accepted' && (
+                                                            <p className="text-xs text-slate-500 mt-0.5">This student qualifies for a scholarship in this program</p>
+                                                        )}
+                                                    </div>
                                                 </div>
                                             )}
                                         </motion.div>
@@ -916,6 +980,8 @@ const ManagerAdmissions = () => {
     const [loading, setLoading] = useState(true);
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('all');
+    const [actionModal, setActionModal] = useState(null); // { application: obj, newStatus: 'accepted' | 'rejected' }
+    const [actionReason, setActionReason] = useState(''); // Text input for reason
     const [expandedId, setExpandedId] = useState(null);
     const [profileModal, setProfileModal] = useState({ isOpen: false, userId: null, userData: null });
     const [detailModal, setDetailModal] = useState({ isOpen: false, application: null });
@@ -964,17 +1030,62 @@ const ManagerAdmissions = () => {
         return () => unsubscribe();
     }, [currentUser]);
 
-    const handleStatusUpdate = async (appId, newStatus) => {
+    const confirmAction = async () => {
+        if (!actionModal) return;
+        const { application, newStatus } = actionModal;
+
         try {
-            const appRef = doc(db, 'admissions', appId);
-            await updateDoc(appRef, {
+            const appRef = doc(db, 'admissions', application.id);
+
+            let approvalNumber = null;
+
+            if (newStatus === 'accepted') {
+                // Count existing accepted admissions for this university from the real-time state
+                // (manager already has read access to all their own university's admissions)
+                const alreadyApproved = applications.filter(
+                    a => a.status === 'accepted' && a.id !== application.id
+                ).length;
+                approvalNumber = alreadyApproved + 1;
+            }
+
+            const updatePayload = {
                 status: newStatus,
-                processedAt: new Date().toISOString()
-            });
+                processedAt: new Date().toISOString(),
+            };
+            if (approvalNumber !== null) {
+                updatePayload.approvalNumber = approvalNumber;
+            }
+
+            await updateDoc(appRef, updatePayload);
+
+            // Try sending email
+            const studentQ = query(collection(db, 'users'), where('__name__', '==', application.studentId));
+            const studentSnap = await getDocs(studentQ);
+
+            if (!studentSnap.empty) {
+                const studentData = studentSnap.docs[0].data();
+                await sendStudentAdmissionEmail({
+                    to_name: studentData.fullName || 'Student',
+                    to_email: studentData.email,
+                    status: newStatus,
+                    universityName: currentUser?.universityName || 'EduNest University',
+                    programName: application.programName || 'Degree Program',
+                    reason: actionReason
+                });
+            }
+
+            setActionModal(null);
+            setActionReason('');
+            alert(`Application ${newStatus} successfully.`);
+
         } catch (error) {
             console.error("Error updating status:", error);
             alert("Failed to update status.");
         }
+    };
+
+    const handleStatusUpdate = (application, newStatus) => {
+        setActionModal({ application, newStatus });
     };
 
     const getStatusInfo = (status) => {
@@ -990,8 +1101,17 @@ const ManagerAdmissions = () => {
     };
 
     const filteredApplications = applications.filter(app => {
-        const matchesSearch = app.studentName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            app.programName?.toLowerCase().includes(searchTerm.toLowerCase());
+        const shortUni = (app.universityName || '').split(' ')[0].toUpperCase();
+        const seqNum = app.approvalNumber
+            ? String(app.approvalNumber).padStart(4, '0')
+            : String((app.id || '').split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) % 9000 + 1000);
+        const appRefId = `EDUNEST-${shortUni}-${seqNum}`;
+
+        const q = searchTerm.toLowerCase();
+        const matchesSearch = !q ||
+            app.studentName?.toLowerCase().includes(q) ||
+            app.programName?.toLowerCase().includes(q) ||
+            appRefId.toLowerCase().includes(q);
         const matchesStatus = statusFilter === 'all' || app.status?.toLowerCase() === statusFilter;
         return matchesSearch && matchesStatus;
     });
@@ -1216,11 +1336,75 @@ const ManagerAdmissions = () => {
                 userData={profileModal.userData}
             />
 
+            {/* Action Confirmation Modal */}
+            <AnimatePresence>
+                {actionModal && (
+                    <motion.div
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        className="fixed inset-0 z-[120] flex items-center justify-center p-4 bg-black/70 backdrop-blur-sm"
+                        onClick={() => setActionModal(null)}
+                    >
+                        <motion.div
+                            initial={{ scale: 0.9, opacity: 0 }}
+                            animate={{ scale: 1, opacity: 1 }}
+                            exit={{ scale: 0.9, opacity: 0 }}
+                            onClick={e => e.stopPropagation()}
+                            className="bg-white dark:bg-slate-900 border border-slate-200 dark:border-white/10 rounded-3xl p-8 max-w-md w-full shadow-2xl"
+                        >
+                            <div className={`w-16 h-16 mx-auto mb-6 rounded-2xl flex items-center justify-center ${actionModal.newStatus === 'accepted' ? 'bg-emerald-500/20' : 'bg-red-500/20'}`}>
+                                {actionModal.newStatus === 'accepted' ? <CheckCircle2 className="text-emerald-400" size={32} /> : <X className="text-red-400" size={32} />}
+                            </div>
+
+                            <h3 className="text-2xl font-bold text-slate-900 dark:text-white text-center mb-2 tracking-tight">
+                                {actionModal.newStatus === 'accepted' ? 'Approve Application?' : 'Reject Application?'}
+                            </h3>
+
+                            <p className="text-sm text-slate-500 text-center mb-6">
+                                The student will receive an email regarding this decision.
+                            </p>
+
+                            <div className="mb-6">
+                                <label className="block text-xs font-bold text-slate-500 uppercase mb-2">
+                                    Reason / Note (Optional)
+                                </label>
+                                <textarea
+                                    value={actionReason}
+                                    onChange={(e) => setActionReason(e.target.value)}
+                                    placeholder={actionModal.newStatus === 'accepted' ? "Missing documents, Next steps, etc." : "Required GPA not met, program full, etc."}
+                                    className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all outline-none resize-none h-24 dark:text-white"
+                                />
+                            </div>
+
+                            <div className="flex space-x-4">
+                                <button
+                                    onClick={() => { setActionModal(null); setActionReason(''); }}
+                                    className="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    onClick={confirmAction}
+                                    className={`flex-1 py-3 rounded-xl font-bold transition-all text-white shadow-lg ${actionModal.newStatus === 'accepted' ? 'bg-emerald-600 hover:bg-emerald-500 shadow-emerald-600/20' : 'bg-red-600 hover:bg-red-500 shadow-red-600/20'}`}
+                                >
+                                    Confirm
+                                </button>
+                            </div>
+                        </motion.div>
+                    </motion.div>
+                )}
+            </AnimatePresence>
+
             {/* Application Detail Modal */}
             <ApplicationDetailModal
                 isOpen={detailModal.isOpen}
                 onClose={closeDetailModal}
                 application={detailModal.application}
+                onStatusUpdate={(app, status) => {
+                    closeDetailModal();
+                    handleStatusUpdate(app, status);
+                }}
             />
         </div>
     );

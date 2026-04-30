@@ -17,25 +17,33 @@ const ScholarshipManager = ({ value = [], onChange }) => {
 
     // 1. Sync extraction: Convert flat prop array to grouped internal state
     useEffect(() => {
-        // Group by criteriaTitle
+        // Group by composite key (scholarshipTitle + criteriaTitle)
         const grouped = {};
         value.forEach(item => {
-            const title = item.criteriaTitle || '';
-            if (!grouped[title]) {
-                grouped[title] = [];
+            const groupKey = `${item.scholarshipTitle || ''}_${item.criteriaTitle || ''}`;
+            if (!grouped[groupKey]) {
+                grouped[groupKey] = [];
             }
-            grouped[title].push(item);
+            grouped[groupKey].push(item);
         });
 
-        const newGroups = Object.keys(grouped).map(title => ({
-            id: uuidv4(), // Temporary UI ID
-            educationString: title,
-            tiers: grouped[title].map(item => ({
-                id: item.id || uuidv4(),
-                min: item.minPercentage,
-                grant: item.grantPercentage
-            }))
-        }));
+        const newGroups = Object.keys(grouped).map(groupKey => {
+            const firstItem = grouped[groupKey][0];
+            return {
+                id: uuidv4(), // Temporary UI ID
+                scholarshipTitle: firstItem.scholarshipTitle || '',
+                type: firstItem.type || 'merit',
+                educationString: firstItem.criteriaTitle || '',
+                tiers: grouped[groupKey].map(item => ({
+                    id: item.id || uuidv4(),
+                    min: item.minPercentage || '',
+                    max: item.maxPercentage || '',
+                    position: item.position || '',
+                    condition: item.condition || '',
+                    grant: item.grantPercentage || ''
+                }))
+            };
+        });
 
         // Only update if strictly different to avoid loops (simple length/content check could be added if needed, but for now relying on user interaction triggers)
         // actually, to avoid blowing away local edits while typing, we should only sync if the simplified structure is wildly different
@@ -55,8 +63,14 @@ const ScholarshipManager = ({ value = [], onChange }) => {
             group.tiers.forEach(tier => {
                 flatList.push({
                     id: tier.id,
+                    scholarshipTitle: group.scholarshipTitle || '',
+                    type: group.type || 'merit',
                     criteriaTitle: group.educationString,
-                    minPercentage: tier.min,
+                    // Store properties based on type so DB is clean
+                    minPercentage: group.type === 'merit' ? tier.min : '',
+                    maxPercentage: group.type === 'merit' ? tier.max : '',
+                    position: group.type === 'position' ? tier.position : '',
+                    condition: (group.type === 'kinship' || group.type === 'need') ? tier.condition : '',
                     grantPercentage: tier.grant
                 });
             });
@@ -67,8 +81,10 @@ const ScholarshipManager = ({ value = [], onChange }) => {
     const addGroup = () => {
         const newGroup = {
             id: uuidv4(),
+            scholarshipTitle: '',
+            type: 'merit',
             educationString: '',
-            tiers: [{ id: uuidv4(), min: '', grant: '' }]
+            tiers: [{ id: uuidv4(), min: '', max: '', position: '', condition: '', grant: '' }]
         };
         const updated = [...groups, newGroup];
         setGroups(updated);
@@ -79,6 +95,22 @@ const ScholarshipManager = ({ value = [], onChange }) => {
 
     const removeGroup = (groupId) => {
         const updated = groups.filter(g => g.id !== groupId);
+        setGroups(updated);
+        broadcastChange(updated);
+    };
+
+    const updateGroupType = (groupId, newType) => {
+        const updated = groups.map(g =>
+            g.id === groupId ? { ...g, type: newType } : g
+        );
+        setGroups(updated);
+        broadcastChange(updated);
+    };
+
+    const updateGroupTitle = (groupId, newTitle) => {
+        const updated = groups.map(g =>
+            g.id === groupId ? { ...g, scholarshipTitle: newTitle } : g
+        );
         setGroups(updated);
         broadcastChange(updated);
     };
@@ -96,7 +128,7 @@ const ScholarshipManager = ({ value = [], onChange }) => {
             if (g.id === groupId) {
                 return {
                     ...g,
-                    tiers: [...g.tiers, { id: uuidv4(), min: '', grant: '' }]
+                    tiers: [...g.tiers, { id: uuidv4(), min: '', max: '', position: '', condition: '', grant: '' }]
                 };
             }
             return g;
@@ -141,15 +173,6 @@ const ScholarshipManager = ({ value = [], onChange }) => {
                     <label className="block text-xs font-black text-slate-500 uppercase tracking-widest mb-1">Scholarship Criteria</label>
                     <p className="text-xs text-slate-400">Define eligibility tiers for different education levels.</p>
                 </div>
-                <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    type="button"
-                    onClick={addGroup}
-                    className="text-xs font-bold text-white bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 px-4 py-2 rounded-lg shadow-lg flex items-center gap-2 transition-all"
-                >
-                    <Plus size={14} strokeWidth={3} /> Add Education Class
-                </motion.button>
             </div>
 
             {groups.length === 0 ? (
@@ -177,31 +200,81 @@ const ScholarshipManager = ({ value = [], onChange }) => {
                                 <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-indigo-500 via-purple-500 to-pink-500" />
 
                                 <div className="p-6 pl-8">
-                                    {/* Header with Selector */}
-                                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-6">
-                                        <div className="flex-1 min-w-[300px]">
-                                            <div className="flex items-center gap-2 mb-2">
-                                                <div className="p-1.5 bg-indigo-100 dark:bg-indigo-500/20 rounded-md">
-                                                    <GraduationCap size={16} className="text-indigo-600 dark:text-indigo-400" />
-                                                </div>
-                                                <span className="text-sm font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wide">Target Education</span>
-                                            </div>
-                                            <EducationSelector
-                                                value={group.educationString}
-                                                onChange={(val) => updateGroupEducation(group.id, val)}
-                                                allowAny={true}
-                                                placeholder="Select Class (e.g. Intermediate)..."
-                                            />
+                                    {/* Header with Title and Selectors */}
+                                    <div className="flex flex-col gap-4 mb-6 relative">
+                                        {/* Delete Group Button */}
+                                        <div className="absolute top-0 right-0">
+                                            <motion.button
+                                                whileHover={{ scale: 1.1, rotate: 90 }}
+                                                whileTap={{ scale: 0.9 }}
+                                                type="button"
+                                                onClick={() => removeGroup(group.id)}
+                                                className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-all"
+                                                title="Remove Scholarship Type"
+                                            >
+                                                <Trash2 size={18} />
+                                            </motion.button>
                                         </div>
-                                        <motion.button
-                                            whileHover={{ scale: 1.1, rotate: 90 }}
-                                            whileTap={{ scale: 0.9 }}
-                                            type="button"
-                                            onClick={() => removeGroup(group.id)}
-                                            className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-xl transition-all self-start"
-                                        >
-                                            <Trash2 size={18} />
-                                        </motion.button>
+
+                                        <div className="flex-1 space-y-5 pr-12">
+                                            {/* Top Row: Type and Title */}
+                                            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                                                {/* Scholarship Type Selector */}
+                                                <div>
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <div className="p-1.5 bg-sky-100 dark:bg-sky-500/20 rounded-md">
+                                                            <Layers size={16} className="text-sky-600 dark:text-sky-400" />
+                                                        </div>
+                                                        <span className="text-sm font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wide">Scholarship Type</span>
+                                                    </div>
+                                                    <select
+                                                        className="w-full px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-slate-200 focus:outline-none focus:border-indigo-500 transition-all cursor-pointer"
+                                                        value={group.type || 'merit'}
+                                                        onChange={(e) => updateGroupType(group.id, e.target.value)}
+                                                    >
+                                                        <option value="merit">Merit / Marks %</option>
+                                                        <option value="position">Position Based</option>
+                                                        <option value="kinship">Kinship / Sibling</option>
+                                                        <option value="need">Need Based Assistance</option>
+                                                    </select>
+                                                </div>
+
+                                                {/* Scholarship Title Input */}
+                                                <div>
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <div className="p-1.5 bg-yellow-100 dark:bg-yellow-500/20 rounded-md">
+                                                            <Sparkles size={16} className="text-yellow-600 dark:text-yellow-400" />
+                                                        </div>
+                                                        <span className="text-sm font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wide">Scholarship Title</span>
+                                                    </div>
+                                                    <input
+                                                        type="text"
+                                                        placeholder="e.g. Merit-Based Scholarship"
+                                                        className="w-full px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium text-slate-700 dark:text-white focus:border-indigo-500 outline-none transition-all"
+                                                        value={group.scholarshipTitle || ''}
+                                                        onChange={(e) => updateGroupTitle(group.id, e.target.value)}
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            {/* Target Education Selector (Row 2) */}
+                                            {group.type !== 'need' && group.type !== 'kinship' && (
+                                                <div className="w-full">
+                                                    <div className="flex items-center gap-2 mb-2">
+                                                        <div className="p-1.5 bg-indigo-100 dark:bg-indigo-500/20 rounded-md">
+                                                            <GraduationCap size={16} className="text-indigo-600 dark:text-indigo-400" />
+                                                        </div>
+                                                        <span className="text-sm font-bold text-slate-700 dark:text-slate-200 uppercase tracking-wide">Target Education</span>
+                                                    </div>
+                                                    <EducationSelector
+                                                        value={group.educationString}
+                                                        onChange={(val) => updateGroupEducation(group.id, val)}
+                                                        allowAny={true}
+                                                        placeholder="Select Class (e.g. Intermediate)..."
+                                                    />
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
 
                                     {/* Tiers Section */}
@@ -222,40 +295,90 @@ const ScholarshipManager = ({ value = [], onChange }) => {
                                                         exit={{ opacity: 0, height: 0 }}
                                                         className="flex items-center gap-3 group/tier relative"
                                                     >
-                                                        {/* Min % Input */}
-                                                        <div className="relative flex-1">
+                                                        {/* Dynamic Inputs Based on Type */}
+                                                        {group.type === 'merit' && (
+                                                            <>
+                                                                {/* Min % Input */}
+                                                                <div className="relative flex-1">
+                                                                    <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                                                                        <span className="text-xs font-bold text-slate-400">Min</span>
+                                                                    </div>
+                                                                    <input
+                                                                        type="number"
+                                                                        placeholder="65"
+                                                                        className="w-full pl-10 pr-8 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold text-slate-700 dark:text-white focus:border-indigo-500 outline-none transition-all placeholder:font-normal"
+                                                                        value={tier.min}
+                                                                        onChange={(e) => updateTier(group.id, tier.id, 'min', e.target.value)}
+                                                                    />
+                                                                    <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                                                                        <Percent size={12} className="text-slate-400" />
+                                                                    </div>
+                                                                </div>
+
+                                                                <span className="text-slate-300 dark:text-slate-600 text-xs font-bold px-1">to</span>
+
+                                                                {/* Max % Input */}
+                                                                <div className="relative flex-1">
+                                                                    <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                                                                        <span className="text-xs font-bold text-slate-400">Max</span>
+                                                                    </div>
+                                                                    <input
+                                                                        type="number"
+                                                                        placeholder="74.9"
+                                                                        className="w-full pl-11 pr-8 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold text-slate-700 dark:text-white focus:border-indigo-500 outline-none transition-all placeholder:font-normal"
+                                                                        value={tier.max}
+                                                                        onChange={(e) => updateTier(group.id, tier.id, 'max', e.target.value)}
+                                                                    />
+                                                                    <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                                                                        <Percent size={12} className="text-slate-400" />
+                                                                    </div>
+                                                                </div>
+                                                            </>
+                                                        )}
+
+                                                        {group.type === 'position' && (
+                                                            <div className="relative flex-1">
+                                                                <input
+                                                                    type="text"
+                                                                    placeholder="e.g. 1st Position in BISE"
+                                                                    className="w-full px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold text-slate-700 dark:text-white focus:border-indigo-500 outline-none transition-all placeholder:font-normal"
+                                                                    value={tier.position}
+                                                                    onChange={(e) => updateTier(group.id, tier.id, 'position', e.target.value)}
+                                                                />
+                                                            </div>
+                                                        )}
+
+                                                        {(group.type === 'kinship' || group.type === 'need') && (
+                                                            <div className="relative flex-1">
+                                                                <input
+                                                                    type="text"
+                                                                    placeholder={group.type === 'kinship' ? "e.g. Sibling enrolled in identical program" : "e.g. Deserving students"}
+                                                                    className="w-full px-4 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold text-slate-700 dark:text-white focus:border-indigo-500 outline-none transition-all placeholder:font-normal"
+                                                                    value={tier.condition}
+                                                                    onChange={(e) => updateTier(group.id, tier.id, 'condition', e.target.value)}
+                                                                />
+                                                            </div>
+                                                        )}
+
+                                                        <ArrowRight size={16} className="text-slate-300 dark:text-slate-600 shrink-0 mx-2" />
+
+                                                        {/* Grant Input (Text for Need Based allowing "10% to 60%", Number for others) */}
+                                                        <div className="relative flex-1 max-w-[180px]">
                                                             <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                                                                <span className="text-xs font-bold text-slate-400">Min</span>
+                                                                <span className="text-xs font-bold text-emerald-500">Waiver</span>
                                                             </div>
                                                             <input
-                                                                type="number"
-                                                                placeholder="85"
-                                                                className="w-full pl-10 pr-8 py-2.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold text-slate-700 dark:text-white focus:border-indigo-500 outline-none transition-all placeholder:font-normal"
-                                                                value={tier.min}
-                                                                onChange={(e) => updateTier(group.id, tier.id, 'min', e.target.value)}
-                                                            />
-                                                            <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
-                                                                <Percent size={12} className="text-slate-400" />
-                                                            </div>
-                                                        </div>
-
-                                                        <ArrowRight size={16} className="text-slate-300 dark:text-slate-600 shrink-0" />
-
-                                                        {/* Grant % Input */}
-                                                        <div className="relative flex-1">
-                                                            <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                                                                <span className="text-xs font-bold text-emerald-500">Grant</span>
-                                                            </div>
-                                                            <input
-                                                                type="number"
-                                                                placeholder="50"
-                                                                className="w-full pl-12 pr-8 py-2.5 bg-white dark:bg-slate-800 border border-emerald-200 dark:border-emerald-500/30 ring-1 ring-emerald-500/10 rounded-lg text-sm font-bold text-emerald-700 dark:text-emerald-400 focus:border-emerald-500 outline-none transition-all placeholder:font-normal"
+                                                                type={group.type === 'need' || group.type === 'position' ? "text" : "number"}
+                                                                placeholder={group.type === 'need' ? "10% to 60%" : "100"}
+                                                                className="w-full pl-14 pr-4 py-2.5 bg-white dark:bg-slate-800 border border-emerald-200 dark:border-emerald-500/30 ring-1 ring-emerald-500/10 rounded-lg text-sm font-bold text-emerald-700 dark:text-emerald-400 focus:border-emerald-500 outline-none transition-all placeholder:font-normal"
                                                                 value={tier.grant}
                                                                 onChange={(e) => updateTier(group.id, tier.id, 'grant', e.target.value)}
                                                             />
-                                                            <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
-                                                                <Percent size={12} className="text-emerald-500/50" />
-                                                            </div>
+                                                            {group.type !== 'need' && group.type !== 'position' && (
+                                                                <div className="absolute inset-y-0 right-3 flex items-center pointer-events-none">
+                                                                    <Percent size={12} className="text-emerald-500/50" />
+                                                                </div>
+                                                            )}
                                                         </div>
 
                                                         {/* Delete Tier */}
@@ -285,6 +408,18 @@ const ScholarshipManager = ({ value = [], onChange }) => {
                     </AnimatePresence>
                 </div>
             )}
+
+            <div className="flex justify-center mt-6">
+                <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    type="button"
+                    onClick={addGroup}
+                    className="text-sm font-bold text-white bg-slate-900 dark:bg-slate-700 hover:bg-slate-800 px-6 py-3 rounded-xl shadow-lg flex items-center gap-2 transition-all w-full md:w-auto justify-center"
+                >
+                    <Plus size={16} strokeWidth={3} /> Add Education Class
+                </motion.button>
+            </div>
         </div>
     );
 };

@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Users, Trash2, Search, Ban, UserX, Eye, Shield, HardHat, GraduationCap, Building2, MapPin, Globe, Mail, FileText, Hash, Calendar, X, CheckCircle, Instagram, Linkedin, Github, AlertTriangle } from 'lucide-react';
-import { collection, getDocs, deleteDoc, doc, setDoc, updateDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, getDocs, deleteDoc, doc, setDoc, updateDoc, serverTimestamp, getDoc } from 'firebase/firestore';
 import { db } from '../../firebase';
 import GlassCard from '../../components/ui/GlassCard';
 import UserProfileModal from '../../components/UserProfileModal';
+import { sendBanEmail, sendUnbanEmail, sendDeleteEmail } from '../../utils/emailService';
 
 const ManageUsers = () => {
     const [users, setUsers] = useState([]);
@@ -14,6 +15,7 @@ const ManageUsers = () => {
     const [filterWarnings, setFilterWarnings] = useState(false);
     const [selectedUserId, setSelectedUserId] = useState(null); // ID for View Profile Modal
     const [actionModal, setActionModal] = useState(null); // { type: 'delete' | 'ban', user: {...} }
+    const [actionReason, setActionReason] = useState(''); // State for delete/ban reason
     const [toast, setToast] = useState(null);
 
     useEffect(() => {
@@ -49,6 +51,15 @@ const ManageUsers = () => {
             await deleteDoc(doc(db, 'users', user.id));
             setUsers(users.filter(u => u.id !== user.id));
             setActionModal(null);
+
+            // Send email
+            await sendDeleteEmail({
+                to_name: user.fullName || user.email,
+                to_email: user.email,
+                reason: actionReason
+            });
+
+            setActionReason('');
             showToast(`User "${user.fullName || user.email}" deleted successfully.`, 'success');
         } catch (error) {
             console.error('Error deleting user:', error);
@@ -59,10 +70,10 @@ const ManageUsers = () => {
     const handleBan = async (user) => {
         if (user.role === 'admin') return; // Security check
         try {
-            // Step 1: Add to banned_emails collection (email as doc ID for O(1) lookup)
-            await setDoc(doc(db, 'banned_emails', user.email.toLowerCase()), {
+            // Step 1: Add to banned_users collection (email as doc ID for O(1) lookup)
+            await setDoc(doc(db, 'banned_users', user.email.toLowerCase()), {
                 bannedAt: serverTimestamp(),
-                reason: 'Admin Action'
+                reason: actionReason || 'Admin Action'
             });
 
             // Step 2: Update user status to 'banned' (triggers logout if active)
@@ -75,6 +86,15 @@ const ManageUsers = () => {
                 u.id === user.id ? { ...u, status: 'banned' } : u
             ));
             setActionModal(null);
+
+            // Send email
+            await sendBanEmail({
+                to_name: user.fullName || user.email,
+                to_email: user.email,
+                reason: actionReason
+            });
+
+            setActionReason('');
             showToast(`User "${user.email}" has been permanently banned.`, 'success');
         } catch (error) {
             console.error('Error banning user:', error);
@@ -84,8 +104,13 @@ const ManageUsers = () => {
 
     const handleUnban = async (user) => {
         try {
-            // Step 1: Remove from banned_emails collection
-            await deleteDoc(doc(db, 'banned_emails', user.email.toLowerCase()));
+            // Step 1: Remove from banned_users collection (Check if it exists first to avoid permission errors)
+            const bannedUserRef = doc(db, 'banned_users', user.email.toLowerCase());
+            const bannedUserSnap = await getDoc(bannedUserRef);
+
+            if (bannedUserSnap.exists()) {
+                await deleteDoc(bannedUserRef);
+            }
 
             // Step 2: Restore user status to 'approved'
             await updateDoc(doc(db, 'users', user.id), {
@@ -97,6 +122,13 @@ const ManageUsers = () => {
                 u.id === user.id ? { ...u, status: 'approved' } : u
             ));
             setActionModal(null);
+
+            // Send Email
+            await sendUnbanEmail({
+                to_name: user.fullName || user.email,
+                to_email: user.email
+            });
+
             showToast(`User "${user.email}" has been unbanned.`, 'success');
         } catch (error) {
             console.error('Error unbanning user:', error);
@@ -216,9 +248,26 @@ const ManageUsers = () => {
                                         'User is removed but can sign up again. This is useful for clearing registration errors.'}
                             </p>
 
+                            {(actionModal.type === 'ban' || actionModal.type === 'delete') && (
+                                <div className="mb-6">
+                                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2">
+                                        Reason / Note (Optional)
+                                    </label>
+                                    <textarea
+                                        value={actionReason}
+                                        onChange={(e) => setActionReason(e.target.value)}
+                                        placeholder="Explain why this action is being taken..."
+                                        className="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all outline-none resize-none h-24"
+                                    />
+                                    <p className="text-xs text-slate-400 mt-2 flex items-center gap-1">
+                                        <Mail size={12} /> This note will be sent to the user via email.
+                                    </p>
+                                </div>
+                            )}
+
                             <div className="flex space-x-4">
                                 <button
-                                    onClick={() => setActionModal(null)}
+                                    onClick={() => { setActionModal(null); setActionReason(''); }}
                                     className="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-xl font-bold hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors"
                                 >
                                     Cancel
