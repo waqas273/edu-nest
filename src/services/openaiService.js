@@ -3,18 +3,8 @@
  * Strategy: OpenRouter (DeepSeek Priority) -> Static Fallback
  */
 
-const OPENROUTER_API_KEY = import.meta.env.VITE_OPENROUTER_API_KEY;
-
-// 1. OpenRouter Strategies (DeepSeek First)
-const OPENROUTER_MODELS = [
-    'arcee-ai/trinity-large-preview:free', // USER REQUESTED MODEL
-    'google/gemini-2.0-flash-exp:free', // FASTEST & RELIABLE
-    'meta-llama/llama-3.1-8b-instruct:free',
-    'microsoft/phi-3-mini-128k-instruct:free',
-    'mistralai/mistral-7b-instruct:free',
-    'huggingfaceh4/zephyr-7b-beta:free',
-    'tngtech/deepseek-r1t2-chimera:free' // Moved to bottom due to instability
-];
+const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
+const GROQ_MODEL = 'llama-3.3-70b-versatile';
 
 let isOfflineMode = false;
 
@@ -63,48 +53,32 @@ function sanitizeTopic(topic, index) {
 
 async function callAI(messages) {
     if (isOfflineMode) throw new Error('Offline Mode Active');
-
-    return await callOpenRouter(messages);
+    return await callGroq(messages);
 }
 
-async function callOpenRouter(messages) {
-    if (!OPENROUTER_API_KEY) throw new Error('No OpenRouter Key');
+async function callGroq(messages) {
+    if (!GROQ_API_KEY) throw new Error('No Groq Key');
 
-    for (const model of OPENROUTER_MODELS) {
-        try {
-            console.log(`%c🔄 OpenRouter Trying: ${model}...`, 'color: blue');
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+            'Authorization': `Bearer ${GROQ_API_KEY}`,
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+            model: GROQ_MODEL,
+            messages: messages,
+            temperature: 0.2,
+            max_tokens: 8192
+        })
+    });
 
-            // Create a controller for timeout
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 45000); // 45s timeout per model (Arcee AI is slow)
-
-            const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-                method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${OPENROUTER_API_KEY}`,
-                    "Content-Type": "application/json",
-                    "HTTP-Referer": "http://localhost:5173",
-                    "X-Title": "EduNest Local"
-                },
-                body: JSON.stringify({ model: model, messages: messages }),
-                signal: controller.signal
-            });
-
-            clearTimeout(timeoutId);
-
-            if (!response.ok) {
-                console.warn(`Model ${model} returned ${response.status}: ${response.statusText}`);
-                continue;
-            }
-            const data = await response.json();
-            const content = data.choices?.[0]?.message?.content;
-            if (content) return content;
-        } catch (e) {
-            console.warn(`Model ${model} failed or timed out. Switching...`, e);
-            continue;
-        }
+    if (!response.ok) {
+        throw new Error(`Groq API returned status: ${response.status}`);
     }
-    throw new Error('OpenRouter Failed');
+
+    const data = await response.json();
+    return data.choices[0].message.content;
 }
 
 export async function generateRoadmap(skill) {

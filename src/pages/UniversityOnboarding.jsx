@@ -7,6 +7,7 @@ import { db } from '../firebase';
 import { useAuth } from '../context/AuthContext';
 import { uploadToCloudinary, uploadMultipleToCloudinary } from '../utils/cloudinaryUpload';
 import { validateImageFile } from '../utils/uploadToCloudinary';
+import LeafletLocationPicker from '../components/LeafletLocationPicker';
 
 const UniversityOnboarding = () => {
     const { currentUser, userProfile } = useAuth();
@@ -19,6 +20,8 @@ const UniversityOnboarding = () => {
     const [formData, setFormData] = useState({
         universityName: '',
         location: '',
+        latitude: null,
+        longitude: null,
         website: '',
         officialEmail: '',
         description: '',
@@ -199,19 +202,29 @@ const UniversityOnboarding = () => {
                                 />
                             </div>
 
-                            {/* Location */}
-                            <div className="space-y-2">
+                            {/* Location — full-width map picker */}
+                            <div className="space-y-2 col-span-full">
                                 <label className="text-sm font-medium text-slate-300 flex items-center">
                                     <MapPin size={16} className="mr-2 text-blue-400" />
-                                    Location
+                                    Campus Location
+                                    <span className="ml-2 text-xs text-slate-500">(Click on map or search to pin your campus)</span>
                                 </label>
+                                <LeafletLocationPicker
+                                    initialLat={formData.latitude || 30.3753}
+                                    initialLng={formData.longitude || 69.3451}
+                                    initialLocationText={formData.location}
+                                    onLocationSelected={({ latitude, longitude, city, location }) =>
+                                        setFormData(prev => ({ ...prev, latitude, longitude, location, city }))
+                                    }
+                                />
+                                {/* Hidden required field so form validation works */}
                                 <input
+                                    type="text"
+                                    readOnly
                                     required
-                                    name="location"
                                     value={formData.location}
-                                    onChange={handleChange}
-                                    placeholder="City, Country"
-                                    className="w-full px-4 py-3 bg-slate-800/50 border border-white/10 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 transition-all"
+                                    className="sr-only"
+                                    tabIndex={-1}
                                 />
                             </div>
 

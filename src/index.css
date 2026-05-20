@@ -159,3 +159,123 @@ body {
   min-height: 100vh;
   transition: background-color 0.3s ease, color 0.3s ease;
 }
+
+/* ==========================================================================
+   ✨ PREMIUM LEAFLET CUSTOM STYLES (Glassmorphism & Neon)
+   ========================================================================== */
+
+/* Remove standard Leaflet border/shadow defaults */
+.leaflet-container {
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif !important;
+  background-color: #020204 !important;
+}
+
+html.light .leaflet-container {
+  background-color: #f3f4f6 !important;
+}
+
+/* Glassmorphism custom popup wrappers */
+.custom-leaflet-popup .leaflet-popup-content-wrapper {
+  background: rgba(15, 23, 42, 0.8) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(0, 240, 255, 0.25) !important;
+  border-radius: 20px !important;
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), 0 0 20px rgba(0, 240, 255, 0.1) !important;
+  color: #f8fafc !important;
+  padding: 4px !important;
+  transition: all 0.3s ease;
+}
+
+html.light .custom-leaflet-popup .leaflet-popup-content-wrapper {
+  background: rgba(255, 255, 255, 0.9) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(99, 102, 241, 0.2) !important;
+  box-shadow: 0 20px 40px rgba(99, 102, 241, 0.1), 0 10px 20px rgba(0, 0, 0, 0.05) !important;
+  color: #0f172a !important;
+}
+
+/* Custom popup content spacing */
+.custom-leaflet-popup .leaflet-popup-content {
+  margin: 12px 14px !important;
+  line-height: 1.4 !important;
+}
+
+/* Glowing popup tips (arrows) */
+.custom-leaflet-popup .leaflet-popup-tip {
+  background: rgba(15, 23, 42, 0.8) !important;
+  border-left: 1px solid rgba(0, 240, 255, 0.25) !important;
+  border-bottom: 1px solid rgba(0, 240, 255, 0.25) !important;
+  box-shadow: none !important;
+}
+
+html.light .custom-leaflet-popup .leaflet-popup-tip {
+  background: rgba(255, 255, 255, 0.9) !important;
+  border-left: 1px solid rgba(99, 102, 241, 0.2) !important;
+  border-bottom: 1px solid rgba(99, 102, 241, 0.2) !important;
+}
+
+/* Close popup button styling */
+.custom-leaflet-popup .leaflet-popup-close-button {
+  color: #64748b !important;
+  padding: 8px 8px 0 0 !important;
+  font-size: 16px !important;
+  transition: color 0.2s !important;
+}
+
+.custom-leaflet-popup .leaflet-popup-close-button:hover {
+  color: #ef4444 !important;
+  background: transparent !important;
+}
+
+/* Futuristic Zoom Bars */
+.leaflet-bar {
+  border: none !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3) !important;
+  border-radius: 12px !important;
+  overflow: hidden !important;
+}
+
+html.light .leaflet-bar {
+  box-shadow: 0 10px 25px rgba(99, 102, 241, 0.15) !important;
+}
+
+.leaflet-bar a {
+  background-color: rgba(15, 23, 42, 0.85) !important;
+  backdrop-filter: blur(8px) !important;
+  -webkit-backdrop-filter: blur(8px) !important;
+  color: #94a3b8 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08) !important;
+  font-weight: 600 !important;
+  transition: all 0.2s ease !important;
+  width: 34px !important;
+  height: 34px !important;
+  line-height: 34px !important;
+}
+
+html.light .leaflet-bar a {
+  background-color: rgba(255, 255, 255, 0.9) !important;
+  color: #475569 !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06) !important;
+}
+
+.leaflet-bar a:hover {
+  background-color: #06b6d4 !important;
+  color: #ffffff !important;
+}
+
+html.light .leaflet-bar a:hover {
+  background-color: #4f46e5 !important;
+  color: #ffffff !important;
+}
+
+.leaflet-bar a.leaflet-disabled {
+  background-color: rgba(15, 23, 42, 0.4) !important;
+  color: #334155 !important;
+}
+
+html.light .leaflet-bar a.leaflet-disabled {
+  background-color: rgba(243, 244, 246, 0.8) !important;
+  color: #94a3b8 !important;
+}

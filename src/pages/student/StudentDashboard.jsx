@@ -410,12 +410,12 @@ const StudentDashboard = () => {
                                         <div className="flex items-center gap-3">
                                             <div className={`w-2 h-2 rounded-full ${test.status === 'pass' ? 'bg-green-400 shadow-lg shadow-green-400/50' : test.status === 'fail' ? 'bg-red-400 shadow-lg shadow-red-400/50' : 'bg-slate-400'}`} />
                                             <div>
-                                                <p className="font-semibold text-sm text-slate-900 dark:text-white">{test.topic || test.skill}</p>
+                                                <p className="font-semibold text-sm text-slate-900 dark:text-white">{test.testName || test.topicName || test.topic || test.skill}</p>
                                                 <p className="text-xs text-slate-400 dark:text-slate-500">{timeAgo(test.timestamp)}</p>
                                             </div>
                                         </div>
-                                        <div className={`text-lg font-bold ${test.status === 'pass' ? 'text-green-400' : test.status === 'fail' ? 'text-red-400' : 'text-slate-400'}`}>
-                                            {test.percentage || 0}%
+                                        <div className={`text-lg font-bold ${test.status === 'pass' || test.status === 'completed' ? 'text-green-400' : test.status === 'fail' || test.status === 'aborted' ? 'text-red-400' : 'text-slate-400'}`}>
+                                            {test.status === 'started' ? '...' : `${test.percentage || 0}%`}
                                         </div>
                                     </div>
                                 ))}

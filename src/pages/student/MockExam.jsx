@@ -1,44 +1,61 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Clock, CheckCircle, AlertTriangle, ArrowRight, Flag, X, ShieldAlert, Trophy, BarChart2 } from 'lucide-react';
-import { MOCK_DATA } from '../../data/mockQuestions';
+import { Clock, CheckCircle, AlertTriangle, ArrowRight, Flag, X, ShieldAlert, Trophy, Loader2, BookOpen, Zap, Shield, Brain, ChevronRight } from 'lucide-react';
+import ExamModeSelector from '../../components/exam/ExamModeSelector';
+import { generateFullExam, generateSubjectExam, getExamBlueprint } from '../../services/aiExamService';
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../firebase';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
+import { collection, addDoc, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
 
 const MockExam = () => {
     const { type } = useParams();
     const navigate = useNavigate();
     const { currentUser } = useAuth();
-    const questions = MOCK_DATA[type] || [];
+    const [questions, setQuestions] = useState([]);
+    const [isGenerating, setIsGenerating] = useState(false);
+    const [loadingStatus, setLoadingStatus] = useState("");
+    const [error, setError] = useState(null);
+    const [selectedSubject, setSelectedSubject] = useState(null);
+    const [activeTestDocId, setActiveTestDocId] = useState(null);
 
-    // Constants
-    const DURATION = type === 'mdcat' ? 3.5 * 60 * 60 : 2 * 60 * 60; // 3.5 hrs or 2 hrs
+    // Constants — durations from official blueprint
+    const blueprint = getExamBlueprint(type);
+    // For subject exams: 1 minute per question. For full exam: official duration.
+    const getExamDuration = (subj) => {
+        if (!subj) return blueprint ? blueprint.durationMinutes * 60 : (type === 'mdcat' ? 180 * 60 : 100 * 60);
+        const chunk = blueprint?.chunks?.find(c => c.subject.toLowerCase() === subj.toLowerCase());
+        return chunk ? chunk.count * 60 : 30 * 60; // 1 min per question
+    };
+    const DURATION = getExamDuration(selectedSubject);
 
     // State Refs for Event Listeners
     const isFinishedRef = useRef(false);
     const answersRef = useRef({});
-    const questionsRef = useRef(questions);
+    const questionsRef = useRef([]);
+
+    useEffect(() => { questionsRef.current = questions; }, [questions]);
 
     // State
     const [currentIdx, setCurrentIdx] = useState(0);
     const [selectedOption, setSelectedOption] = useState(null);
     const [answers, setAnswers] = useState({});
+    // Subject practice: tracks which question indices have been revealed
+    const [revealedAnswers, setRevealedAnswers] = useState({});
     const [timeLeft, setTimeLeft] = useState(DURATION);
     const [isFinished, setIsFinished] = useState(false);
     const [hasStarted, setHasStarted] = useState(false);
     const [showWarning, setShowWarning] = useState(false);
     const [tabSwitchCount, setTabSwitchCount] = useState(0);
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    // isSubmitting removed — updateDoc is idempotent, double-save is safe
 
     // Sync refs
     useEffect(() => { answersRef.current = answers; }, [answers]);
     useEffect(() => { isFinishedRef.current = isFinished; }, [isFinished]);
 
-    // Helper: Save Result (Fire and Forget)
+    // Helper: Save/Update Result
     const saveResult = async (forced = false, reason = "Completed") => {
-        if (!currentUser) return;
+        if (!currentUser || !activeTestDocId) return;
 
         const currentAnswers = answersRef.current;
         const currentQs = questionsRef.current;
@@ -50,24 +67,21 @@ const MockExam = () => {
 
         const score = correctCount;
         const total = currentQs.length;
-        const percentage = ((score / total) * 100).toFixed(1);
+        const percentage = total > 0 ? ((score / total) * 100).toFixed(1) : 0;
 
         try {
-            await addDoc(collection(db, 'test_history'), {
-                userId: currentUser.uid,
-                testName: type.toUpperCase() + ' Mock Exam',
+            await updateDoc(doc(db, 'test_history', activeTestDocId), {
                 score: score,
-                totalQuestions: total,
                 percentage: parseFloat(percentage),
-                timeTaken: DURATION - timeLeft, // Note: Time might be slightly off in unmount, acceptable
+                timeTaken: DURATION - timeLeft,
                 completedAt: serverTimestamp(),
-                forcedSubmission: forced,
+                status: forced ? 'aborted' : 'completed',
                 terminationReason: reason,
-                category: 'Entry Test'
+                isFinal: true
             });
-            console.log("Test result saved successfully:", reason);
+            console.log("Test result updated successfully:", reason);
         } catch (error) {
-            console.error("Error saving result:", error);
+            console.error("Error updating result:", error);
         }
     };
 
@@ -115,7 +129,7 @@ const MockExam = () => {
                 saveResult(true, "Navigated Away / Aborted");
             }
 
-            if (document.exitFullscreen) document.exitFullscreen().catch(() => { });
+            // if (document.exitFullscreen) document.exitFullscreen().catch(() => { });
         };
     }, []);
 
@@ -141,53 +155,40 @@ const MockExam = () => {
         return `${h}:${m < 10 ? '0' : ''}${m}:${sec < 10 ? '0' : ''}${sec}`;
     };
 
+    // isPracticeMode: subject tests reveal answers immediately
+    const isPracticeMode = !!selectedSubject;
+    const isCurrentRevealed = revealedAnswers[currentIdx];
+
+    const handleReveal = () => {
+        if (!selectedOption) return;
+        // Lock the answer and reveal correct/wrong
+        setAnswers(prev => ({ ...prev, [currentIdx]: selectedOption }));
+        setRevealedAnswers(prev => ({ ...prev, [currentIdx]: true }));
+    };
+
     const handleNext = () => {
+        const updatedAnswers = selectedOption
+            ? { ...answers, [currentIdx]: selectedOption }
+            : answers;
+
         if (selectedOption) {
-            setAnswers(prev => ({ ...prev, [currentIdx]: selectedOption }));
+            setAnswers(updatedAnswers);
             setSelectedOption(null);
         }
 
+        // Reset reveal state persists in revealedAnswers — just move forward
         if (currentIdx < questions.length - 1) {
             setCurrentIdx(prev => prev + 1);
+            setSelectedOption(null);
         } else {
+            answersRef.current = updatedAnswers;
             handleSubmitExam();
         }
     };
 
     const handleSubmitExam = async (forced = false) => {
         setIsFinished(true);
-        if (document.exitFullscreen) document.exitFullscreen().catch(() => { });
-
-        // Calculate Result
-        let correctCount = 0;
-        questions.forEach((q, idx) => {
-            const userAnswer = answers[idx] || (idx === currentIdx ? selectedOption : null);
-            if (userAnswer === q.answer) correctCount++;
-        });
-
-        const score = correctCount;
-        const total = questions.length;
-        const percentage = ((score / total) * 100).toFixed(1);
-
-        // Save to Firestore
-        if (currentUser && !isSubmitting) {
-            setIsSubmitting(true);
-            try {
-                await addDoc(collection(db, 'test_history'), {
-                    userId: currentUser.uid,
-                    testName: type.toUpperCase() + ' Mock Exam',
-                    score: score,
-                    totalQuestions: total,
-                    percentage: parseFloat(percentage),
-                    timeTaken: DURATION - timeLeft,
-                    completedAt: serverTimestamp(),
-                    forcedSubmission: forced,
-                    category: 'Entry Test'
-                });
-            } catch (error) {
-                console.error("Error saving result:", error);
-            }
-        }
+        saveResult(forced, "Manual Submission");
     };
 
     // --- RESULT VIEW ---
@@ -196,83 +197,144 @@ const MockExam = () => {
             const userAnswer = answers[idx] || (idx === currentIdx && selectedOption ? selectedOption : null);
             return userAnswer === q.answer ? acc + 1 : acc;
         }, 0);
-        const percentage = ((correctCount / questions.length) * 100).toFixed(1);
-
+        const total = questions.length;
+        const percentage = total > 0 ? ((correctCount / total) * 100).toFixed(1) : 0;
+        const passed = parseFloat(percentage) >= (blueprint?.passingPercent || 55);
         return (
             <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 p-6 relative overflow-hidden">
-                <div className="absolute inset-0 bg-grid-slate-200/[0.04] bg-[bottom_1px_center] dark:bg-grid-slate-400/[0.05]" />
-
-                <motion.div
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    className="relative z-10 w-full max-w-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 shadow-2xl text-center"
+                <div className="pointer-events-none absolute top-0 left-1/4 w-96 h-96 rounded-full blur-[120px] bg-emerald-200/30 dark:bg-emerald-500/10" />
+                <div className="pointer-events-none absolute bottom-0 right-1/4 w-96 h-96 rounded-full blur-[120px] bg-blue-200/30 dark:bg-blue-500/10" />
+                <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                    className="relative z-10 w-full max-w-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl overflow-hidden shadow-2xl text-center"
                 >
-                    <div className="w-24 h-24 mx-auto bg-gradient-to-tr from-emerald-400 to-cyan-500 rounded-full flex items-center justify-center mb-6 shadow-lg shadow-emerald-500/20">
-                        <Trophy size={48} className="text-white" />
-                    </div>
-
-                    <h1 className="text-4xl font-black text-slate-800 dark:text-white mb-2">Exam Completed!</h1>
-                    <p className="text-slate-500 dark:text-slate-400 mb-8">Here is your performance summary</p>
-
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-                        <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700">
-                            <div className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-1">Score</div>
-                            <div className="text-3xl font-black text-emerald-500">{correctCount} <span className="text-base text-slate-400">/ {questions.length}</span></div>
+                    <div className={`h-2 w-full ${passed ? 'bg-gradient-to-r from-emerald-400 to-teal-500' : 'bg-gradient-to-r from-orange-400 to-red-500'}`} />
+                    <div className="p-8 md:p-10">
+                        <div className={`w-24 h-24 mx-auto rounded-full flex items-center justify-center mb-6 shadow-xl ${
+                            passed ? 'bg-gradient-to-br from-emerald-400 to-teal-500 shadow-emerald-500/30' : 'bg-gradient-to-br from-orange-400 to-red-500 shadow-red-500/30'
+                        }`}>
+                            <Trophy size={44} className="text-white" />
                         </div>
-                        <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700">
-                            <div className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-1">Percentage</div>
-                            <div className="text-3xl font-black text-blue-500">{percentage}%</div>
+                        <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-widest mb-4 ${
+                            passed ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400' : 'bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400'
+                        }`}>
+                            {passed ? '✓ Passed' : '✗ Needs Improvement'}
                         </div>
-                        <div className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700">
-                            <div className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-1">Time Taken</div>
-                            <div className="text-3xl font-black text-purple-500">{formatTime(DURATION - timeLeft)}</div>
+                        <h1 className="text-4xl font-black text-slate-800 dark:text-white mb-1">
+                            {passed ? 'Excellent Work!' : 'Keep Practicing!'}
+                        </h1>
+                        <p className="text-slate-500 dark:text-slate-400 text-sm mb-8">
+                            {selectedSubject ? `${selectedSubject} Practice` : `${type.toUpperCase()} Full Mock Exam`} · Completed
+                        </p>
+                        <div className="grid grid-cols-3 gap-3 mb-8">
+                            {[
+                                { label: 'Score', val: `${correctCount}/${total}`, color: 'text-emerald-500' },
+                                { label: 'Percentage', val: `${percentage}%`, color: passed ? 'text-blue-500' : 'text-orange-500' },
+                                { label: 'Time Taken', val: formatTime(DURATION - timeLeft), color: 'text-purple-500' },
+                            ].map(({ label, val, color }) => (
+                                <div key={label} className="p-4 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700">
+                                    <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{label}</div>
+                                    <div className={`text-2xl font-black ${color}`}>{val}</div>
+                                </div>
+                            ))}
                         </div>
-                    </div>
-
-                    <div className="flex gap-4 justify-center">
-                        <button
-                            onClick={() => navigate('/student/entry-test')}
-                            className="px-8 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold rounded-xl hover:shadow-lg transition-all"
-                        >
-                            Back to Dashboard
-                        </button>
+                        <div className="flex gap-3 justify-center">
+                            <button onClick={() => navigate('/student/history')}
+                                className="px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-2xl transition-all text-sm">
+                                View History
+                            </button>
+                            <button onClick={() => navigate('/student/entry-test')}
+                                className="px-6 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold rounded-2xl hover:shadow-lg transition-all text-sm">
+                                Back to Tests
+                            </button>
+                        </div>
                     </div>
                 </motion.div>
             </div>
         );
     }
 
-    if (questions.length === 0) return <div className="p-10 text-center">Loading Questions...</div>;
-
-    if (!hasStarted) {
+    if (isGenerating) {
+        const isFull = !selectedSubject;
         return (
             <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-slate-950 p-6 relative overflow-hidden">
-                <div className="absolute inset-0 bg-grid-slate-200/[0.04] bg-[bottom_1px_center] dark:bg-grid-slate-400/[0.05]" />
-                <motion.div
-                    initial={{ scale: 0.9, opacity: 0 }}
-                    animate={{ scale: 1, opacity: 1 }}
-                    className="relative z-10 w-full max-w-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-3xl p-8 shadow-2xl text-center"
+                <div className="pointer-events-none absolute top-0 left-1/3 w-96 h-96 bg-blue-300/20 dark:bg-blue-500/10 rounded-full blur-[120px]" />
+                <div className="pointer-events-none absolute bottom-0 right-1/3 w-96 h-96 bg-indigo-300/20 dark:bg-indigo-500/10 rounded-full blur-[120px]" />
+                <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}
+                    className="relative z-10 flex flex-col items-center text-center max-w-md w-full"
                 >
-                    <div className="w-20 h-20 mx-auto bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-full flex items-center justify-center mb-6">
-                        <Flag size={32} />
+                    <div className="relative mb-8">
+                        <div className="w-28 h-28 rounded-full bg-white dark:bg-slate-900 border-2 border-slate-200 dark:border-slate-700 shadow-2xl flex items-center justify-center">
+                            <Brain size={48} className="text-blue-500" />
+                        </div>
+                        <motion.div animate={{ rotate: 360 }} transition={{ duration: 2, repeat: Infinity, ease: 'linear' }}
+                            className="absolute inset-0 rounded-full border-4 border-transparent border-t-blue-500 border-r-indigo-500"
+                        />
                     </div>
-                    <h1 className="text-3xl font-black text-slate-800 dark:text-white mb-4">Exam Ready</h1>
-                    <p className="text-slate-500 dark:text-slate-400 mb-8 leading-relaxed">
-                        This is a timed mock exam. For anti-cheat purposes, the exam will open in fullscreen mode. Do not switch tabs or exit fullscreen, or your exam may be automatically submitted.
+                    <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-blue-50 dark:bg-blue-900/30 border border-blue-100 dark:border-blue-800 text-blue-600 dark:text-blue-400 text-xs font-bold uppercase tracking-widest mb-4">
+                        <Zap size={12} /> AI Generating
+                    </div>
+                    <h2 className="text-3xl font-black text-slate-800 dark:text-white mb-2">
+                        {selectedSubject ? `${selectedSubject} Practice` : `${type.toUpperCase()} Mock Exam`}
+                    </h2>
+                    <p className="text-slate-400 dark:text-slate-500 text-sm mb-8">
+                        {isFull
+                            ? (type === 'mdcat' ? '180 Questions • 5 Subjects • PMDC Pattern' : '100 Questions • 4 Subjects • UET Pattern')
+                            : `Subject-specific practice · Official ${type.toUpperCase()} pattern`
+                        }
                     </p>
-                    <button
-                        onClick={() => {
-                            if (document.documentElement.requestFullscreen) {
-                                document.documentElement.requestFullscreen().catch(() => { });
-                            }
-                            setHasStarted(true);
-                        }}
-                        className="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition-all shadow-lg hover:shadow-xl hover:-translate-y-1"
-                    >
-                        Start Exam
-                    </button>
+                    <div className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-2xl p-5 text-left shadow-xl mb-4">
+                        <p className="text-[10px] font-black text-blue-500 uppercase tracking-widest mb-2">⚡ Live Status</p>
+                        <p className="text-slate-600 dark:text-slate-300 text-sm leading-relaxed">
+                            {loadingStatus || 'Initializing AI engine...'}
+                        </p>
+                    </div>
+                    <p className="text-xs text-slate-400 dark:text-slate-600">Please keep this tab open · Progress auto-saves</p>
                 </motion.div>
             </div>
+        );
+    }
+
+    if (!hasStarted) {
+        const handleStart = async () => {
+            setIsGenerating(true);
+            setError(null);
+            try {
+                if (currentUser) {
+                    const docRef = await addDoc(collection(db, 'test_history'), {
+                        userId: currentUser.uid,
+                        testName: selectedSubject ? `${type.toUpperCase()} ${selectedSubject}` : `${type.toUpperCase()} Full Mock`,
+                        category: 'Entry Test',
+                        status: 'started',
+                        timestamp: serverTimestamp(),
+                        topicName: selectedSubject || 'Full Exam',
+                        skill: type.toUpperCase()
+                    });
+                    setActiveTestDocId(docRef.id);
+                }
+                const generatedQuestions = selectedSubject
+                    ? await generateSubjectExam(type, selectedSubject, setLoadingStatus)
+                    : await generateFullExam(type, setLoadingStatus);
+                setQuestions(generatedQuestions);
+                setHasStarted(true);
+            } catch (err) {
+                setError(err.message);
+                if (activeTestDocId) {
+                    await updateDoc(doc(db, 'test_history', activeTestDocId), { status: 'failed' });
+                }
+            } finally {
+                setIsGenerating(false);
+            }
+        };
+
+        return (
+            <ExamModeSelector
+                type={type}
+                selectedSubject={selectedSubject}
+                setSelectedSubject={setSelectedSubject}
+                onStart={handleStart}
+                error={error}
+                isGenerating={isGenerating}
+            />
         );
     }
 
@@ -309,30 +371,39 @@ const MockExam = () => {
     const progress = ((currentIdx + 1) / questions.length) * 100;
 
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col relative overflow-hidden select-none">
+        <div className="min-h-screen bg-white dark:bg-slate-950 flex flex-col relative overflow-hidden select-none">
             <WarningModal />
 
             {/* Top Bar */}
-            <header className="relative z-20 px-6 py-4 flex justify-between items-center bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border-b border-slate-200 dark:border-slate-800 sticky top-0">
-                <div className="flex items-center gap-4">
-                    <button
-                        onClick={() => {
-                            if (window.confirm("Quit exam? Progress will be lost.")) {
-                                navigate('/student/entry-test');
-                            }
-                        }}
-                        className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition text-slate-400 hover:text-red-500"
-                    >
-                        <X size={24} />
+            <header className="relative z-20 px-4 md:px-6 py-3 flex justify-between items-center bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-100 dark:border-slate-800 sticky top-0 shadow-sm">
+                <div className="flex items-center gap-3">
+                    <button onClick={() => { if (window.confirm('Quit exam? Your progress will be saved as aborted.')) navigate('/student/entry-test'); }}
+                        className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition text-slate-400 hover:text-red-500">
+                        <X size={20} />
                     </button>
+                    <div className="w-px h-6 bg-slate-200 dark:bg-slate-700" />
                     <div>
-                        <h2 className="text-sm font-bold text-slate-400 uppercase tracking-widest">{type.toUpperCase()} Mock</h2>
-                        <div className="text-lg font-black text-slate-900 dark:text-white">Question {currentIdx + 1} <span className="text-slate-400 font-medium">/ {questions.length}</span></div>
+                        <div className="text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                            {selectedSubject ? `${type.toUpperCase()} · ${selectedSubject}` : `${type.toUpperCase()} Full Mock`}
+                        </div>
+                        <div className="text-sm font-black text-slate-900 dark:text-white">
+                            Q {currentIdx + 1} <span className="text-slate-400 font-medium">of {questions.length}</span>
+                            {isPracticeMode && blueprint?.chunks?.find(c => c.subject.toLowerCase() === selectedSubject?.toLowerCase())?.count !== questions.length && (
+                                <span className="ml-2 text-[10px] text-amber-500 font-bold">
+                                    (AI generated {questions.length})
+                                </span>
+                            )}
+                        </div>
                     </div>
                 </div>
-
-                <div className={`px-4 py-2 rounded-lg font-mono font-bold text-lg flex items-center gap-2 shadow-sm ${timeLeft < 300 ? 'bg-red-50 text-red-600 border border-red-200 animate-pulse' : 'bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'}`}>
-                    <Clock size={18} />
+                <div className={`px-4 py-2 rounded-xl font-mono font-bold text-sm flex items-center gap-2 transition-all ${
+                    timeLeft < 300
+                        ? 'bg-red-50 text-red-600 border border-red-200 dark:bg-red-900/20 dark:text-red-400 dark:border-red-800 animate-pulse'
+                        : timeLeft < 600
+                        ? 'bg-amber-50 text-amber-600 border border-amber-200 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-800'
+                        : 'bg-slate-50 dark:bg-slate-800 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700'
+                }`}>
+                    <Clock size={15} />
                     {formatTime(timeLeft)}
                 </div>
             </header>
@@ -348,79 +419,165 @@ const MockExam = () => {
             </div>
 
             {/* Content Area */}
-            <main className="flex-1 w-full max-w-5xl mx-auto p-4 md:p-8 flex flex-col relative z-10">
+            <main className="flex-1 w-full max-w-4xl mx-auto p-4 md:p-6 flex flex-col relative z-10">
                 <AnimatePresence mode="wait">
-                    <motion.div
-                        key={currentIdx}
-                        initial={{ opacity: 0, x: 50 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        exit={{ opacity: 0, x: -50 }}
-                        transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                    <motion.div key={currentIdx}
+                        initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}
+                        transition={{ type: 'spring', stiffness: 300, damping: 30 }}
                         className="flex-1 flex flex-col"
                     >
                         {/* Question Card */}
-                        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 md:p-10 shadow-xl border border-slate-200 dark:border-slate-800 mb-6 flex-1">
-                            <div className="flex items-center gap-3 mb-6">
-                                <span className="px-3 py-1 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-xs font-bold uppercase tracking-wider border border-indigo-100 dark:border-indigo-800">
+                        <div className="bg-white dark:bg-slate-900 rounded-3xl p-6 md:p-8 shadow-lg border border-slate-100 dark:border-slate-800 mb-5 flex-1">
+                            {/* Badges */}
+                            <div className="flex items-center gap-2 mb-5">
+                                <span className="px-3 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-[10px] font-black uppercase tracking-widest border border-indigo-100 dark:border-indigo-800">
                                     {q.subject}
                                 </span>
+                                {q.difficulty && (
+                                    <span className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${
+                                        q.difficulty === 'Hard'   ? 'bg-red-50 text-red-600 border-red-100 dark:bg-red-900/20 dark:text-red-400 dark:border-red-900'
+                                        : q.difficulty === 'Easy' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-900'
+                                        : 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-900'
+                                    }`}>{q.difficulty}</span>
+                                )}
+                                {isPracticeMode && (
+                                    <span className="ml-auto px-3 py-1.5 rounded-full bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 text-[10px] font-black uppercase tracking-widest border border-teal-100 dark:border-teal-800">
+                                        Practice Mode
+                                    </span>
+                                )}
                             </div>
 
-                            <h3 className="text-2xl md:text-3xl font-medium text-slate-900 dark:text-white leading-relaxed mb-10">
+                            <h3 className="text-xl md:text-2xl font-semibold text-slate-900 dark:text-white leading-relaxed mb-6">
                                 {q.question}
                             </h3>
 
-                            <div className="grid grid-cols-1 gap-4">
+                            {/* Options */}
+                            <div className="grid grid-cols-1 gap-3 mb-4">
                                 {q.options.map((opt, idx) => {
-                                    const isSelected = selectedOption === opt || answers[currentIdx] === opt;
-                                    return (
-                                        <motion.button
-                                            key={idx}
-                                            whileHover={{ scale: 1.01, backgroundColor: "rgba(59, 130, 246, 0.05)" }}
-                                            whileTap={{ scale: 0.99 }}
-                                            onClick={() => setSelectedOption(opt)}
-                                            className={`relative group w-full text-left p-5 rounded-2xl border-2 transition-all duration-200 flex items-center justify-between ${isSelected
-                                                ? 'border-blue-500 bg-blue-50/50 dark:bg-blue-900/20 shadow-md shadow-blue-500/10'
-                                                : 'border-slate-100 dark:border-slate-800 hover:border-blue-200 dark:hover:border-slate-700 bg-slate-50/50 dark:bg-slate-900/50 text-slate-600 dark:text-slate-300'
-                                                }`}
-                                        >
-                                            <div className="flex items-center gap-4">
-                                                <div className={`w-10 h-10 rounded-xl flex items-center justify-center text-lg font-bold transition-colors ${isSelected ? 'bg-blue-500 text-white' : 'bg-white dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-700 group-hover:border-blue-400 group-hover:text-blue-500'
-                                                    }`}>
-                                                    {String.fromCharCode(65 + idx)}
-                                                </div>
-                                                <span className={`text-lg font-medium ${isSelected ? 'text-blue-700 dark:text-blue-300' : ''}`}>
-                                                    {opt}
-                                                </span>
-                                            </div>
+                                    const locked        = answers[currentIdx];
+                                    const isChosen      = locked === opt || (!locked && selectedOption === opt);
+                                    const isCorrect     = opt === q.answer;
+                                    const isWrong       = isCurrentRevealed && isChosen && !isCorrect;
+                                    const showCorrect   = isCurrentRevealed && isCorrect;
 
-                                            {isSelected && (
-                                                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }}>
-                                                    <CheckCircle className="text-blue-500 fill-blue-100 dark:fill-blue-900/20" size={24} />
+                                    let cls = 'border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30';
+                                    if (isCurrentRevealed) {
+                                        if (showCorrect)  cls = 'border-emerald-500 bg-emerald-50 dark:bg-emerald-900/20';
+                                        else if (isWrong) cls = 'border-red-400 bg-red-50 dark:bg-red-900/20';
+                                    } else if (isChosen) {
+                                        cls = 'border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-md shadow-blue-500/10';
+                                    }
+
+                                    return (
+                                        <motion.button key={idx}
+                                            whileTap={!isCurrentRevealed ? { scale: 0.99 } : {}}
+                                            onClick={() => { if (!isCurrentRevealed) setSelectedOption(opt); }}
+                                            disabled={isCurrentRevealed}
+                                            className={`relative w-full text-left p-4 rounded-2xl border-2 transition-all duration-200 flex items-center gap-4 ${cls} ${
+                                                isCurrentRevealed ? 'cursor-default' : 'hover:border-blue-200 dark:hover:border-slate-700 cursor-pointer'
+                                            }`}
+                                        >
+                                            <div className={`w-9 h-9 rounded-xl flex-shrink-0 flex items-center justify-center text-sm font-black ${
+                                                showCorrect ? 'bg-emerald-500 text-white'
+                                                : isWrong   ? 'bg-red-400 text-white'
+                                                : isChosen  ? 'bg-blue-500 text-white'
+                                                : 'bg-white dark:bg-slate-800 text-slate-400 border border-slate-200 dark:border-slate-700'
+                                            }`}>
+                                                {String.fromCharCode(65 + idx)}
+                                            </div>
+                                            <span className={`font-medium flex-1 ${
+                                                showCorrect ? 'text-emerald-700 dark:text-emerald-300 font-bold'
+                                                : isWrong   ? 'text-red-600 dark:text-red-400 line-through opacity-70'
+                                                : isChosen  ? 'text-blue-700 dark:text-blue-300'
+                                                : 'text-slate-700 dark:text-slate-300'
+                                            }`}>{opt}</span>
+                                            {isCurrentRevealed && showCorrect && (
+                                                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="ml-auto">
+                                                    <CheckCircle className="text-emerald-500" size={20} />
+                                                </motion.div>
+                                            )}
+                                            {isCurrentRevealed && isWrong && (
+                                                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="ml-auto">
+                                                    <AlertTriangle className="text-red-400" size={20} />
+                                                </motion.div>
+                                            )}
+                                            {!isCurrentRevealed && isChosen && (
+                                                <motion.div initial={{ scale: 0 }} animate={{ scale: 1 }} className="ml-auto">
+                                                    <CheckCircle className="text-blue-500" size={20} />
                                                 </motion.div>
                                             )}
                                         </motion.button>
                                     );
                                 })}
                             </div>
+
+                            {/* Explanation Panel — practice mode only, after reveal */}
+                            <AnimatePresence>
+                                {isPracticeMode && isCurrentRevealed && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10, height: 0 }}
+                                        animate={{ opacity: 1, y: 0, height: 'auto' }}
+                                        exit={{ opacity: 0, height: 0 }}
+                                        transition={{ duration: 0.35, ease: 'easeOut' }}
+                                        className="overflow-hidden"
+                                    >
+                                        <div className={`mt-2 p-5 rounded-2xl border-l-4 ${
+                                            answers[currentIdx] === q.answer
+                                                ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-500'
+                                                : 'bg-amber-50 dark:bg-amber-900/20 border-amber-500'
+                                        }`}>
+                                            <p className={`text-xs font-black uppercase tracking-widest mb-2 ${
+                                                answers[currentIdx] === q.answer ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'
+                                            }`}>
+                                                {answers[currentIdx] === q.answer ? '✓ Correct!' : '✗ Incorrect — Correct answer: ' + q.answer}
+                                            </p>
+                                            <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
+                                                {q.explanation || 'This question tests your understanding of core concepts in ' + q.subject + '. Review your textbook for a detailed explanation.'}
+                                            </p>
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
                         </div>
                     </motion.div>
                 </AnimatePresence>
 
-                {/* Footer Controls */}
-                <div className="flex items-center justify-end pt-4">
+                {/* Footer */}
+                <div className="flex items-center justify-between pt-2 pb-4">
+                    <span className="text-xs text-slate-400 dark:text-slate-600">
+                        {Object.keys(answers).length} answered · {questions.length - Object.keys(answers).length} remaining
+                    </span>
 
-                    <button
-                        onClick={handleNext}
-                        disabled={!selectedOption && !answers[currentIdx]}
-                        className={`px-8 py-4 rounded-2xl font-bold text-lg flex items-center gap-3 transition-all shadow-xl ${selectedOption || answers[currentIdx]
-                            ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:scale-105 hover:shadow-2xl'
-                            : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
-                            }`}
-                    >
-                        {currentIdx === questions.length - 1 ? 'Finish Exam' : 'Next Question'}
-                        <ArrowRight size={20} />
-                    </button>
+                    <div className="flex items-center gap-3">
+                        {/* Practice mode: show Check Answer button before reveal, Next after */}
+                        {isPracticeMode && !isCurrentRevealed ? (
+                            <button
+                                onClick={handleReveal}
+                                disabled={!selectedOption}
+                                className={`px-6 py-3.5 rounded-2xl font-bold flex items-center gap-2 transition-all ${
+                                    selectedOption
+                                        ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-lg shadow-emerald-500/25 hover:scale-105'
+                                        : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed'
+                                }`}
+                            >
+                                <CheckCircle size={17} />
+                                Check Answer
+                            </button>
+                        ) : (
+                            <button
+                                onClick={handleNext}
+                                disabled={!isPracticeMode && !selectedOption && !answers[currentIdx]}
+                                className={`px-6 py-3.5 rounded-2xl font-bold flex items-center gap-2 transition-all shadow-lg ${
+                                    isPracticeMode || selectedOption || answers[currentIdx]
+                                        ? 'bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:scale-105 hover:shadow-xl'
+                                        : 'bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed shadow-none'
+                                }`}
+                            >
+                                {currentIdx === questions.length - 1 ? 'Finish' : 'Next'}
+                                <ArrowRight size={18} />
+                            </button>
+                        )}
+                    </div>
                 </div>
             </main>
         </div>

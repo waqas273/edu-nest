@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EduNest – RAG-Based MCQ Generation System</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  /* ─── RESET & BASE ─────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy:    #0f172a;
+    --blue:    #2563eb;
+    --blue-lt: #3b82f6;
+    --blue-bg: #f0f4ff;
+    --slate:   #334155;
+    --muted:   #64748b;
+    --border:  #e2e8f0;
+    --white:   #ffffff;
+    --off:     #f8fafc;
+    --green:   #10b981;
+    --purple:  #8b5cf6;
+    --amber:   #f59e0b;
+  }
+
+  html { font-size: 10pt; }
+
+  body {
+    font-family: 'Source Sans 3', sans-serif;
+    color: var(--slate);
+    background: #f1f5f9;
+    line-height: 1.6;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* ─── PAGE-SHEET SYSTEM ────────────────────────────────────── */
+  .sheet {
+    background: var(--white);
+    width: 210mm;
+    height: 297mm;
+    padding: 20mm 20mm 15mm 20mm;
+    margin: 30px auto;
+    box-shadow: 0 4px 20px rgba(15, 23, 42, 0.08);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sheet-body {
+    flex: 1;
+  }
+
+  /* ─── COVER PAGE ───────────────────────────────────────────── */
+  .cover {
+    justify-content: space-between;
+    padding: 0;
+  }
+
+  .cover-header {
+    height: 60mm;
+    background: linear-gradient(135deg, var(--navy) 0%, #1e3a8a 60%, #1d4ed8 100%);
+    padding: 15mm 20mm;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    color: white;
+    position: relative;
+  }
+
+  .cover-badge {
+    align-self: flex-start;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #bfdbfe;
+    font-size: 8pt;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 4px 12px;
+    border-radius: 20px;
+    margin-bottom: 8px;
+  }
+
+  .cover-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 32pt;
+    font-weight: 700;
+    line-height: 1.1;
+    color: white;
+  }
+
+  .cover-subtitle {
+    font-size: 13pt;
+    font-weight: 300;
+    color: #93c5fd;
+    margin-top: 4px;
+  }
+
+  .cover-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 25px;
+    padding: 20mm;
+  }
+
+  .cover-meta-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    width: 100%;
+    max-width: 420px;
+  }
+
+  .cover-meta-card {
+    background: var(--off);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    text-align: center;
+  }
+
+  .cover-meta-card .label {
+    font-size: 7.5pt;
+    font-weight: 700;
+    color: var(--blue);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .cover-meta-card .value {
+    font-size: 10pt;
+    font-weight: 600;
+    color: var(--navy);
+  }
+
+  .cover-goal-box {
+    width: 100%;
+    max-width: 420px;
+    background: var(--blue-bg);
+    border-left: 4px solid var(--blue);
+    border-radius: 0 8px 8px 0;
+    padding: 15px 20px;
+  }
+
+  .cover-goal-box .label {
+    font-size: 7.5pt;
+    font-weight: 700;
+    color: var(--blue);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .cover-goal-box p {
+    font-size: 9.5pt;
+    color: var(--slate);
+    font-style: italic;
+    line-height: 1.5;
+  }
+
+  .cover-footer {
+    border-top: 1px solid var(--border);
+    padding: 10mm 20mm;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 8pt;
+    color: var(--muted);
+  }
+
+  .cover-footer .dot {
+    width: 4px; height: 4px;
+    background: var(--blue);
+    border-radius: 50%;
+    display: inline-block;
+    margin: 0 6px;
+    vertical-align: middle;
+  }
+
+  /* ─── TYPOGRAPHY & SECTIONS ────────────────────────────────── */
+  h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 15pt;
+    font-weight: 700;
+    color: var(--navy);
+    margin: 5mm 0 3mm;
+    padding-bottom: 5px;
+    border-bottom: 1.5px solid var(--blue);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  h2 .sec-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px; height: 24px;
+    background: var(--blue);
+    color: white;
+    border-radius: 5px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 9pt;
+    font-weight: 700;
+  }
+
+  p {
+    font-size: 9.5pt;
+    color: var(--slate);
+    margin-bottom: 8px;
+    line-height: 1.6;
+    text-align: justify;
+  }
+
+  /* ─── INFO CARDS ───────────────────────────────────────────── */
+  .card-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin: 10px 0;
+  }
+
+  .info-card {
+    background: var(--off);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  .info-card .card-icon {
+    font-size: 16px;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    width: 28px;
+    height: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  .info-card .card-body {
+    flex: 1;
+  }
+
+  .info-card .card-title {
+    font-size: 9pt;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 2px;
+  }
+
+  .info-card .card-text {
+    font-size: 8pt;
+    color: var(--muted);
+    line-height: 1.4;
+  }
+
+  /* ─── CODE BLOCKS ──────────────────────────────────────────── */
+  .code-label {
+    font-size: 7.5pt;
+    font-weight: 700;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-top: 5px;
+    margin-bottom: 2px;
+  }
+
+  .code-block {
+    background: #0f172a;
+    border: 1px solid #1e293b;
+    border-radius: 8px;
+    padding: 12px 16px;
+    margin-bottom: 10px;
+  }
+
+  .code-block pre {
+    font-family: 'Courier New', monospace;
+    font-size: 8.5pt;
+    color: #94a3b8;
+    line-height: 1.5;
+  }
+
+  .code-block pre .st { color: #10b981; }
+  .code-block pre .cm { color: #475569; }
+
+  /* ─── FLOWCHART DIAGRAM ────────────────────────────────────── */
+  .diagram-wrap {
+    margin: 8px 0 12px;
+    background: var(--off);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 12px;
+  }
+
+  .diagram-title {
+    font-size: 7pt;
+    font-weight: 700;
+    color: var(--muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+    text-align: center;
+  }
+
+  .flowchart {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 4px;
+    width: 100%;
+  }
+
+  .flow-step {
+    flex: 1;
+    background: var(--white);
+    border: 1.5px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 10px;
+    text-align: center;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.02);
+  }
+
+  .flow-step .step-num {
+    font-size: 7pt;
+    font-weight: 700;
+    color: var(--blue);
+    text-transform: uppercase;
+    margin-bottom: 2px;
+  }
+
+  .flow-step .step-name {
+    font-size: 8pt;
+    font-weight: 700;
+    color: var(--navy);
+  }
+
+  .flow-step .step-sub {
+    font-size: 7pt;
+    color: var(--muted);
+    margin-top: 1px;
+  }
+
+  .flow-connector {
+    color: var(--blue);
+    font-weight: bold;
+    font-size: 14px;
+  }
+
+  /* ─── STYLED LIST ITEMS ────────────────────────────────────── */
+  .styled-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-top: 5px;
+  }
+
+  .styled-list li {
+    display: flex;
+    gap: 12px;
+    background: var(--off);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 8px 12px;
+  }
+
+  .styled-list li .bullet-icon {
+    background: var(--blue);
+    color: white;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 7.5pt;
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+
+  .styled-list li .bullet-content {
+    font-size: 8.5pt;
+    color: var(--slate);
+    line-height: 1.5;
+  }
+
+  .styled-list li .bullet-content strong {
+    color: var(--navy);
+    font-weight: 700;
+  }
+
+  /* ─── SECURITY CARDS ───────────────────────────────────────── */
+  .security-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-top: 10px;
+  }
+
+  .security-card {
+    border-radius: 8px;
+    padding: 12px;
+    border: 1.5px solid var(--border);
+  }
+
+  .sc-green { background: #f0fdf4; border-color: #bbf7d0; }
+  .sc-blue { background: #eff6ff; border-color: #bfdbfe; }
+  .sc-orange { background: #fffbeb; border-color: #fef08a; }
+
+  .security-card .sc-icon {
+    font-size: 16px;
+    margin-bottom: 4px;
+  }
+
+  .security-card .sc-title {
+    font-size: 8.5pt;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 2px;
+  }
+
+  .security-card .sc-text {
+    font-size: 7.5pt;
+    color: var(--slate);
+    line-height: 1.4;
+  }
+
+  /* ─── FOOTER ───────────────────────────────────────────────── */
+  .page-footer {
+    border-top: 1px solid var(--border);
+    padding-top: 4px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 7.5pt;
+    color: var(--muted);
+  }
+
+  /* ─── PRINT MEDIA ADAPTATION ───────────────────────────────── */
+  @media print {
+    body {
+      background: var(--white);
+    }
+    .sheet {
+      width: 100%;
+      height: 100vh;
+      margin: 0;
+      box-shadow: none;
+      page-break-after: always;
+      padding: 15mm 15mm 10mm 15mm;
+    }
+    .sheet:last-child {
+      page-break-after: avoid;
+    }
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════
+     PAGE 1: COVER SHEET
+     ════════════════════════════════════════════ -->
+<div class="sheet cover">
+  <div class="cover-header">
+    <div class="cover-badge">Final Year Project</div>
+    <div class="cover-title">EduNest</div>
+    <div class="cover-subtitle">RAG-Based MCQ Generation System</div>
+  </div>
+
+  <div class="cover-body">
+    <div class="cover-meta-grid">
+      <div class="cover-meta-card">
+        <div class="label">Project Type</div>
+        <div class="value">Final Year Project</div>
+      </div>
+      <div class="cover-meta-card">
+        <div class="label">Module</div>
+        <div class="value">Entry Test Prep</div>
+      </div>
+      <div class="cover-meta-card">
+        <div class="label">Backend</div>
+        <div class="value">Python / Flask</div>
+      </div>
+      <div class="cover-meta-card">
+        <div class="label">AI Model</div>
+        <div class="value">Groq Llama 3.3</div>
+      </div>
+    </div>
+
+    <div class="cover-goal-box">
+      <div class="label">Document Goal</div>
+      <p>System Architecture &amp; Implementation Plan for the Project Supervisor</p>
+    </div>
+  </div>
+
+  <div class="cover-footer">
+    <span>EduNest Platform</span>
+    <span>
+      RAG Pipeline
+      <span class="dot"></span>
+      ChromaDB
+      <span class="dot"></span>
+      Groq Llama 3.3
+    </span>
+    <span>Confidential Copy</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     PAGE 2: OBJECTIVES & DATA SOURCES
+     ════════════════════════════════════════════ -->
+<div class="sheet">
+  <div class="sheet-body">
+    <h2><span class="sec-num">1</span>Introduction and Objectives</h2>
+    <p>
+      This proposal describes the implementation of a Retrieval-Augmented Generation (RAG) system for the entry test preparation module of EduNest. Instead of relying on the general pre-trained memory of Large Language Models, which often introduces factual errors or out-of-syllabus terms, this system retrieves specific textbook paragraphs related to the student's selected topic and feeds them directly to the AI model. This approach guarantees that all generated questions strictly adhere to the official FSc Intermediate curriculum guidelines.
+    </p>
+    <p>The primary objectives of this implementation include:</p>
+    <ul class="styled-list">
+      <li>
+        <span class="bullet-icon">1</span>
+        <span class="bullet-content"><strong>Curriculum Accuracy:</strong> All generated test questions are grounded in text retrieved from official provincial textbook publishers.</span>
+      </li>
+      <li>
+        <span class="bullet-icon">2</span>
+        <span class="bullet-content"><strong>Hallucination Elimination:</strong> By referencing verified physical pages, the LLM is restricted from generating incorrect factual information or formulas.</span>
+      </li>
+      <li>
+        <span class="bullet-icon">3</span>
+        <span class="bullet-content"><strong>API Key Security:</strong> All external API credentials and client calls are handled on the Python backend, keeping keys secure and hidden.</span>
+      </li>
+    </ul>
+
+    <h2><span class="sec-num">2</span>Academic Data Sources</h2>
+    <p>
+      Our reference database is built by compiling official textbook PDFs from state-authorized education departments. This ensures complete coverage across different provincial boards:
+    </p>
+    <div class="card-grid">
+      <div class="info-card">
+        <div class="card-icon">📘</div>
+        <div class="card-body">
+          <div class="card-title">Punjab Board (PCTB)</div>
+          <div class="card-text">FSc Physics, Chemistry, Biology, and Mathematics textbooks (Part 1 and 2).</div>
+        </div>
+      </div>
+      <div class="info-card">
+        <div class="card-icon">📗</div>
+        <div class="card-body">
+          <div class="card-title">Federal Board (FBISE)</div>
+          <div class="card-text">FBISE books mapping specific additional concepts for national level exams.</div>
+        </div>
+      </div>
+      <div class="info-card">
+        <div class="card-icon">📙</div>
+        <div class="card-body">
+          <div class="card-title">Sindh Board (STBB)</div>
+          <div class="card-text">Curriculum textbooks to accommodate students preparing within the Sindh province.</div>
+        </div>
+      </div>
+      <div class="info-card">
+        <div class="card-icon">📋</div>
+        <div class="card-body">
+          <div class="card-title">Past Paper Database</div>
+          <div class="card-text">MDCAT and ECAT historical exams used to calibrate question difficulty settings.</div>
+        </div>
+      </div>
+    </div>
+
+    <h2><span class="sec-num">3</span>System Architecture &amp; Directory Layout</h2>
+    <p>
+      The RAG database and retrieval script run inside a Flask server, allowing secure vector search queries. The project directory structure is laid out as follows:
+    </p>
+    <div class="code-label">Directory Structure</div>
+    <div class="code-block">
+      <pre>python_backend/
+├── data/
+│   ├── <span class="st">syllabus/</span>          <span class="cm"># Folder containing FSc Textbook PDF documents</span>
+│   └── <span class="st">fallback_mcqs.json</span> <span class="cm"># Pre-loaded backup MCQs list</span>
+├── <span class="st">vector_db/</span>             <span class="cm"># Directory where ChromaDB index files are saved</span>
+└── <span class="st">app.py</span>                 <span class="cm"># Main Flask server file</span></pre>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <span>EduNest RAG-Based MCQ Generation System</span>
+    <span>Section 1–3</span>
+    <span>Page 2</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     PAGE 3: METHODOLOGY, WORKFLOW & FEASIBILITY
+     ════════════════════════════════════════════ -->
+<div class="sheet">
+  <div class="sheet-body">
+    <h2><span class="sec-num">4</span>Implementation Methodology</h2>
+    <p>
+      The implementation processed raw FSc textbooks into a searchable semantic database through a four-stage ingestion pipeline:
+    </p>
+
+    <!-- FLOWCHART DIAGRAM -->
+    <div class="diagram-wrap">
+      <div class="diagram-title">Fig. 1 — RAG Ingestion Pipeline · 4-Stage Ingestion Flow</div>
+      <div class="flowchart">
+        <div class="flow-step">
+          <div class="step-num">Step 1</div>
+          <div class="step-name">Text Extraction</div>
+          <div class="step-sub">PDF reading with pypdf</div>
+        </div>
+        <div class="flow-connector">→</div>
+        <div class="flow-step">
+          <div class="step-num">Step 2</div>
+          <div class="step-name">Dynamic Chunking</div>
+          <div class="step-sub">500-1000 char overlap</div>
+        </div>
+        <div class="flow-connector">→</div>
+        <div class="flow-step">
+          <div class="step-num">Step 3</div>
+          <div class="step-name">Vectorization</div>
+          <div class="step-sub">all-MiniLM-L6-v2</div>
+        </div>
+        <div class="flow-connector">→</div>
+        <div class="flow-step">
+          <div class="step-num">Step 4</div>
+          <div class="step-name">Local Storage</div>
+          <div class="step-sub">ChromaDB index files</div>
+        </div>
+      </div>
+    </div>
+
+    <ul class="styled-list" style="margin-bottom: 10px;">
+      <li>
+        <span class="bullet-icon">📄</span>
+        <span class="bullet-content"><strong>Text Extraction:</strong> We read the official textbook PDFs page-by-page using the Python <code>pypdf</code> library, extracting raw text and cleaning unreadable symbols.</span>
+      </li>
+      <li>
+        <span class="bullet-icon">✂️</span>
+        <span class="bullet-content"><strong>Dynamic Chunking:</strong> The extracted text is split into small paragraphs (500–1,000 characters) with a 100-character overlap to ensure concepts are not severed at boundaries.</span>
+      </li>
+      <li>
+        <span class="bullet-icon">🧠</span>
+        <span class="bullet-content"><strong>Vector Embeddings:</strong> We convert text chunks into numerical vectors representing semantic meaning, utilizing the local, CPU-based <code>all-MiniLM-L6-v2</code> model.</span>
+      </li>
+      <li>
+        <span class="bullet-icon">🗄️</span>
+        <span class="bullet-content"><strong>Vector Storage:</strong> The vectors are stored in a local <code>ChromaDB</code> database tagged with Subject and Chapter metadata parameters for fast, structured retrieval queries.</span>
+      </li>
+    </ul>
+
+    <h2><span class="sec-num">5</span>Runtime Exam Generation Workflow</h2>
+    <p>
+      When a student starts an exam session, the system queries the vector database, constructs the augmented prompt, and validates the output through the following runtime execution steps:
+    </p>
+
+    <!-- SEQUENCE DIAGRAM (SVG-based) -->
+    <div class="diagram-wrap" style="padding: 5px 12px;">
+      <div class="diagram-title" style="margin-bottom: 4px;">Fig. 2 — Runtime Sequence Diagram · MCQ Generation Flow</div>
+      <svg viewBox="0 0 560 190" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;">
+        <!-- Actors row -->
+        <rect x="25" y="5" width="80" height="20" rx="4" fill="#1e3a8a" stroke="#e2e8f0"/>
+        <text x="65" y="17" text-anchor="middle" font-family="Outfit,sans-serif" font-size="7" fill="white" font-weight="bold">React Frontend</text>
+        
+        <rect x="165" y="5" width="80" height="20" rx="4" fill="#1e40af" stroke="#e2e8f0"/>
+        <text x="205" y="17" text-anchor="middle" font-family="Outfit,sans-serif" font-size="7" fill="white" font-weight="bold">Flask API (app.py)</text>
+
+        <rect x="305" y="5" width="80" height="20" rx="4" fill="#065f46" stroke="#e2e8f0"/>
+        <text x="345" y="17" text-anchor="middle" font-family="Outfit,sans-serif" font-size="7" fill="white" font-weight="bold">ChromaDB Store</text>
+
+        <rect x="445" y="5" width="80" height="20" rx="4" fill="#3b0764" stroke="#e2e8f0"/>
+        <text x="485" y="17" text-anchor="middle" font-family="Outfit,sans-serif" font-size="7" fill="white" font-weight="bold">Groq LLM API</text>
+
+        <!-- lifelines -->
+        <line x1="65"  y1="25" x2="65"  y2="185" stroke="#e2e8f0" stroke-width="1.5" stroke-dasharray="4,3"/>
+        <line x1="205" y1="25" x2="205" y2="185" stroke="#e2e8f0" stroke-width="1.5" stroke-dasharray="4,3"/>
+        <line x1="345" y1="25" x2="345" y2="185" stroke="#e2e8f0" stroke-width="1.5" stroke-dasharray="4,3"/>
+        <line x1="485" y1="25" x2="485" y2="185" stroke="#e2e8f0" stroke-width="1.5" stroke-dasharray="4,3"/>
+
+        <!-- Message 1 -->
+        <line x1="70" y1="45" x2="200" y2="45" stroke="#2563eb" stroke-width="1.5"/>
+        <path d="M200 45 L195 42 L195 48 z" fill="#2563eb"/>
+        <text x="135" y="40" text-anchor="middle" font-family="Outfit,sans-serif" font-size="6" fill="#334155">1. POST request (Topic)</text>
+
+        <!-- Message 2 -->
+        <line x1="210" y1="75" x2="340" y2="75" stroke="#059669" stroke-width="1.5"/>
+        <path d="M340 75 L335 72 L335 78 z" fill="#059669"/>
+        <text x="275" y="70" text-anchor="middle" font-family="Outfit,sans-serif" font-size="6" fill="#334155">2. Vector Search Query</text>
+
+        <!-- Message 3 -->
+        <line x1="340" y1="105" x2="210" y2="105" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,2"/>
+        <path d="M210 105 L215 102 L215 108 z" fill="#94a3b8"/>
+        <text x="275" y="100" text-anchor="middle" font-family="Outfit,sans-serif" font-size="6" fill="#334155">3. Top 3-5 Book Paragraphs</text>
+
+        <!-- Message 4 -->
+        <line x1="210" y1="135" x2="480" y2="135" stroke="#8b5cf6" stroke-width="1.5"/>
+        <path d="M480 135 L475 132 L475 138 z" fill="#8b5cf6"/>
+        <text x="345" y="130" text-anchor="middle" font-family="Outfit,sans-serif" font-size="6" fill="#334155">4. Context + Prompts</text>
+
+        <!-- Message 5 -->
+        <line x1="480" y1="165" x2="70" y2="165" stroke="#94a3b8" stroke-width="1.5" stroke-dasharray="4,2"/>
+        <path d="M70 165 L75 162 L75 168 z" fill="#94a3b8"/>
+        <text x="275" y="160" text-anchor="middle" font-family="Outfit,sans-serif" font-size="6" fill="#334155">5. Validated MCQs List (JSON)</text>
+      </svg>
+    </div>
+
+    <h2><span class="sec-num">6</span>Security, Reliability &amp; Cost Feasibility</h2>
+    <div class="security-grid">
+      <div class="security-card sc-green">
+        <div class="sc-icon">🔒</div>
+        <div class="sc-title">Credential Security</div>
+        <div class="sc-text">API credentials are stored as Flask environment variables on the backend, hidden from the browser client.</div>
+      </div>
+      <div class="security-card sc-blue">
+        <div class="sc-icon">💰</div>
+        <div class="sc-title">Zero Search Cost</div>
+        <div class="sc-text">Local models (`sentence-transformers` and `ChromaDB`) ensure vectorization and search queries are completely free.</div>
+      </div>
+      <div class="security-card sc-orange">
+        <div class="sc-icon">🛡️</div>
+        <div class="sc-title">System Reliability</div>
+        <div class="sc-text">A local database file acts as a backup offline fallback to maintain operations during network failures.</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-footer" style="margin-top: 6mm;">
+    <span>EduNest RAG-Based MCQ Generation System</span>
+    <span>Section 4–6</span>
+    <span>Page 3</span>
+  </div>
+</div>
+
+</body>
+</html>

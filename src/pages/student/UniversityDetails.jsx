@@ -1,4 +1,4 @@
-﻿import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
     doc, getDoc, setDoc, collection, query, where, getDocs,
@@ -20,6 +20,7 @@ import UserProfileDisplay from '../../components/UserProfileDisplay';
 import ProgramCard from '../../components/ProgramCard';
 import UserProfileModal from '../../components/UserProfileModal';
 import { isScholarshipEligible } from '../../utils/scholarshipUtils';
+import LeafletCampusView from '../../components/LeafletCampusView';
 
 const UniversityDetails = () => {
     const { id } = useParams();
@@ -622,7 +623,7 @@ const UniversityDetails = () => {
                                         <div className="bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 rounded-2xl p-6">
                                             <div className="flex items-center gap-3 mb-4">
                                                 <ImageIcon size={20} className="text-purple-500" />
-                                                <h3 className="text-xl font-bold text-slate-900 dark:text-white">Campus & Infrastructure</h3>
+                                                <h3 className="text-xl font-bold text-slate-900 dark:text-white">Campus &amp; Infrastructure</h3>
                                             </div>
                                             <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
                                                 {university.infrastructureImages.map((img, idx) => (
@@ -641,6 +642,21 @@ const UniversityDetails = () => {
                                             </div>
                                         </div>
                                     )}
+
+                                    {/* Campus Location Map */}
+                                    <div className="bg-white dark:bg-white/[0.03] border border-slate-200 dark:border-white/10 rounded-2xl p-6">
+                                        <div className="flex items-center gap-3 mb-4">
+                                            <MapPin size={20} className="text-cyan-500" />
+                                            <h3 className="text-xl font-bold text-slate-900 dark:text-white">Campus Location</h3>
+                                            {university.location && (
+                                                <span className="ml-auto text-sm text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                                                    <MapPin size={13} className="text-cyan-400" />
+                                                    {university.location}
+                                                </span>
+                                            )}
+                                        </div>
+                                        <LeafletCampusView university={university} />
+                                    </div>
                                 </motion.div>
                             ) : activeTab === 'programs' ? (
                                 <motion.div

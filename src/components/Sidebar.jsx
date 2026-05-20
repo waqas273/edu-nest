@@ -4,7 +4,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard, Map, MessageSquare, Users, User, LogOut,
     Settings, Shield, BookOpen, ClipboardCheck, Moon, Sun,
-    Home, Search, PenTool, Star, Lock, Sparkles, Award
+    Home, Search, PenTool, Star, Lock, Sparkles, Award, GraduationCap
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -184,13 +184,14 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
 
         // Student menu (default)
         return [
-            { icon: Home, label: 'Dashboard', path: '/student' },
-            { icon: Map, label: 'Roadmaps', path: '/student/roadmap' },
-            { icon: Search, label: 'Find University', path: '/student/find-university' },
-            { icon: ClipboardCheck, label: 'Interest Assessment', path: '/student/interest' },
-            { icon: PenTool, label: 'Entry Test', path: '/student/entry-test' },
-            { icon: MessageSquare, label: 'Messages', path: '/messages' },
-            { icon: Users, label: 'Community', path: '/community' },
+            { icon: Home,            label: 'Dashboard',          path: '/student' },
+            { icon: Map,             label: 'Roadmaps',           path: '/student/roadmap' },
+            { icon: GraduationCap,   label: 'Programs',           path: '/student/programs' },
+            { icon: Search,          label: 'Find University',     path: '/student/find-university' },
+            { icon: ClipboardCheck,  label: 'Interest Assessment', path: '/student/interest' },
+            { icon: PenTool,         label: 'Entry Test',         path: '/student/entry-test' },
+            { icon: MessageSquare,   label: 'Messages',           path: '/messages' },
+            { icon: Users,           label: 'Community',          path: '/community' },
         ];
     };
 

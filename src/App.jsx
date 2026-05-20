@@ -36,6 +36,7 @@ import InterestAssessment from './pages/student/InterestAssessment';
 import EntryTestPrep from './pages/student/EntryTestPrep';
 import MockExam from './pages/student/MockExam';
 import TestHistory from './pages/student/TestHistory';
+import StudentPrograms from './pages/student/StudentPrograms';
 import UserProfile from './pages/student/UserProfile';
 import EditProfile from './pages/student/EditProfile';
 import PendingRoadmaps from './pages/student/PendingRoadmaps';
@@ -138,6 +139,7 @@ function App() {
                       <Route path="profile" element={<UserProfile />} />
                       <Route path="profile/edit" element={<EditProfile />} />
                       <Route path="roadmaps/all" element={<PendingRoadmaps />} />
+                      <Route path="programs" element={<StudentPrograms />} />
                       <Route path="change-password" element={<ChangePassword />} />
                     </Route>
 

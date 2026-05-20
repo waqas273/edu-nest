@@ -12,6 +12,7 @@ import { useAuth } from '../../context/AuthContext';
 import { uploadToCloudinary, uploadMultipleToCloudinary } from '../../utils/cloudinaryUpload';
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
+import LeafletLocationPicker from '../../components/LeafletLocationPicker';
 
 function cn(...inputs) {
     return twMerge(clsx(inputs));
@@ -31,6 +32,9 @@ const ManagerProfile = () => {
     const [formData, setFormData] = useState({
         universityName: '',
         location: '',
+        latitude: null,
+        longitude: null,
+        city: '',
         phone: '',
         website: '',
         description: '',
@@ -56,6 +60,9 @@ const ManagerProfile = () => {
             setFormData({
                 universityName: userProfile.universityName || '',
                 location: userProfile.location || '',
+                latitude: userProfile.latitude || null,
+                longitude: userProfile.longitude || null,
+                city: userProfile.city || '',
                 phone: userProfile.phone || '',
                 website: userProfile.website || '',
                 description: userProfile.description || '',
@@ -335,18 +342,22 @@ const ManagerProfile = () => {
                                 </div>
                             </div>
 
-                            <div className="group">
-                                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2 ml-1">Primary Location</label>
-                                <div className="relative">
-                                    <MapPin className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400 group-focus-within:text-cyan-500 transition-colors" size={18} />
-                                    <input
-                                        type="text"
-                                        className="w-full pl-11 pr-4 py-4 bg-white dark:bg-slate-900/50 border border-slate-200 dark:border-white/10 rounded-2xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500/20 transition-all font-medium shadow-sm"
-                                        value={formData.location}
-                                        onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                                        placeholder="City, Country"
-                                    />
-                                </div>
+                            <div className="group col-span-full">
+                                <label className="block text-xs font-bold text-slate-500 dark:text-slate-400 uppercase mb-2 ml-1 flex items-center gap-2">
+                                    <MapPin size={14} className="text-cyan-500" />
+                                    Campus Location
+                                    <span className="normal-case font-normal text-slate-400 ml-1">
+                                        — click map or search to update
+                                    </span>
+                                </label>
+                                <LeafletLocationPicker
+                                    initialLat={formData.latitude || 30.3753}
+                                    initialLng={formData.longitude || 69.3451}
+                                    initialLocationText={formData.location}
+                                    onLocationSelected={({ latitude, longitude, city, location }) =>
+                                        setFormData(prev => ({ ...prev, latitude, longitude, location, city }))
+                                    }
+                                />
                             </div>
                         </motion.div>
 

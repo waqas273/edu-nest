@@ -41,7 +41,7 @@ const InterestFinder = () => {
     const [lastRejectedCategory, setLastRejectedCategory] = useState(null); // Prevent ping-pong
 
     const [loading, setLoading] = useState(false);
-    const [aiQuestionText, setAiQuestionText] = useState(null);
+
     const [currentProbabilities, setCurrentProbabilities] = useState(null);
     const [finalInterest, setFinalInterest] = useState(null);
     const [isExplorationRequired, setIsExplorationRequired] = useState(false);
@@ -83,61 +83,6 @@ const InterestFinder = () => {
 
     const setNextQuestionObj = (qObj) => {
         setCurrentQuestion(qObj);
-        // Reset AI text for new question
-        generateAiPhrasing(qObj.text);
-    };
-
-    const generateAiPhrasing = async (baseText) => {
-        setLoading(true);
-        setAiQuestionText(null); // Reset to null so we show loader
-
-        try {
-            const apiKey = import.meta.env.VITE_OPENROUTER_API_KEY;
-            if (!apiKey) {
-                // Fallback to original text if missing key
-                setAiQuestionText(baseText);
-                setLoading(false);
-                return;
-            }
-
-            const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
-                method: "POST",
-                headers: {
-                    "Authorization": `Bearer ${apiKey}`,
-                    "Content-Type": "application/json",
-                    "HTTP-Referer": window.location.origin,
-                    "X-Title": "EduNest Interest AI",
-                },
-                body: JSON.stringify({
-                    model: "arcee-ai/trinity-large-preview:free",
-                    messages: [
-                        {
-                            role: "system",
-                            content: "You are a friendly counselor. Rephrase this question for a student using SIMPLE English (A1/A2). Use emojis. Keep it under 35 words."
-                        },
-                        { role: "user", content: `Question: \"${baseText}\"` }
-                    ],
-                    max_tokens: 60,
-                    temperature: 0.9
-                })
-            });
-
-            if (response.ok) {
-                const data = await response.json();
-                const aiText = data.choices[0].message.content.replace(/^["']|["']$/g, '');
-                setAiQuestionText(aiText);
-            } else {
-                // Fallback to original text on API error
-                console.warn("OpenRouter API Error:", response.status);
-                setAiQuestionText(baseText);
-            }
-        } catch (e) {
-            // Fallback to original text on network error
-            console.warn("Network Error:", e);
-            setAiQuestionText(baseText);
-        } finally {
-            setLoading(false);
-        }
     };
 
     const handleAnswer = async (value) => {
@@ -562,32 +507,17 @@ const InterestFinder = () => {
 
 
 
-                        <AnimatePresence mode="wait">
-                            {loading || !aiQuestionText ? (
-                                <motion.div
-                                    key="loader"
-                                    initial={{ opacity: 0 }}
-                                    animate={{ opacity: 1 }}
-                                    exit={{ opacity: 0 }}
-                                    className="min-h-[100px] mb-8 flex flex-col items-center justify-center"
-                                >
-                                    <Loader2 className="animate-spin text-emerald-500 mb-2" size={32} />
-                                    <span className="text-slate-400 text-sm animate-pulse">Curating question...</span>
-                                </motion.div>
-                            ) : (
-                                <motion.div
-                                    key={currentQuestion?.id}
-                                    initial={{ opacity: 0, y: 10 }}
-                                    animate={{ opacity: 1, y: 0 }}
-                                    exit={{ opacity: 0, y: -10 }}
-                                    className="min-h-[100px] mb-8"
-                                >
-                                    <h3 className="text-2xl font-medium text-slate-800 dark:text-white leading-relaxed">
-                                        {aiQuestionText}
-                                    </h3>
-                                </motion.div>
-                            )}
-                        </AnimatePresence>
+                        <motion.div
+                            key={currentQuestion?.id}
+                            initial={{ opacity: 0, y: 10 }}
+                            animate={{ opacity: 1, y: 0 }}
+                            exit={{ opacity: 0, y: -10 }}
+                            className="min-h-[100px] mb-8"
+                        >
+                            <h3 className="text-2xl font-medium text-slate-800 dark:text-white leading-relaxed">
+                                {currentQuestion?.text}
+                            </h3>
+                        </motion.div>
 
                         <div className="grid gap-3 mt-10">
                             <button onClick={() => handleAnswer(3)} className="p-4 rounded-xl border border-emerald-500/30 bg-emerald-500/5 hover:bg-emerald-500 hover:text-white text-emerald-600 font-bold transition-all flex items-center gap-3">

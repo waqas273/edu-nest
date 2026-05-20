@@ -48,10 +48,12 @@ const TestHistory = () => {
     const getStatusColor = (status) => {
         switch (status) {
             case 'pass':
-            case 'passed': return 'text-green-400 bg-green-400/10 border-green-400/20';
+            case 'passed':
+            case 'completed': return 'text-green-400 bg-green-400/10 border-green-400/20';
             case 'fail':
             case 'failed': return 'text-red-400 bg-red-400/10 border-red-400/20';
             case 'aborted': return 'text-orange-400 bg-orange-400/10 border-orange-400/20';
+            case 'started': return 'text-blue-400 bg-blue-400/10 border-blue-400/20';
             default: return 'text-slate-400 bg-slate-400/10 border-slate-400/20';
         }
     };
@@ -59,10 +61,12 @@ const TestHistory = () => {
     const getStatusIcon = (status) => {
         switch (status) {
             case 'pass':
-            case 'passed': return <CheckCircle size={16} />;
+            case 'passed':
+            case 'completed': return <CheckCircle size={16} />;
             case 'fail':
             case 'failed': return <XCircle size={16} />;
             case 'aborted': return <AlertCircle size={16} />;
+            case 'started': return <Clock size={16} />;
             default: return <Clock size={16} />;
         }
     };
@@ -109,8 +113,9 @@ const TestHistory = () => {
     const filteredHistory = history.filter(item => {
         const matchesSearch =
             item.skill?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            item.topic?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            item.testName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             item.topicName?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            item.topic?.toLowerCase().includes(searchTerm.toLowerCase()) ||
             item.category?.toLowerCase().includes(searchTerm.toLowerCase());
 
         const matchesFilter = filterStatus === 'all' ||
@@ -247,7 +252,7 @@ const TestHistory = () => {
                                                     <div className="flex items-center gap-2">
                                                         <Target size={14} className="text-slate-400 dark:text-slate-500" />
                                                         <span className="text-slate-700 dark:text-slate-200 font-medium">
-                                                            {test.topicName || test.topic || 'Unknown Topic'}
+                                                            {test.testName || test.topicName || test.topic || 'Unknown Topic'}
                                                         </span>
                                                     </div>
                                                 </td>
