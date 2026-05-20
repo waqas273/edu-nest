@@ -529,8 +529,8 @@
 
     <div class="math-card">
       <div class="math-title">Overall Recommendation Score Formula</div>
-      <div class="math-formula">
-        \text{Score (100 Pts)} = (\text{Academic Interest} \times 50\%) + (\text{Geographical Proximity} \times 30\%) + (\text{Ratings Strength} \times 20\%)
+      <div class="math-formula" style="font-size: 11pt; font-style: normal; font-family: 'Outfit', sans-serif;">
+        Score<sub>(100 Pts)</sub> = (Academic Interest Match &times; 50%) + (Geographical Proximity &times; 30%) + (Review Ratings Strength &times; 20%)
       </div>
       <div class="math-sub">Minimum score threshold to be displayed in "Recommended for You" feed: 50 Points</div>
     </div>
@@ -583,8 +583,13 @@
     
     <div class="math-card">
       <div class="math-title">The Haversine Distance Formula</div>
-      <div class="math-formula">
-        d = 2R \times \arcsin\left(\sqrt{\sin^2\left(\frac{\Delta \text{lat}}{2}\right) + \cos(\text{lat}_1)\cos(\text{lat}_2)\sin^2\left(\frac{\Delta \text{lng}}{2}\right)}\right)
+      <div class="math-formula" style="font-size: 12pt; display: flex; align-items: center; justify-content: center; gap: 2px; font-family: 'Outfit', sans-serif;">
+        <span>d = 2R &middot; arcsin &lpar;</span>
+        <span style="font-size: 18pt; font-weight: 300; line-height: 1; transform: translateY(-1px);">&radic;</span>
+        <span style="border-top: 1px solid white; padding-top: 3px; display: inline-flex; align-items: center; font-style: italic;">
+          <span>sin<sup>2</sup>&lpar;&Delta;lat / 2&rpar; + cos&lpar;lat<sub>1</sub>&rpar;&middot;cos&lpar;lat<sub>2</sub>&rpar;&middot;sin<sup>2</sup>&lpar;&Delta;lng / 2&rpar;</span>
+        </span>
+        <span>&rpar;</span>
       </div>
       <div class="math-sub">Where R is Earth's radius (6,371 km), and d is calculated physical distance in Kilometers</div>
     </div>
