@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EduNest – Simple Guide to Advanced Hybrid RAG</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  /* ─── RESET & BASE SYSTEM ──────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy:      #0f172a;
+    --navy-lt:   #1e293b;
+    --blue:      #10b981; /* EduNest Emerald green theme */
+    --blue-dk:   #047857;
+    --blue-bg:   #ecfdf5;
+    --slate:     #334155;
+    --muted:     #64748b;
+    --border:    #e2e8f0;
+    --white:     #ffffff;
+    --off:       #f8fafc;
+    --green:     #10b981;
+    --green-bg:  #f0fdf4;
+    --amber:     #d97706;
+    --amber-bg:  #fffbeb;
+    --red:       #ef4444;
+    --red-bg:    #fef2f2;
+  }
+
+  html { font-size: 10pt; }
+
+  body {
+    font-family: 'Source Sans 3', sans-serif;
+    color: var(--slate);
+    background: #cbd5e1;
+    line-height: 1.5;
+    padding: 10px 0;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* ─── A4 PAGE-SHEET SYSTEM (Print Optimized) ────────────────── */
+  .sheet {
+    background: var(--white);
+    width: 210mm;
+    height: 297mm;
+    padding: 20mm 20mm 15mm 20mm;
+    margin: 25px auto;
+    box-shadow: 0 4px 20px rgba(15, 23, 42, 0.15);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .sheet-body {
+    flex: 1;
+  }
+
+  /* ─── COVER PAGE ───────────────────────────────────────────── */
+  .cover {
+    justify-content: space-between;
+    padding: 0;
+  }
+
+  .cover-header {
+    height: 110mm;
+    background: linear-gradient(135deg, var(--navy) 0%, #064e3b 60%, #10b981 100%);
+    padding: 30mm 20mm;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    color: white;
+  }
+
+  .cover-badge {
+    align-self: flex-start;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #a7f3d0;
+    font-size: 8.5pt;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 4px 14px;
+    border-radius: 20px;
+    margin-bottom: 20px;
+  }
+
+  .cover-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 24pt;
+    font-weight: 800;
+    line-height: 1.15;
+    color: white;
+    letter-spacing: -1px;
+  }
+
+  .cover-subtitle {
+    font-size: 13pt;
+    font-weight: 300;
+    color: #a7f3d0;
+    margin-top: 10px;
+  }
+
+  .cover-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 30px;
+    padding: 15mm 20mm;
+  }
+
+  .cover-meta-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    width: 100%;
+    max-width: 480px;
+  }
+
+  .cover-meta-card {
+    background: var(--off);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    text-align: center;
+  }
+
+  .cover-meta-card .label {
+    font-size: 7.5pt;
+    font-weight: 700;
+    color: var(--blue-dk);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .cover-meta-card .value {
+    font-size: 9.5pt;
+    font-weight: 700;
+    color: var(--navy);
+  }
+
+  .cover-goal-box {
+    width: 100%;
+    max-width: 480px;
+    background: var(--blue-bg);
+    border-left: 4px solid var(--blue);
+    border-radius: 0 8px 8px 0;
+    padding: 15px 20px;
+  }
+
+  .cover-goal-box .label {
+    font-size: 7.5pt;
+    font-weight: 700;
+    color: var(--blue-dk);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .cover-goal-box p {
+    font-size: 9pt;
+    color: var(--slate);
+    line-height: 1.5;
+  }
+
+  .cover-footer {
+    border-top: 1px solid var(--border);
+    padding: 10mm 20mm;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 8pt;
+    color: var(--muted);
+  }
+
+  /* ─── TYPOGRAPHY & SECTIONS ────────────────────────────────── */
+  h2 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 14pt;
+    font-weight: 800;
+    color: var(--navy);
+    margin: 4mm 0 3mm;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--blue);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  h2 .sec-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    background: var(--blue);
+    color: white;
+    border-radius: 6px;
+    font-size: 9pt;
+    font-weight: 800;
+  }
+
+  h3 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 11pt;
+    font-weight: 700;
+    color: var(--navy-lt);
+    margin: 4mm 0 2mm 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  h3::before {
+    content: "";
+    display: inline-block;
+    width: 4px;
+    height: 12px;
+    background: var(--blue);
+    border-radius: 2px;
+  }
+
+  p {
+    font-size: 9pt;
+    color: var(--slate);
+    margin-bottom: 8px;
+    line-height: 1.5;
+    text-align: justify;
+  }
+
+  /* ─── VISUAL DIAGRAMS ──────────────────────────────────────── */
+  .diagram-box {
+    background: var(--off);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    margin: 8px 0;
+    font-family: 'Outfit', sans-serif;
+  }
+
+  .flow-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .flow-node {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    flex: 1;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  }
+
+  .flow-node.highlight {
+    border-color: var(--blue);
+    background: var(--blue-bg);
+  }
+
+  .flow-node-title {
+    font-size: 8pt;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 2px;
+  }
+
+  .flow-node-desc {
+    font-size: 7pt;
+    color: var(--muted);
+    line-height: 1.2;
+  }
+
+  .flow-arrow {
+    font-size: 12pt;
+    color: var(--blue);
+    font-weight: 700;
+  }
+
+  /* ─── STEPS & BLOCKS ────────────────────────────────────────── */
+  .step-list {
+    margin: 8px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .step-item {
+    display: flex;
+    gap: 10px;
+    background: var(--off);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+  }
+
+  .step-badge {
+    width: 20px;
+    height: 20px;
+    background: var(--navy-lt);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 7.5pt;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .step-content {
+    flex: 1;
+  }
+
+  .step-label {
+    font-size: 8.5pt;
+    font-weight: 700;
+    color: var(--navy);
+  }
+
+  .step-text {
+    font-size: 8pt;
+    color: var(--slate);
+    line-height: 1.4;
+    margin-top: 1px;
+  }
+
+  /* ─── CALLOUT BOXES ────────────────────────────────────────── */
+  .callout {
+    background: var(--blue-bg);
+    border-left: 4px solid var(--blue);
+    border-radius: 0 8px 8px 0;
+    padding: 10px 14px;
+    margin: 8px 0;
+  }
+
+  .callout.warning {
+    background: var(--amber-bg);
+    border-left-color: var(--amber);
+  }
+
+  .callout.danger {
+    background: var(--red-bg);
+    border-left-color: var(--red);
+  }
+
+  .callout-title {
+    font-size: 8pt;
+    font-weight: 700;
+    color: var(--navy);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 2px;
+  }
+
+  .callout p {
+    font-size: 8.5pt;
+    color: var(--slate);
+    margin: 0;
+    line-height: 1.4;
+  }
+
+  /* ─── CODE BLOCKS ──────────────────────────────────────────── */
+  .code-block {
+    background: #0f172a;
+    border: 1px solid #1e293b;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin: 6px 0;
+  }
+
+  .code-block pre {
+    font-family: 'Courier New', monospace;
+    font-size: 8pt;
+    color: #94a3b8;
+    line-height: 1.45;
+    white-space: pre-wrap;
+  }
+
+  .code-block .st { color: #10b981; }
+  .code-block .kw { color: #f43f5e; }
+  .code-block .cm { color: #64748b; font-style: italic; }
+
+  /* ─── FOOTER ───────────────────────────────────────────────── */
+  .page-footer {
+    border-top: 1px solid var(--border);
+    padding-top: 8px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 7.5pt;
+    color: var(--muted);
+  }
+
+  .page-footer .dot {
+    width: 3px; height: 3px;
+    background: var(--blue);
+    border-radius: 50%;
+    display: inline-block;
+    margin: 0 4px;
+    vertical-align: middle;
+    margin-bottom: 2px;
+  }
+
+  /* ─── PRINT MEDIA ──────────────────────────────────────────── */
+  @media print {
+    body {
+      background: var(--white);
+      padding: 0;
+    }
+    .sheet {
+      width: 210mm;
+      height: 297mm;
+      margin: 0;
+      box-shadow: none;
+      page-break-after: always;
+      padding: 20mm 20mm 15mm 20mm;
+    }
+    .sheet:last-child {
+      page-break-after: avoid;
+    }
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════
+     PAGE 1: COVER PAGE
+     ════════════════════════════════════════════ -->
+<div class="sheet cover">
+  <div class="cover-header">
+    <div class="cover-badge">FYP Upgraded Architecture</div>
+    <div class="cover-title">Syllabus-Aligned Hybrid RAG Pipeline</div>
+    <div class="cover-subtitle">A simple guide with clear examples explaining how the question-by-question layout matches real past exams</div>
+  </div>
+
+  <div class="cover-body">
+    <div class="cover-meta-grid">
+      <div class="cover-meta-card">
+        <div class="label">Past Papers Folder</div>
+        <div class="value">data/past_papers/</div>
+      </div>
+      <div class="cover-meta-card">
+        <div class="label">Pattern Structure</div>
+        <div class="value">Exact Question-by-Question Map</div>
+      </div>
+      <div class="cover-meta-card">
+        <div class="label">Textbook Database</div>
+        <div class="value">ChromaDB Vector Store</div>
+      </div>
+      <div class="cover-meta-card">
+        <div class="label">AI Model</div>
+        <div class="value">Llama 3.3 (Groq API)</div>
+      </div>
+    </div>
+
+    <div class="cover-goal-box">
+      <div class="label">What is this guide?</div>
+      <p>This technical report explains how our upgraded entry test module reads old papers, maps the **exact sequence of topics** (which topic appears at which question number), searches FSc textbooks for those specific chapters, and has AI write a test matching that exact chronological structure.</p>
+    </div>
+  </div>
+
+  <div class="cover-footer">
+    <span>EduNest Simple Guide</span>
+    <span>
+      The Big Picture
+      <span class="dot"></span>
+      Scanning Patterns
+      <span class="dot"></span>
+      Search Book
+      <span class="dot"></span>
+      AI Prompt
+    </span>
+    <span>Page 1</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     PAGE 2: THE BIG PICTURE & ALIGNMENT
+     ════════════════════════════════════════════ -->
+<div class="sheet">
+  <div class="sheet-body">
+    <h2><span class="sec-num">1</span>The Big Picture of Alignment</h2>
+    <p>
+      In a real MDCAT or ECAT exam, questions do not appear in random order. They follow a strict, structured layout. For example, in a real 100-question ECAT paper:
+    </p>
+    <ul class="step-text" style="list-style-position: inside; margin-bottom: 12px; display: flex; flex-direction: column; gap: 4px;">
+      <li><b>Questions 1 to 10:</b> Always cover Mathematics (Algebra &amp; Calculus).</li>
+      <li><b>Questions 11 to 20:</b> Always cover Physics (Mechanics &amp; Motion).</li>
+      <li><b>Questions 21 to 30:</b> Always cover Chemistry (Atomic Bonding &amp; Gases).</li>
+    </ul>
+    <p>
+      We want our AI-generated tests to match this **exact structural sequence** so the student feels like they are attempting a real exam. The process is split into three simple steps:
+    </p>
+
+    <div class="diagram-box">
+      <div style="font-size: 8.5pt; font-weight:700; color: var(--navy); margin-bottom: 6px; text-align: center;">Chronological Generation Cycle</div>
+      <div class="flow-row">
+        <div class="flow-node">
+          <div class="flow-node-title">Step 1: Scan Pattern</div>
+          <div class="flow-node-desc">Map which chapter is at which question index</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node">
+          <div class="flow-node-title">Step 2: Search Book</div>
+          <div class="flow-node-desc">Find textbook chapters in that exact sequence</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node highlight">
+          <div class="flow-node-title">Step 3: AI Generation</div>
+          <div class="flow-node-desc">Write questions matching the index template</div>
+        </div>
+      </div>
+    </div>
+
+    <h3>A Concrete Example of Structural Matching:</h3>
+    <p>
+      If past papers always put a question about <i>"Centripetal Force"</i> at **Question #1**, the system will query the *Circular Motion* chapter in the FSc textbook database to generate the content for **Question #1**. If **Question #2** is historically about <i>"Gaseous State"</i>, the system will query the *Chemistry Gas Laws* chapter to generate **Question #2**.
+    </p>
+  </div>
+
+  <div class="page-footer">
+    <span>EduNest Simple Guide</span>
+    <span>Section 1: Big Picture</span>
+    <span>Page 2</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     PAGE 3: STEP 1 - SCANNING PATTERNS
+     ════════════════════════════════════════════ -->
+<div class="sheet">
+  <div class="sheet-body">
+    <h2><span class="sec-num">2</span>Step 1: Scanning Exam Patterns</h2>
+    <p>
+      We have old MDCAT and ECAT solved PDFs in <code>python_backend/data/past_papers/</code>. We run an offline Python script (<code>analyze_past_papers.py</code>) <b>once</b> to analyze their chronological layout.
+    </p>
+
+    <div class="step-list">
+      <div class="step-item">
+         <div class="step-badge">1</div>
+         <div class="step-content">
+           <div class="step-label">Parse Question Sequences</div>
+           <div class="step-text">The script loops through the past papers question-by-question (Q1, Q2, Q3) to analyze what subject, chapter, and topic is covered at each specific index.</div>
+         </div>
+      </div>
+      <div class="step-item">
+         <div class="step-badge">2</div>
+         <div class="step-content">
+           <div class="step-label">Map Question Indexes</div>
+           <div class="step-text">It maps each index. For example: Q1 = Physics/Circular Motion, Q2 = Physics/Electrostatics.</div>
+         </div>
+      </div>
+      <div class="step-item">
+         <div class="step-badge">3</div>
+         <div class="step-content">
+           <div class="step-label">Store Solved Templates</div>
+           <div class="step-text">For each question index, it saves the actual solved question as a style template. This teaches the AI the exact style of that index.</div>
+         </div>
+      </div>
+      <div class="step-item">
+         <div class="step-badge">4</div>
+         <div class="step-content">
+           <div class="step-label">Export Map</div>
+           <div class="step-text">It saves the sequence map in <code>syllabus_weightage_map.json</code>. This acts as the structural template.</div>
+         </div>
+      </div>
+    </div>
+
+    <h3>Example of the Pattern JSON Structure:</h3>
+    <div class="code-block">
+      <pre>{
+  <span class="st">"mdcat"</span>: {
+    <span class="st">"Physics"</span>: {
+      <span class="st">"sequence_map"</span>: [
+        {
+          <span class="st">"q_num"</span>: <span class="number">1</span>,
+          <span class="st">"chapter"</span>: <span class="st">"Circular Motion"</span>,
+          <span class="st">"difficulty"</span>: <span class="st">"Moderate"</span>,
+          <span class="st">"style_reference"</span>: {
+            <span class="st">"q"</span>: <span class="st">"When a body moves in a circle, its velocity is..."</span>,
+            <span class="st">"ans"</span>: <span class="st">"Tangent to path"</span>
+          }
+        },
+        {
+          <span class="st">"q_num"</span>: <span class="number">2</span>,
+          <span class="st">"chapter"</span>: <span class="st">"Electrostatics"</span>,
+          <span class="st">"difficulty"</span>: <span class="st">"Hard"</span>,
+          <span class="st">"style_reference"</span>: {
+            <span class="st">"q"</span>: <span class="st">"Determine the electric force between..."</span>,
+            <span class="st">"ans"</span>: <span class="st">"10 Newtons"</span>
+          }
+        }
+      ]
+    }
+  }
+}</pre>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <span>EduNest Simple Guide</span>
+    <span>Section 2: Scanning Patterns</span>
+    <span>Page 3</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     PAGE 4: STEP 2 - SEQUENCE-GUIDED BOOK SEARCH
+     ════════════════════════════════════════════ -->
+<div class="sheet">
+  <div class="sheet-body">
+    <h2><span class="sec-num">3</span>Step 2: Sequence-Guided Textbook Search</h2>
+    <p>
+      When a student starts a new test, the backend server loads the <code>sequence_map</code> from our JSON file. It processes the questions **chronologically** to build the test paper.
+    </p>
+
+    <h3>How the Sequential Retrieval works:</h3>
+    <p>
+      The server loops from Question 1 to Question N:
+    </p>
+    <ul class="step-text" style="list-style-position: inside; margin-bottom: 12px; display: flex; flex-direction: column; gap: 6px;">
+      <li><b>For Question #1:</b> The map says this index needs <i>"Circular Motion"</i>. The backend queries ChromaDB for FSc textbook text matching <i>"Circular Motion basics centripetal velocity"</i>.</li>
+      <li><b>For Question #2:</b> The map says this index needs <i>"Electrostatics"</i>. The backend queries ChromaDB for textbook text matching <i>"Coulomb's Law electric field equations"</i>.</li>
+    </ul>
+
+    <div class="diagram-box">
+      <div style="font-size: 8.5pt; font-weight:700; color: var(--navy); margin-bottom: 6px; text-align: center;">Sequential Database Query Matching</div>
+      <div class="flow-row">
+        <div class="flow-node">
+          <div class="flow-node-title">Question Index #1</div>
+          <div class="flow-node-desc">Circular Motion</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node">
+          <div class="flow-node-title">Textbook Search</div>
+          <div class="flow-node-desc">Retrieve centripetal physics book pages</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node highlight">
+          <div class="flow-node-title">Question Index #2</div>
+          <div class="flow-node-desc">Electrostatics</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node">
+          <div class="flow-node-title">Textbook Search</div>
+          <div class="flow-node-desc">Retrieve Coulomb's Law book pages</div>
+        </div>
+      </div>
+    </div>
+
+    <p style="margin-top: 8px;">
+      Instead of pulling random textbook blocks, this sequence-guided query ensures that the textbook context passed to the generator matches the exact chronological order of the real board syllabus exam.
+    </p>
+  </div>
+
+  <div class="page-footer">
+    <span>EduNest Simple Guide</span>
+    <span>Section 3: Database Search</span>
+    <span>Page 4</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     PAGE 5: STEP 3 - GENERATION & GROUNDING
+     ════════════════════════════════════════════ -->
+<div class="sheet">
+  <div class="sheet-body">
+    <h2><span class="sec-num">4</span>Step 3: AI Prompt &amp; Layout Grounding</h2>
+    <p>
+      Now, the backend sends the generated textbook context and the style template to the AI model (Groq Llama 3.3).
+    </p>
+
+    <h3>Prompt Design for Question Index #1:</h3>
+    <div class="code-block">
+      <pre>You are an expert board examiner. Please write Question #1 for our test.
+
+TEXTBOOK CONTEXT (Only use these facts):
+"In a circular path, centripetal velocity is always tangential. The direction of acceleration is towards the center."
+
+STYLE REFERENCE (Write a new question matching this pattern):
+Original Question: When a body moves in a circle, its velocity is...
+Original Answer: Tangent to the path
+
+INSTRUCTIONS:
+1. Write a new question about direction or velocity in a circle.
+2. Match the exact difficulty level: "Moderate".
+3. Return the question as a JSON object.</pre>
+    </div>
+
+    <h3>Output for Question Index #1:</h3>
+    <div class="code-block">
+      <pre>{
+  <span class="st">"id"</span>: <span class="number">1</span>,
+  <span class="st">"subject"</span>: <span class="st">"Physics"</span>,
+  <span class="st">"difficulty"</span>: <span class="st">"Moderate"</span>,
+  <span class="st">"question"</span>: <span class="st">"What is the direction of the velocity of a particle in circular motion?"</span>,
+  <span class="st">"options"</span>: [<span class="st">"A) Towards center"</span>, <span class="st">"B) Tangent to circle"</span>, <span class="st">"C) Away from center"</span>, <span class="st">"D) Parallel to axis"</span>],
+  <span class="st">"answer"</span>: <span class="st">"B) Tangent to circle"</span>,
+  <span class="st">"explanation"</span>: <span class="st">"tangential velocity direction is always tangent to the circle path."</span>
+}</pre>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <span>EduNest Simple Guide</span>
+    <span>Section 4: AI Prompt</span>
+    <span>Page 5</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     PAGE 6: OFFLINE BACKUPS & FARE TESTING
+     ════════════════════════════════════════════ -->
+<div class="sheet">
+  <div class="sheet-body">
+    <h2><span class="sec-num">5</span>Offline Backups &amp; Cheating Security</h2>
+    <p>
+      To build a professional app, we ensure it never crashes during exams and students cannot cheat.
+    </p>
+
+    <div class="step-list">
+      <div class="step-item">
+         <div class="step-badge">1</div>
+         <div class="step-content">
+           <div class="step-label">Offline Backup Database</div>
+           <div class="step-text">If the Groq API fails or is rate-limited, the backend does not crash. It loads the original solved questions from <code>past_papers_extracted.json</code> corresponding to the exact same question index numbers. The student's session remains stable.</div>
+         </div>
+      </div>
+      <div class="step-item">
+         <div class="step-badge">2</div>
+         <div class="step-content">
+           <div class="step-label">Window Switch Cheating Lock</div>
+           <div class="step-text">The React application (<code>MockExam.jsx</code>) monitors browser tabs. If a student leaves the screen to search an answer:
+             <ul style="list-style-position: inside; margin-top: 4px; font-size: 8pt; color: var(--slate);">
+               <li><b>1st &amp; 2nd tab switch:</b> A warning overlay locks the screen.</li>
+               <li><b>3rd tab switch:</b> The exam is auto-submitted, and saved as "Aborted" in Firestore with the reason "Tab Switch Limit Exceeded".</li>
+             </ul>
+           </div>
+         </div>
+      </div>
+      <div class="step-item">
+         <div class="step-badge">3</div>
+         <div class="step-content">
+           <div class="step-label">Official Grading Schemes</div>
+           <div class="step-text">Timing and score calculation rules match board blueprints:
+             <ul style="list-style-position: inside; margin-top: 4px; font-size: 8pt; color: var(--slate);">
+               <li><b>MDCAT (Medical):</b> 180 questions, 180 minutes, no negative marking (+1 for correct).</li>
+               <li><b>ECAT (Engineering):</b> 100 questions, 100 minutes, with negative marking (+4 for correct, -1 for wrong).</li>
+             </ul>
+           </div>
+         </div>
+      </div>
+    </div>
+
+    <div class="callout">
+      <div class="callout-title">Summary of benefits</div>
+      <p>This upgraded hybrid RAG layout guarantees that every generated test matches the exact structure, chapter order, difficulty distribution, and style of real historical board exams.</p>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <span>EduNest Simple Guide</span>
+    <span>Section 5: Backups &amp; Security</span>
+    <span>Page 6</span>
+  </div>
+</div>
+
+</body>
+</html>

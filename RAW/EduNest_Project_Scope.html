@@ -1,0 +1,885 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EduNest – Comprehensive Project Scope</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  /* ─── RESET & BASE ─────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy:    #0f172a;
+    --blue:    #2563eb;
+    --blue-lt: #3b82f6;
+    --blue-bg: #f0f4ff;
+    --slate:   #334155;
+    --muted:   #64748b;
+    --border:  #e2e8f0;
+    --white:   #ffffff;
+    --off:     #f8fafc;
+    --green:   #10b981;
+    --purple:  #8b5cf6;
+    --amber:   #f59e0b;
+    --red:     #ef4444;
+  }
+
+  html { font-size: 9.5pt; }
+
+  body {
+    font-family: 'Source Sans 3', sans-serif;
+    color: var(--slate);
+    background: #e2e8f0;
+    line-height: 1.5;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* ─── PAGE-SHEET SYSTEM ────────────────────────────────────── */
+  .sheet {
+    background: var(--white);
+    width: 210mm;
+    height: 297mm;
+    padding: 18mm 20mm 15mm 20mm;
+    margin: 30px auto;
+    box-shadow: 0 4px 25px rgba(15, 23, 42, 0.1);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+  }
+
+  .sheet-body {
+    flex: 1;
+  }
+
+  /* ─── COVER PAGE ───────────────────────────────────────────── */
+  .cover {
+    justify-content: space-between;
+    padding: 0;
+  }
+
+  .cover-header {
+    height: 65mm;
+    background: linear-gradient(135deg, var(--navy) 0%, #1e3a8a 50%, #2563eb 100%);
+    padding: 20mm 20mm;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    color: white;
+    position: relative;
+  }
+
+  .cover-badge {
+    align-self: flex-start;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #bfdbfe;
+    font-size: 8.5pt;
+    font-weight: 600;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 4px 12px;
+    border-radius: 20px;
+    margin-bottom: 10px;
+  }
+
+  .cover-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 34pt;
+    font-weight: 700;
+    line-height: 1.1;
+    color: white;
+  }
+
+  .cover-subtitle {
+    font-size: 13pt;
+    font-weight: 300;
+    color: #93c5fd;
+    margin-top: 4px;
+    letter-spacing: 0.05em;
+  }
+
+  .cover-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 30px;
+    padding: 20mm;
+  }
+
+  .cover-meta-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    width: 100%;
+    max-width: 440px;
+  }
+
+  .cover-meta-card {
+    background: var(--off);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    text-align: center;
+  }
+
+  .cover-meta-card .label {
+    font-size: 7.5pt;
+    font-weight: 700;
+    color: var(--blue);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .cover-meta-card .value {
+    font-size: 9.5pt;
+    font-weight: 600;
+    color: var(--navy);
+  }
+
+  .cover-goal-box {
+    width: 100%;
+    max-width: 440px;
+    background: var(--blue-bg);
+    border-left: 4px solid var(--blue);
+    border-radius: 0 8px 8px 0;
+    padding: 16px 20px;
+  }
+
+  .cover-goal-box .label {
+    font-size: 7.5pt;
+    font-weight: 700;
+    color: var(--blue);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .cover-goal-box p {
+    font-size: 9pt;
+    color: var(--slate);
+    font-style: italic;
+    line-height: 1.5;
+    text-align: left;
+  }
+
+  .cover-footer {
+    border-top: 1px solid var(--border);
+    padding: 10mm 20mm;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 8pt;
+    color: var(--muted);
+  }
+
+  .cover-footer .dot {
+    width: 4px; height: 4px;
+    background: var(--blue);
+    border-radius: 50%;
+    display: inline-block;
+    margin: 0 6px;
+    vertical-align: middle;
+  }
+
+  /* ─── TYPOGRAPHY & SECTIONS ────────────────────────────────── */
+  h2 {
+    font-family: 'Playfair Display', serif;
+    font-size: 14pt;
+    font-weight: 700;
+    color: var(--navy);
+    margin: 4mm 0 3mm;
+    padding-bottom: 5px;
+    border-bottom: 1.5px solid var(--blue);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  h2 .sec-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px; height: 22px;
+    background: var(--blue);
+    color: white;
+    border-radius: 5px;
+    font-family: 'Outfit', sans-serif;
+    font-size: 8.5pt;
+    font-weight: 700;
+  }
+
+  h3 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 11pt;
+    font-weight: 600;
+    color: var(--navy);
+    margin: 3mm 0 1.5mm;
+  }
+
+  p {
+    font-size: 9pt;
+    color: var(--slate);
+    margin-bottom: 8px;
+    line-height: 1.55;
+    text-align: justify;
+  }
+
+  /* ─── INFO CARDS & GRIDS ───────────────────────────────────── */
+  .card-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+    margin: 8px 0;
+  }
+
+  .info-card {
+    background: var(--off);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+  }
+
+  .info-card .card-icon {
+    font-size: 16px;
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    width: 26px;
+    height: 26px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.03);
+  }
+
+  .info-card .card-body {
+    flex: 1;
+  }
+
+  .info-card .card-title {
+    font-size: 8.5pt;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 2px;
+  }
+
+  .info-card .card-text {
+    font-size: 8pt;
+    color: var(--slate);
+    line-height: 1.4;
+  }
+
+  /* ─── TABLES ───────────────────────────────────────────────── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 8px 0;
+  }
+
+  th, td {
+    padding: 8px 10px;
+    font-size: 8pt;
+    text-align: left;
+    border-bottom: 1px solid var(--border);
+  }
+
+  th {
+    background: var(--navy);
+    color: var(--white);
+    font-weight: 600;
+    font-family: 'Outfit', sans-serif;
+  }
+
+  tr:nth-child(even) td {
+    background: var(--off);
+  }
+
+  /* ─── STYLED LISTS ─────────────────────────────────────────── */
+  .styled-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    margin: 6px 0;
+  }
+
+  .styled-list li {
+    display: flex;
+    gap: 10px;
+    background: var(--off);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 6px 10px;
+  }
+
+  .styled-list li .bullet-icon {
+    background: var(--blue);
+    color: white;
+    width: 18px;
+    height: 18px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 7.5pt;
+    font-weight: 700;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  .styled-list li .bullet-content {
+    font-size: 8.5pt;
+    color: var(--slate);
+    line-height: 1.4;
+  }
+
+  .styled-list li .bullet-content strong {
+    color: var(--navy);
+    font-weight: 700;
+  }
+
+  /* ─── DIAGRAMS ────────────────────────────────────────────── */
+  .diagram-wrap {
+    margin: 10px 0;
+    background: var(--off);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 10px;
+  }
+
+  .diagram-title {
+    font-size: 7.5pt;
+    font-weight: 700;
+    color: var(--muted);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    text-align: center;
+  }
+
+  /* ─── FOOTER ───────────────────────────────────────────────── */
+  .page-footer {
+    border-top: 1px solid var(--border);
+    padding-top: 5px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 8pt;
+    color: var(--muted);
+    margin-top: auto;
+  }
+
+  /* ─── PRINT MEDIA ADAPTATION ───────────────────────────────── */
+  @media print {
+    body {
+      background: var(--white);
+    }
+    .sheet {
+      width: 100%;
+      height: 100vh;
+      margin: 0;
+      box-shadow: none;
+      page-break-after: always;
+      padding: 15mm 15mm 10mm 15mm;
+    }
+    .sheet:last-child {
+      page-break-after: avoid;
+    }
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════
+     PAGE 1: COVER SHEET
+     ════════════════════════════════════════════ -->
+<div class="sheet cover">
+  <div class="cover-header">
+    <div class="cover-badge">System Blueprint</div>
+    <div class="cover-title">EduNest</div>
+    <div class="cover-subtitle">Complete Project Scope &amp; Architecture Document</div>
+  </div>
+
+  <div class="cover-body">
+    <div class="cover-meta-grid">
+      <div class="cover-meta-card">
+        <div class="label">Project Title</div>
+        <div class="value">EduNest Counseling Portal</div>
+      </div>
+      <div class="cover-meta-card">
+        <div class="label">Primary Target</div>
+        <div class="value">Intermediate (FSc) Students</div>
+      </div>
+      <div class="cover-meta-card">
+        <div class="label">Core Architecture</div>
+        <div class="value">MERN + Python Flask (AI/RAG)</div>
+      </div>
+      <div class="cover-meta-card">
+        <div class="label">Key Integrations</div>
+        <div class="value">ChromaDB, Cloudinary, YouTube</div>
+      </div>
+    </div>
+
+    <div class="cover-goal-box">
+      <div class="label">Document Description</div>
+      <p>This technical blueprint documents the comprehensive scope of the EduNest platform. It outlines the database collections, role-based authorization matrices, geocoded map views, adaptive counseling classifier model, TensorFlow.js toxicity detection filter, and the textbook-grounded RAG entry-test prep pipeline.</p>
+    </div>
+  </div>
+
+  <div class="cover-footer">
+    <span>EduNest System Blueprint</span>
+    <span>
+      Scope Definition
+      <span class="dot"></span>
+      Technical Architecture
+    </span>
+    <span>A4 Print Copy</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     PAGE 2: EXECUTIVE SUMMARY & TECH STACK
+     ════════════════════════════════════════════ -->
+<div class="sheet">
+  <div class="sheet-body">
+    <h2><span class="sec-num">1</span>Executive Summary &amp; Core Objectives</h2>
+    <p>
+      EduNest is an AI-powered educational counseling, exploration, and admission ecosystem designed to guide intermediate (FSc) students through their university transition. The platform consolidates interest assessment, academic roadmaps, university comparisons, transport maps, admission applications, community discussions, and entry test preparation into a unified platform.
+    </p>
+    <p>
+      The system leverages Machine Learning (ML) to run interest predictions, Natural Language Processing (NLP) to generate study roadmaps, neural networks inside the client browser to block toxic content, and Retrieval-Augmented Generation (RAG) to generate syllabus-grounded, zero-hallucination entry test questions.
+    </p>
+
+    <h2><span class="sec-num">2</span>Technical Stack Matrix</h2>
+    <p>
+      The platform is structured into a secure modern React web frontend, backed by scalable cloud storage and a local Python Flask microserver for executing resource-heavy ML algorithms:
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Layer</th>
+          <th>Technology</th>
+          <th>Purpose</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>Frontend SPA</strong></td>
+          <td>React.js (Vite), TailwindCSS, Framer Motion</td>
+          <td>Responsive user interfaces, animations, dynamic portals</td>
+        </tr>
+        <tr>
+          <td><strong>Core Databases</strong></td>
+          <td>Firebase Firestore, LocalStorage</td>
+          <td>Real-time chat, applications, profile storage, bookmarks</td>
+        </tr>
+        <tr>
+          <td><strong>Storage &amp; Media</strong></td>
+          <td>Firebase Storage &amp; Cloudinary REST API</td>
+          <td>Secure hosting, avatars, and parallel proof uploads</td>
+        </tr>
+        <tr>
+          <td><strong>Geography &amp; Maps</strong></td>
+          <td>Leaflet.js, OpenStreetMap Tiles (CartoDB)</td>
+          <td>Campus mapping, geolocating, and bus routes</td>
+        </tr>
+        <tr>
+          <td><strong>ML Backend</strong></td>
+          <td>Python Flask Server (WSGI)</td>
+          <td>Hosts Random Forest models and vector databases</td>
+        </tr>
+        <tr>
+          <td><strong>Vector Indexing</strong></td>
+          <td>ChromaDB, sentence-transformers</td>
+          <td>Sentence embedding indexing for text chunk storage</td>
+        </tr>
+        <tr>
+          <td><strong>Cognitive AI</strong></td>
+          <td>Groq Llama 3.3 API, toxicity (TensorFlow.js)</td>
+          <td>Generates roadmaps, MDCAT questions, blocks slurs</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <div class="diagram-wrap">
+      <div class="diagram-title">Fig. 1 — High-Level Architecture Flow</div>
+      <svg viewBox="0 0 540 85" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;">
+        <rect x="5" y="15" width="95" height="40" rx="6" fill="#1e3a8a" stroke="#bfdbfe" stroke-width="1"/>
+        <text x="52.5" y="32" text-anchor="middle" font-family="Outfit" font-size="8" fill="white" font-weight="bold">React SPA</text>
+        <text x="52.5" y="44" text-anchor="middle" font-family="Source Sans 3" font-size="7" fill="#93c5fd">Tailwind &amp; Leaflet</text>
+
+        <path d="M 100 35 L 135 35" fill="none" stroke="#2563eb" stroke-width="1.5" marker-end="url(#arrow)"/>
+
+        <rect x="140" y="15" width="105" height="40" rx="6" fill="#065f46" stroke="#a7f3d0" stroke-width="1"/>
+        <text x="192.5" y="32" text-anchor="middle" font-family="Outfit" font-size="8" fill="white" font-weight="bold">Firebase Engine</text>
+        <text x="192.5" y="44" text-anchor="middle" font-family="Source Sans 3" font-size="7" fill="#6ee7b7">Firestore, Auth, Chat</text>
+
+        <path d="M 245 35 L 280 35" fill="none" stroke="#2563eb" stroke-width="1.5"/>
+
+        <rect x="285" y="15" width="115" height="40" rx="6" fill="#7c2d12" stroke="#ffedd5" stroke-width="1"/>
+        <text x="342.5" y="32" text-anchor="middle" font-family="Outfit" font-size="8" fill="white" font-weight="bold">Python Flask Server</text>
+        <text x="342.5" y="44" text-anchor="middle" font-family="Source Sans 3" font-size="7" fill="#fed7aa">Classifier &amp; Retrieval</text>
+
+        <path d="M 400 35 L 435 35" fill="none" stroke="#2563eb" stroke-width="1.5"/>
+
+        <rect x="440" y="15" width="95" height="40" rx="6" fill="#4c1d95" stroke="#ddd6fe" stroke-width="1"/>
+        <text x="487.5" y="32" text-anchor="middle" font-family="Outfit" font-size="8" fill="white" font-weight="bold">Vector &amp; LLM</text>
+        <text x="487.5" y="44" text-anchor="middle" font-family="Source Sans 3" font-size="7" fill="#c7d2fe">ChromaDB &amp; Groq</text>
+
+        <defs>
+          <marker id="arrow" viewBox="0 0 10 10" refX="5" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
+            <path d="M 0 0 L 10 5 L 0 10 z" fill="#2563eb"/>
+          </marker>
+        </defs>
+      </svg>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <span>EduNest Complete Project Scope</span>
+    <span>Section 1–2</span>
+    <span>Page 2</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     PAGE 3: DATABASE SCHEMA & ROLE-BASED ACCESS
+     ════════════════════════════════════════════ -->
+<div class="sheet">
+  <div class="sheet-body">
+    <h2><span class="sec-num">3</span>Core Cloud Databases Schemas</h2>
+    <p>
+      The platform operates with four key collection schemas defined inside Firebase Firestore to link profiles, admissions, and institutional credentials:
+    </p>
+
+    <div class="card-grid">
+      <div class="info-card">
+        <div class="card-icon">👤</div>
+        <div class="card-body">
+          <div class="card-title">Users Collection (`/users/{uid}`)</div>
+          <div class="card-text">
+            Stores auth profiles. Fields include: `role` (Student, Manager, Admin), `isApproved` (manager gate), `city` (for maps), `academicProfile` (matric/inter %), and `interest` (assessment prediction result).
+          </div>
+        </div>
+      </div>
+      <div class="info-card">
+        <div class="card-icon">🏛️</div>
+        <div class="card-body">
+          <div class="card-title">Universities Collection (`/universities/{id}`)</div>
+          <div class="card-text">
+            Stores university listings. Fields include: `name`, `logo` (Cloudinary URL), `description`, `coords` (geopoint), `programs` (references), `rating` (averaged reviews), and `infrastructure` (photo arrays).
+          </div>
+        </div>
+      </div>
+      <div class="info-card">
+        <div class="card-icon">🎓</div>
+        <div class="card-body">
+          <div class="card-title">Degrees Collection (`/degrees/{id}`)</div>
+          <div class="card-text">
+            Aggregated program explorer. Fields: `degreeName`, `universityId` (pointer), `category` (CS, Pre-Med), `feePerSemester`, `duration`, `seats`, and `eligibilityCriteria` (minimum FSc %).
+          </div>
+        </div>
+      </div>
+      <div class="info-card">
+        <div class="card-icon">📝</div>
+        <div class="card-body">
+          <div class="card-title">Applications Collection (`/applications/{id}`)</div>
+          <div class="card-text">
+            Admissions pipeline. Fields: `studentId` (pointer), `universityId` (pointer), `selectedDegree`, `matricRoll`, `resultCard` (Cloudinary file link), and `status` (Pending, Approved, Rejected).
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <h2><span class="sec-num">4</span>User Roles Access Grid</h2>
+    <p>
+      To prevent unauthorized privilege escalations, Firestore Rules and Frontend Guards restrict CRUD actions to specific user roles:
+    </p>
+
+    <table>
+      <thead>
+        <tr>
+          <th>Module Block</th>
+          <th>Student Role</th>
+          <th>Manager Role</th>
+          <th>Admin Role</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td><strong>User Accounts &amp; Approvals</strong></td>
+          <td>Read / Write (Self registration &amp; profile updates)</td>
+          <td>Read / Write (Self registration, waits in approval status)</td>
+          <td>Read / Write (Approve/Reject managers, Delete/Ban accounts)</td>
+        </tr>
+        <tr>
+          <td><strong>Interest Assessment</strong></td>
+          <td>Read / Write (Take adaptive quiz, save predicted interest field)</td>
+          <td>No Access</td>
+          <td>Read Only (View predicted interest fields in profiles)</td>
+        </tr>
+        <tr>
+          <td><strong>Study Roadmaps &amp; Exams</strong></td>
+          <td>Read / Write (Generate AI milestone timelines, take topic tests)</td>
+          <td>No Access</td>
+          <td>No Access</td>
+        </tr>
+        <tr>
+          <td><strong>Mock Entrance Exams</strong></td>
+          <td>Read / Write (Generate textbook-grounded RAG questions, take timed MDCAT/ECAT tests with active tab anti-cheat detection)</td>
+          <td>No Access</td>
+          <td>No Access</td>
+        </tr>
+        <tr>
+          <td><strong>Certificates &amp; Awards</strong></td>
+          <td>Read Only (Earn certificates by passing grand tests with &gt;=75% score, view &amp; download)</td>
+          <td>No Access</td>
+          <td>Read Only (Audit and view all issued certificates across the system)</td>
+        </tr>
+        <tr>
+          <td><strong>University Listings</strong></td>
+          <td>Read Only (Browse campuses by location proximity and matching score, write ratings &amp; reviews)</td>
+          <td>Read / Write (Onboard and manage university profile settings, descriptions, galleries, logo)</td>
+          <td>Read Only (Browse listings, delete toxic or spam reviews)</td>
+        </tr>
+        <tr>
+          <td><strong>Academic Programs</strong></td>
+          <td>Read Only (Explore degree catalog, filter semester fees &amp; eligibility)</td>
+          <td>Read / Write (Onboard and manage university degrees &amp; eligibility criteria)</td>
+          <td>No Access</td>
+        </tr>
+        <tr>
+          <td><strong>Faculty Profiles</strong></td>
+          <td>Read Only (View university faculty details on university pages)</td>
+          <td>Read / Write (Add, update, or remove faculty members and headshots)</td>
+          <td>No Access</td>
+        </tr>
+        <tr>
+          <td><strong>Transport Management</strong></td>
+          <td>Read Only (Check routes, stops, and geographic paths on Leaflet map overlays)</td>
+          <td>Read / Write (Add and manage bus details and route stop coordinates)</td>
+          <td>No Access</td>
+        </tr>
+        <tr>
+          <td><strong>Admissions Engine</strong></td>
+          <td>Read / Write (Apply, upload matric/inter result cards to Cloudinary, download PDF worksheet)</td>
+          <td>Read / Write (Approve/Reject applications, view transcripts, export reports)</td>
+          <td>No Access</td>
+        </tr>
+        <tr>
+          <td><strong>Scholarship Matcher</strong></td>
+          <td>Read Only (Explore matched merit/need awards based on FSc eligibility)</td>
+          <td>Read / Write (Add and update scholarship listings)</td>
+          <td>No Access</td>
+        </tr>
+        <tr>
+          <td><strong>Community Feed / Forum</strong></td>
+          <td>Read/Write (Publish posts, like posts, add comments/replies, delete own posts). Subject to TensorFlow.js moderation.</td>
+          <td>Read/Write (Publish posts representing university, like posts, add comments, delete own posts). Subject to TensorFlow.js moderation.</td>
+          <td>Read/Write/Delete (Global Moderator: can publish, comment, and delete ANY post/comment. Subject to TensorFlow.js moderation).</td>
+        </tr>
+        <tr>
+          <td><strong>Direct Messaging (Chat)</strong></td>
+          <td>Read/Write (Direct chat with university managers)</td>
+          <td>Read/Write (Direct chat with interested students)</td>
+          <td>No Access (Direct messages are private to protect user privacy)</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="page-footer">
+    <span>EduNest Complete Project Scope</span>
+    <span>Section 3–4</span>
+    <span>Page 3</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     PAGE 4: COGNITIVE MODULES (COUNSELING & ROADMAPS)
+     ════════════════════════════════════════════ -->
+<div class="sheet">
+  <div class="sheet-body">
+    <h2><span class="sec-num">5</span>Functional Modules Deep Dive: Modules 1–4</h2>
+
+    <h3>A. Authentication, Onboarding &amp; Security</h3>
+    <p>
+      During student registration, the React app triggers <strong>EmailJS</strong> to send a 6-digit OTP verification code to the student's email, which must be matched to activate the account. When a university manager registers, they submit credentials and institutional proof. React Router guards check their `isApproved` status from Firestore, preventing dashboard access until an Admin marks it as `true`.
+    </p>
+    <p>
+      <strong>Cloudinary Image Upload Engine:</strong> To avoid database overhead, images are hosted on Cloudinary via its client-side REST API. It uses `uploadToCloudinary` for profile pics and faculty headshots, and concurrent `Promise.all` batch uploads (`uploadMultipleToCloudinary`) for campus infrastructure galleries, transport buses, and academic result cards, ensuring faster load times without blocking the UI.
+    </p>
+
+    <h3>B. Interactive Maps &amp; Location Services</h3>
+    <p>
+      During university onboarding, managers search for coordinates or drag a pin on a Leaflet map. Geocoding (address search) is powered by Leaflet and the Nominatim API without requiring paid external keys. On the student portal, Leaflet renders the campus location using light or dark theme-aware layers (CartoDB Voyager or CartoDB Dark Matter). Custom SVG icons are utilized instead of default Leaflet markers to prevent production build issues.
+    </p>
+
+    <h3>C. Student Counseling &amp; Interest Assessment</h3>
+    <p>
+      Standard student counseling uses a <strong>Random Forest Classifier</strong> trained in Python and hosted on the Flask microserver. The frontend maps adaptive quiz responses (70 questions across 7 fields: Computer Science, Mathematics, Physics, Biology, Chemistry, Psychology, Graphics) into a 15-dimensional vector. The Flask `/predict-step` endpoint uses the model's `predict_proba()` method to compute real-time probability estimates for the fields.
+    </p>
+    <p>
+      The quiz adapts dynamically: <em>Phase 1</em> asks baseline questions from each category. If interest in a single category crosses 75%, it skips straight to Phase 2. <em>Phase 2</em> asks harder drill-down questions. If the student answers "Yes", it proceeds; if "No", the engine applies a <strong>40% penalty decay</strong> to that field's score and switches to the second highest category. <em>Phase 3</em> uses contrast questions as tie-breakers if scores are close after 18 questions.
+    </p>
+
+    <h3>D. Study Roadmaps &amp; Resource Integration</h3>
+    <p>
+      Based on the predicted interest, the system queries the Groq API (Llama 3.3) to generate a structured JSON timeline of milestones and sub-topics, saved to Firestore under `/roadmaps`. Each topic in the roadmap includes an interactive Learning Hub with integrated tutorial aids:
+    </p>
+    <ul class="styled-list">
+      <li>
+        <span class="bullet-icon">🎥</span>
+        <span class="bullet-content"><strong>YouTube Video Tutorials:</strong> Dynamically fetches video tutorials using the YouTube Search API v3 based on a query combining the skill and topic title. If the API key is inactive, it falls back to a curated local set.</span>
+      </li>
+      <li>
+        <span class="bullet-icon">🎓</span>
+        <span class="bullet-content"><strong>Offline Coursera Recommendation Engine:</strong> Embeds a local dataset of Coursera courses. It scores courses using a local heuristic: exact skill match (+100 points), keyword match (+30 points), topic specificity (+80 points), rating boost (+15 * rating), and irrelevant noise penalty (-500 points). The top 15 highest-ranked courses are displayed.</span>
+      </li>
+    </ul>
+  </div>
+
+  <div class="page-footer">
+    <span>EduNest Complete Project Scope</span>
+    <span>Section 5 (A–D)</span>
+    <span>Page 4</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     PAGE 5: ENGAGEMENT & EXPLORATION MODULES
+     ════════════════════════════════════════════ -->
+<div class="sheet">
+  <div class="sheet-body">
+    <h2><span class="sec-num">5</span>Functional Modules Deep Dive: Modules 5–11</h2>
+
+    <h3>E. AI Hybrid Recommendation System</h3>
+    <p>
+      When a student searches for universities, the system ranks listings using a custom scoring formula:
+      $$\text{Score } (100) = \text{Academic Match (50%)} + \text{Geographical Proximity (30%)} + \text{Review Ratings (20%)} $$
+      The system scans degrees for terms related to the student's interest to assign the Academic Match (up to 50 points). Proximity is calculated using the browser's Geolocation API against campus coordinate variables using the <strong>Haversine Formula</strong> to compute distance.
+    </p>
+
+    <h3>F. Student Admissions &amp; Application Builder</h3>
+    <p>
+      Students compile their academic credentials (matriculation/intermediate scores) and upload their result cards directly to Cloudinary. The system constructs an admission application worksheet. The application is compiled on the client-side and converted into an A4 PDF using the <strong>html2pdf.js</strong> library, enabling students to download their worksheets.
+    </p>
+
+    <h3>G. Financial Aid &amp; Scholarship Systems</h3>
+    <p>
+      Onboards national scholarship schemes (e.g., HEC Needs Based, PEEF, university-specific merit grants) with a central eligibility matcher. When a student updates their academic profile, the system filters matching scholarships based on board, intermediate percentage, and household income thresholds, highlighting deadlines and application URLs.
+    </p>
+
+    <h3>H. Centralized Academic Programs Explorer</h3>
+    <p>
+      Consolidates all degree programs across onboarding universities into a single explorer catalog. Students search, filter by discipline (CS, Engineering, Medical, Arts), semester fees, and eligibility scores, resolving the fragmentation of programs scattered on separate university websites.
+    </p>
+
+    <h3>I. Transport Routing &amp; Bus Locator</h3>
+    <p>
+      Managers onboard university transit routes, bus numbers, and stops. Leaflet maps display bus paths overlaid on the campus map, allowing students to check route coverage, proximity to their location, and calculate travel times based on geocoded routes.
+    </p>
+
+    <h3>J. Moderated Community Chatrooms</h3>
+    <p>
+      A real-time forum using Firestore listener subscriptions allows students, managers, and admins to interact in distinct rooms (e.g., General, CS, MDCAT prep). To maintain a clean environment, a client-side toxicity filter is integrated:
+    </p>
+    <ul class="styled-list">
+      <li>
+        <span class="bullet-icon">🛡️</span>
+        <span class="bullet-content"><strong>TensorFlow.js Toxicity Classifier:</strong> Intercepts all chat posts in the browser. It scans text locally across 7 categories (insults, threats, slurs, etc.). If confidence in any category exceeds <strong>85%</strong>, it blocks publication and triggers an alert warning, keeping the forum safe without backend overhead.</span>
+      </li>
+    </ul>
+  </div>
+
+  <div class="page-footer">
+    <span>EduNest Complete Project Scope</span>
+    <span>Section 5 (E–J)</span>
+    <span>Page 5</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     PAGE 6: PROPOSED ENTRY TEST RAG MODULE
+     ════════════════════════════════════════════ -->
+<div class="sheet">
+  <div class="sheet-body">
+    <h2><span class="sec-num">6</span>Proposed RAG Ingestion Pipeline &amp; Architecture</h2>
+    <p>
+      To support MDCAT and ECAT entry test preparation, the system implements a secure, local <strong>Retrieval-Augmented Generation (RAG)</strong> pipeline. This pipeline generates syllabus-grounded mock test questions, ensuring that the questions match FSc textbooks and preventing out-of-syllabus terms or errors common in general LLMs.
+    </p>
+    <p>
+      The architecture is split into an offline ingestion pipeline and a runtime question generation sequence:
+    </p>
+
+    <div class="diagram-wrap">
+      <div class="diagram-title">Fig. 2 — RAG Offline Ingestion Pipeline</div>
+      <svg viewBox="0 0 540 55" xmlns="http://www.w3.org/2000/svg" style="width:100%;height:auto;display:block;">
+        <!-- Steps -->
+        <rect x="5" y="10" width="105" height="35" rx="5" fill="#f8fafc" stroke="#2563eb" stroke-width="1.5"/>
+        <text x="57.5" y="22" text-anchor="middle" font-family="Outfit" font-size="7.5" fill="#0f172a" font-weight="bold">1. Text Extraction</text>
+        <text x="57.5" y="32" text-anchor="middle" font-family="Source Sans 3" font-size="6.5" fill="#64748b">pypdf parser (PDFs)</text>
+
+        <line x1="110" y1="27" x2="140" y2="27" stroke="#3b82f6" stroke-width="1.5"/>
+        <polygon points="140,27 135,24 135,30" fill="#3b82f6"/>
+
+        <rect x="145" y="10" width="110" height="35" rx="5" fill="#f8fafc" stroke="#2563eb" stroke-width="1.5"/>
+        <text x="200" y="22" text-anchor="middle" font-family="Outfit" font-size="7.5" fill="#0f172a" font-weight="bold">2. Dynamic Chunking</text>
+        <text x="200" y="32" text-anchor="middle" font-family="Source Sans 3" font-size="6.5" fill="#64748b">500-1000 char overlap</text>
+
+        <line x1="255" y1="27" x2="285" y2="27" stroke="#3b82f6" stroke-width="1.5"/>
+        <polygon points="285,27 280,24 280,30" fill="#3b82f6"/>
+
+        <rect x="290" y="10" width="105" height="35" rx="5" fill="#f8fafc" stroke="#2563eb" stroke-width="1.5"/>
+        <text x="342.5" y="22" text-anchor="middle" font-family="Outfit" font-size="7.5" fill="#0f172a" font-weight="bold">3. Vectorization</text>
+        <text x="342.5" y="32" text-anchor="middle" font-family="Source Sans 3" font-size="6.5" fill="#64748b">all-MiniLM-L6-v2</text>
+
+        <line x1="395" y1="27" x2="425" y2="27" stroke="#3b82f6" stroke-width="1.5"/>
+        <polygon points="425,27 420,24 420,30" fill="#3b82f6"/>
+
+        <rect x="430" y="10" width="105" height="35" rx="5" fill="#f8fafc" stroke="#2563eb" stroke-width="1.5"/>
+        <text x="482.5" y="22" text-anchor="middle" font-family="Outfit" font-size="7.5" fill="#0f172a" font-weight="bold">4. Local DB Storage</text>
+        <text x="482.5" y="32" text-anchor="middle" font-family="Source Sans 3" font-size="6.5" fill="#64748b">ChromaDB index files</text>
+      </svg>
+    </div>
+
+    <ul class="styled-list">
+      <li>
+        <span class="bullet-icon">📄</span>
+        <span class="bullet-content"><strong>Offline Ingestion:</strong> FSc Textbook PDFs (Physics, Chemistry, Biology) in `python_backend/data/syllabus/` are read page-by-page using `pypdf`, chunked into overlapping passages (500–1000 chars), embedded into 384-dimensional vectors via a local CPU-based `all-MiniLM-L6-v2` model, and indexed in a local `ChromaDB` store.</span>
+      </li>
+      <li>
+        <span class="bullet-icon">⚙️</span>
+        <span class="bullet-content"><strong>Runtime Search &amp; Prompt Augmentation:</strong> When the student selects a syllabus topic, the Flask app converts the topic query to a vector, finds the top 3–5 matching paragraphs in ChromaDB, and inserts these paragraphs as grounding context into the prompt template.</span>
+      </li>
+      <li>
+        <span class="bullet-icon">🧠</span>
+        <span class="bullet-content"><strong>Zero-Hallucination Generation:</strong> The augmented prompt is sent to the server-side Groq Llama 3.3 API, which generates multiple-choice questions (MCQs) restricted strictly to the context. The generated questions are validated into a clean JSON structure containing questions, options, and correct answers, and returned to the React frontend.</span>
+      </li>
+    </ul>
+
+    <h3>Security &amp; Cost Feasibility</h3>
+    <p>
+      The local embedding search processes queries at zero operational cost, requiring no external vector database fees. Private LLM API credentials are secure as they are stored inside Flask server environment variables, never exposed to client-side scripts. In case of API limits or network issues, a local backup file (`fallback_mcqs.json`) is maintained to ensure uninterrupted mock test generation.
+    </p>
+  </div>
+
+  <div class="page-footer">
+    <span>EduNest Complete Project Scope</span>
+    <span>Section 6 &amp; Summary</span>
+    <span>Page 6</span>
+  </div>
+</div>
+
+</body>
+</html>

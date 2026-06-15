@@ -29,6 +29,3 @@ dist-ssr
 python_backend/data/syllabus/
 python_backend/__pycache__/
 python_backend/**/*.pyc
-
-# Local Reference Guides
-RAW/

@@ -1,0 +1,859 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EduNest – RAG Ingestion &amp; Live Exam Architecture Report</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Source+Sans+3:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  /* ─── RESET & BASE SYSTEM ──────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --navy:      #0f172a;
+    --navy-lt:   #1e293b;
+    --blue:      #10b981; /* EduNest Emerald green theme */
+    --blue-dk:   #047857;
+    --blue-bg:   #ecfdf5;
+    --slate:     #334155;
+    --muted:     #64748b;
+    --border:    #e2e8f0;
+    --white:     #ffffff;
+    --off:       #f8fafc;
+    --green:     #10b981;
+    --green-bg:  #f0fdf4;
+    --amber:     #d97706;
+    --amber-bg:  #fffbeb;
+    --red:       #ef4444;
+    --red-bg:    #fef2f2;
+  }
+
+  html { font-size: 10pt; }
+
+  body {
+    font-family: 'Source Sans 3', sans-serif;
+    color: var(--slate);
+    background: #cbd5e1;
+    line-height: 1.5;
+    padding: 10px 0;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
+  }
+
+  /* ─── A4 PAGE-SHEET SYSTEM (Print Optimized) ────────────────── */
+  .sheet {
+    background: var(--white);
+    width: 210mm;
+    height: 297mm;
+    padding: 20mm 20mm 15mm 20mm;
+    margin: 25px auto;
+    box-shadow: 0 4px 20px rgba(15, 23, 42, 0.15);
+    position: relative;
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+  }
+
+  .sheet-body {
+    flex: 1;
+  }
+
+  /* ─── COVER PAGE ───────────────────────────────────────────── */
+  .cover {
+    justify-content: space-between;
+    padding: 0;
+  }
+
+  .cover-header {
+    height: 110mm;
+    background: linear-gradient(135deg, var(--navy) 0%, #064e3b 60%, #10b981 100%);
+    padding: 30mm 20mm;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    color: white;
+  }
+
+  .cover-badge {
+    align-self: flex-start;
+    background: rgba(255, 255, 255, 0.15);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #a7f3d0;
+    font-size: 8.5pt;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    padding: 4px 14px;
+    border-radius: 20px;
+    margin-bottom: 20px;
+  }
+
+  .cover-title {
+    font-family: 'Outfit', sans-serif;
+    font-size: 30pt;
+    font-weight: 800;
+    line-height: 1.15;
+    color: white;
+    letter-spacing: -1px;
+  }
+
+  .cover-subtitle {
+    font-size: 13pt;
+    font-weight: 300;
+    color: #a7f3d0;
+    margin-top: 10px;
+  }
+
+  .cover-body {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
+    gap: 30px;
+    padding: 15mm 20mm;
+  }
+
+  .cover-meta-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+    width: 100%;
+    max-width: 480px;
+  }
+
+  .cover-meta-card {
+    background: var(--off);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px 16px;
+    text-align: center;
+  }
+
+  .cover-meta-card .label {
+    font-size: 7.5pt;
+    font-weight: 700;
+    color: var(--blue-dk);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .cover-meta-card .value {
+    font-size: 9.5pt;
+    font-weight: 700;
+    color: var(--navy);
+  }
+
+  .cover-goal-box {
+    width: 100%;
+    max-width: 480px;
+    background: var(--blue-bg);
+    border-left: 4px solid var(--blue);
+    border-radius: 0 8px 8px 0;
+    padding: 15px 20px;
+  }
+
+  .cover-goal-box .label {
+    font-size: 7.5pt;
+    font-weight: 700;
+    color: var(--blue-dk);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 4px;
+  }
+
+  .cover-goal-box p {
+    font-size: 9pt;
+    color: var(--slate);
+    line-height: 1.5;
+  }
+
+  .cover-footer {
+    border-top: 1px solid var(--border);
+    padding: 10mm 20mm;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 8pt;
+    color: var(--muted);
+  }
+
+  /* ─── TYPOGRAPHY & SECTIONS ────────────────────────────────── */
+  h2 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 14pt;
+    font-weight: 800;
+    color: var(--navy);
+    margin: 4mm 0 3mm;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--blue);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  h2 .sec-num {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 22px;
+    height: 22px;
+    background: var(--blue);
+    color: white;
+    border-radius: 6px;
+    font-size: 9pt;
+    font-weight: 800;
+  }
+
+  h3 {
+    font-family: 'Outfit', sans-serif;
+    font-size: 11pt;
+    font-weight: 700;
+    color: var(--navy-lt);
+    margin: 4mm 0 2mm 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  h3::before {
+    content: "";
+    display: inline-block;
+    width: 4px;
+    height: 12px;
+    background: var(--blue);
+    border-radius: 2px;
+  }
+
+  p {
+    font-size: 9pt;
+    color: var(--slate);
+    margin-bottom: 8px;
+    line-height: 1.5;
+    text-align: justify;
+  }
+
+  /* ─── VISUAL DIAGRAMS ──────────────────────────────────────── */
+  .diagram-box {
+    background: var(--off);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+    margin: 8px 0;
+    font-family: 'Outfit', sans-serif;
+  }
+
+  .flow-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .flow-node {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 8px 10px;
+    flex: 1;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+  }
+
+  .flow-node.highlight {
+    border-color: var(--blue);
+    background: var(--blue-bg);
+  }
+
+  .flow-node-title {
+    font-size: 8pt;
+    font-weight: 700;
+    color: var(--navy);
+    margin-bottom: 2px;
+  }
+
+  .flow-node-desc {
+    font-size: 7pt;
+    color: var(--muted);
+    line-height: 1.2;
+  }
+
+  .flow-arrow {
+    font-size: 12pt;
+    color: var(--blue);
+    font-weight: 700;
+  }
+
+  /* ─── STEPS & BLOCKS ────────────────────────────────────────── */
+  .step-list {
+    margin: 8px 0;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .step-item {
+    display: flex;
+    gap: 10px;
+    background: var(--off);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 10px 14px;
+  }
+
+  .step-badge {
+    width: 20px;
+    height: 20px;
+    background: var(--navy-lt);
+    color: white;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 7.5pt;
+    font-weight: 700;
+    flex-shrink: 0;
+  }
+
+  .step-content {
+    flex: 1;
+  }
+
+  .step-label {
+    font-size: 8.5pt;
+    font-weight: 700;
+    color: var(--navy);
+  }
+
+  .step-text {
+    font-size: 8pt;
+    color: var(--slate);
+    line-height: 1.4;
+    margin-top: 1px;
+  }
+
+  /* ─── CALLOUT BOXES ────────────────────────────────────────── */
+  .callout {
+    background: var(--blue-bg);
+    border-left: 4px solid var(--blue);
+    border-radius: 0 8px 8px 0;
+    padding: 10px 14px;
+    margin: 8px 0;
+  }
+
+  .callout.warning {
+    background: var(--amber-bg);
+    border-left-color: var(--amber);
+  }
+
+  .callout.danger {
+    background: var(--red-bg);
+    border-left-color: var(--red);
+  }
+
+  .callout-title {
+    font-size: 8pt;
+    font-weight: 700;
+    color: var(--navy);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 2px;
+  }
+
+  .callout p {
+    font-size: 8.5pt;
+    color: var(--slate);
+    margin: 0;
+    line-height: 1.4;
+  }
+
+  /* ─── CODE BLOCKS ──────────────────────────────────────────── */
+  .code-block {
+    background: #0f172a;
+    border: 1px solid #1e293b;
+    border-radius: 8px;
+    padding: 10px 14px;
+    margin: 6px 0;
+  }
+
+  .code-block pre {
+    font-family: 'Courier New', monospace;
+    font-size: 8pt;
+    color: #94a3b8;
+    line-height: 1.45;
+    white-space: pre-wrap;
+  }
+
+  .code-block .st { color: #10b981; }
+  .code-block .kw { color: #f43f5e; }
+  .code-block .cm { color: #64748b; font-style: italic; }
+
+  /* ─── FOOTER ───────────────────────────────────────────────── */
+  .page-footer {
+    border-top: 1px solid var(--border);
+    padding-top: 8px;
+    display: flex;
+    justify-content: space-between;
+    font-size: 7.5pt;
+    color: var(--muted);
+  }
+
+  .page-footer .dot {
+    width: 3px; height: 3px;
+    background: var(--blue);
+    border-radius: 50%;
+    display: inline-block;
+    margin: 0 4px;
+    vertical-align: middle;
+    margin-bottom: 2px;
+  }
+
+  /* ─── PRINT MEDIA ──────────────────────────────────────────── */
+  @media print {
+    body {
+      background: var(--white);
+      padding: 0;
+    }
+    .sheet {
+      width: 210mm;
+      height: 297mm;
+      margin: 0;
+      box-shadow: none;
+      page-break-after: always;
+      padding: 20mm 20mm 15mm 20mm;
+    }
+    .sheet:last-child {
+      page-break-after: avoid;
+    }
+  }
+</style>
+</head>
+<body>
+
+<!-- ════════════════════════════════════════════
+     PAGE 1: COVER PAGE
+     ════════════════════════════════════════════ -->
+<div class="sheet cover">
+  <div class="cover-header">
+    <div class="cover-badge">FYP Thesis &amp; Technical Report</div>
+    <div class="cover-title">EduNest</div>
+    <div class="cover-subtitle">RAG Ingestion Pipeline &amp; Secure Exam Server Guide</div>
+  </div>
+
+  <div class="cover-body">
+    <div class="cover-meta-grid">
+      <div class="cover-meta-card">
+        <div class="label">Vector Database</div>
+        <div class="value">ChromaDB Persistent Client</div>
+      </div>
+      <div class="cover-meta-card">
+        <div class="label">Embeddings Model</div>
+        <div class="value">openai/text-embedding-3-small</div>
+      </div>
+      <div class="cover-meta-card">
+        <div class="label">Inference Model</div>
+        <div class="value">Llama-3.3-70b-versatile (Groq)</div>
+      </div>
+      <div class="cover-meta-card">
+        <div class="label">Client Integration</div>
+        <div class="value">React Context + Framer Motion</div>
+      </div>
+    </div>
+
+    <div class="cover-goal-box">
+      <div class="label">Report Overview</div>
+      <p>This technical report outlines the end-to-end design, technology stack, and step-by-step data flows of the EduNest Entry Test Module. It details the offline FSc syllabus document ingestion pipeline, backend Flask semantic vector search, Groq Llama 3.3 batch question generation, dual-layered fallback safety loops, and React-side anti-cheat mock testing logic.</p>
+    </div>
+  </div>
+
+  <div class="cover-footer">
+    <span>EduNest Documentation</span>
+    <span>
+      Vector Ingestion
+      <span class="dot"></span>
+      Flask REST API
+      <span class="dot"></span>
+      Mock Test Engine
+      <span class="dot"></span>
+      Anti-Cheat Tracker
+    </span>
+    <span>Page 1</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     PAGE 2: INTRODUCTION & SYSTEM ARCHITECTURE
+     ════════════════════════════════════════════ -->
+<div class="sheet">
+  <div class="sheet-body">
+    <h2><span class="sec-num">1</span>System Architecture &amp; RAG Flow</h2>
+    <p>
+      Traditional AI question generation systems rely on client-side prompt engineering, passing curriculum lists to an LLM. This model suffers from three critical vulnerabilities: (1) hallucinations where the model creates equations or facts outside the local Pakistani board syllabus, (2) security risk from exposing raw API authorization keys in client browsers, and (3) lack of compliance with official entry test marking structures (MDCAT/ECAT).
+    </p>
+    <p>
+      To resolve these challenges, EduNest leverages a secure <b>Retrieval-Augmented Generation (RAG)</b> architecture. In this design, the system behaves like an "open-book exam" coordinator. When generating mock tests, the server semantically queries local, verified FSc textbooks (Biology, Chemistry, Physics) stored as vectorized chunks, and forces the generative model to restrict its output context strictly to those textbook extracts.
+    </p>
+
+    <h3>Double-Phase Architecture</h3>
+    <p>
+      The architecture is split into two separate technical operations:
+    </p>
+    <ul class="step-text" style="list-style-position: inside; margin-bottom: 12px; display: flex; flex-direction: column; gap: 4px;">
+      <li><b>Phase A: Offline Ingestion Pipeline:</b> Extracts text from official textbook PDFs, splits it into overlapping semantic blocks, embeds it into coordinate vectors, and stores it locally inside a ChromaDB database.</li>
+      <li><b>Phase B: Live Exam Generation API:</b> Semantically queries the vector store when a student launches a mock test, structures context parameters, invokes Groq high-speed inference, and validates JSON questions.</li>
+    </ul>
+
+    <div class="diagram-box">
+      <div style="font-size: 8.5pt; font-weight:700; color: var(--navy); margin-bottom: 6px; text-align: center;">Phase A: Ingestion Flow (Run Offline)</div>
+      <div class="flow-row">
+        <div class="flow-node">
+          <div class="flow-node-title">Textbooks</div>
+          <div class="flow-node-desc">Official FSc PDFs</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node">
+          <div class="flow-node-title">pypdf Parser</div>
+          <div class="flow-node-desc">800c blocks, 100c overlap</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node">
+          <div class="flow-node-title">OpenRouter API</div>
+          <div class="flow-node-desc">1536-dim embeddings</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node highlight">
+          <div class="flow-node-title">ChromaDB</div>
+          <div class="flow-node-desc">SQLite Local Indices</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="diagram-box">
+      <div style="font-size: 8.5pt; font-weight:700; color: var(--navy); margin-bottom: 6px; text-align: center;">Phase B: Exam Generation Flow (Run Live)</div>
+      <div class="flow-row">
+        <div class="flow-node">
+          <div class="flow-node-title">Student Selects Test</div>
+          <div class="flow-node-desc">MDCAT or ECAT subject</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node">
+          <div class="flow-node-title">Semantic Search</div>
+          <div class="flow-node-desc">Cosine similarity on DB</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node">
+          <div class="flow-node-title">Groq LLM Batch</div>
+          <div class="flow-node-desc">Context Prompting</div>
+        </div>
+        <div class="flow-arrow">→</div>
+        <div class="flow-node highlight">
+          <div class="flow-node-title">React Client UI</div>
+          <div class="flow-node-desc">Anti-Cheat Mock Render</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <span>EduNest Documentation</span>
+    <span>Section 1: RAG System Architecture</span>
+    <span>Page 2</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     PAGE 3: OFFLINE INGESTION PIPELINE (ingest.py)
+     ════════════════════════════════════════════ -->
+<div class="sheet">
+  <div class="sheet-body">
+    <h2><span class="sec-num">2</span>Offline Ingestion Pipeline (`ingest.py`)</h2>
+    <p>
+      The document ingestion script indexes official textbooks into coordinate vectors. This happens once, storing high-quality, extractable textbook content locally to support offline RAG operations.
+    </p>
+
+    <div class="step-list">
+      <div class="step-item">
+         <div class="step-badge">1</div>
+         <div class="step-content">
+           <div class="step-label">Directory Structure Scanning</div>
+           <div class="step-text">The system scans the <code>python_backend/data/syllabus/</code> folders. Chunks are automatically mapped to metadata fields representing subject parameters, grades, and chapter names.</div>
+         </div>
+      </div>
+      <div class="step-item">
+         <div class="step-badge">2</div>
+         <div class="step-content">
+           <div class="step-label">Text Selectability Extraction</div>
+           <div class="step-text">Using <code>pypdf.PdfReader</code>, text is extracted page-by-page. Scanned image-only files or corrupted pages are programmatically verified and removed to maintain database text SELECTABILITY.</div>
+         </div>
+      </div>
+      <div class="step-item">
+         <div class="step-badge">3</div>
+         <div class="step-content">
+           <div class="step-label">Overlapping Chunking Bounds</div>
+           <div class="step-text">Text is split into <b>800-character blocks</b> with a <b>100-character overlap</b>. This overlap ensures sentences and topics remain semantically connected across chunk splits.</div>
+         </div>
+      </div>
+      <div class="step-item">
+         <div class="step-badge">4</div>
+         <div class="step-content">
+           <div class="step-label">Rest-Based Batch Embeddings</div>
+           <div class="step-text">Blocks are sent in batches of 50 to OpenRouter's <code>openai/text-embedding-3-small</code> API, producing 1536-dimensional float vector coordinates. ChromaDB Persistent Client indexes these lists directly on disk.</div>
+         </div>
+      </div>
+    </div>
+
+    <h3>Ingestion &amp; Vector Database Code</h3>
+    <div class="code-block">
+      <pre><span class="cm"># Load Persistent ChromaDB client and retrieve collection</span>
+client = chromadb.PersistentClient(path=VECTOR_DB_PATH)
+collection = client.get_or_create_collection(<span class="st">"fsc_syllabus"</span>)
+
+<span class="cm"># Batch text slices and send to OpenRouter REST Embeddings API</span>
+payload = {
+    <span class="st">"model"</span>: <span class="st">"openai/text-embedding-3-small"</span>,
+    <span class="st">"input"</span>: batch_chunks
+}
+response = requests.post(
+    <span class="st">"https://openrouter.ai/api/v1/embeddings"</span>,
+    headers={<span class="st">"Authorization"</span>: f<span class="st">"Bearer {api_key}"</span>},
+    json=payload
+)
+embeddings = [item[<span class="st">"embedding"</span>] <span class="kw">for</span> item <span class="kw">in</span> response.json()[<span class="st">"data"</span>]]
+
+<span class="cm"># Store vectors, metadata, and plain text in ChromaDB persistent collection</span>
+collection.add(
+    ids=batch_ids,
+    documents=batch_chunks,
+    embeddings=embeddings,
+    metadatas=batch_metadatas
+)</pre>
+    </div>
+
+    <div class="callout warning">
+      <div class="callout-title">Optimization for Low-Resource Environments</div>
+      <p>We switched from heavy local transformer libraries (e.g. <code>SentenceTransformers</code> / PyTorch) to REST-based OpenRouter embeddings. This reduced memory footprints, eliminated 200MB+ weight downloads, and kept the Python backend fast and lightweight.</p>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <span>EduNest Documentation</span>
+    <span>Section 2: Document Ingestion</span>
+    <span>Page 3</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     PAGE 4: BACKEND EXAM ROUTE (app.py)
+     ════════════════════════════════════════════ -->
+<div class="sheet">
+  <div class="sheet-body">
+    <h2><span class="sec-num">3</span>Live Exam API Server (`app.py`)</h2>
+    <p>
+      The Flask backend handles question requests through <code>/api/generate-rag-exam</code>. It retrieves relevant semantic vectors and instructs the LLM to write structured mock exam questions.
+    </p>
+
+    <div class="step-list">
+      <div class="step-item">
+         <div class="step-badge">1</div>
+         <div class="step-content">
+           <div class="step-label">Semantic Query Embedding</div>
+           <div class="step-text">The API embeds the search query (subject name, e.g. "Physics") using the OpenRouter embeddings API to generate a search coordinate list.</div>
+         </div>
+      </div>
+      <div class="step-item">
+         <div class="step-badge">2</div>
+         <div class="step-content">
+           <div class="step-label">Vector Database Semantic Search</div>
+           <div class="step-text">The database matches query coordinates against text blocks. ChromaDB returns the **top 25 context blocks** using cosine similarity.</div>
+         </div>
+      </div>
+      <div class="step-item">
+         <div class="step-badge">3</div>
+         <div class="step-content">
+           <div class="step-label">Few-Shot Style Template Mapping</div>
+           <div class="step-text">The server pulls a random solved past-paper question from a local <code>past_papers.json</code> file. This template teaches the AI to follow the exact question format, option layout, and style of Pakistan boards.</div>
+         </div>
+      </div>
+      <div class="step-item">
+         <div class="step-badge">4</div>
+         <div class="step-content">
+           <div class="step-label">Batch Split &amp; Llama 3.3 Inference</div>
+           <div class="step-text">To prevent LLM rate limits and token truncation, the count is split into batches of max 15. The prompt specifies a balanced difficulty layout (30% Easy, 50% Moderate, 20% Hard) and requires a raw JSON array response.</div>
+         </div>
+      </div>
+    </div>
+
+    <h3>Semantic Search &amp; Fallback Code</h3>
+    <div class="code-block">
+      <pre><span class="cm"># Query ChromaDB collection with embedded subject vector</span>
+query_vector = get_query_embedding(subject)
+results = collection.query(
+    query_embeddings=[query_vector],
+    n_results=25,
+    where={<span class="st">"subject"</span>: subject}
+)
+retrieved_docs = results[<span class="st">"documents"</span>][<span class="number">0</span>]
+
+<span class="cm"># Inference call with fallback to offline database</span>
+<span class="kw">try</span>:
+    content = call_groq_completion_with_retry(groq_client, prompt)
+    parsed_questions = json.loads(content)
+<span class="kw">except</span> Exception <span class="kw">as</span> err:
+    <span class="cm"># Serve pre-solved intermediate questions on failure</span>
+    parsed_questions = get_offline_fallback(subject, count)</pre>
+    </div>
+
+    <div class="callout danger">
+      <div class="callout-title">Dual-Layered Resiliency Loop</div>
+      <p>If the internet drops, an API rate limit is hit, or the AI outputs invalid JSON syntax, backend exception handlers catch the error and serve pre-written, solved past paper questions instantly. The student's testing session is completely protected from database crashes.</p>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <span>EduNest Documentation</span>
+    <span>Section 3: Flask RAG Route</span>
+    <span>Page 4</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     PAGE 5: STUDENT PORTAL & EXAM ENGINE
+     ════════════════════════════════════════════ -->
+<div class="sheet">
+  <div class="sheet-body">
+    <h2><span class="sec-num">4</span>Mock Exam Engine &amp; Client Logic</h2>
+    <p>
+      The client React application (<code>MockExam.jsx</code> &amp; <code>EntryTestPrep.jsx</code>) coordinates exam sessions, timing, score metrics, and anti-cheat tracking.
+    </p>
+
+    <h3>Official Pakistan Entry Test Blueprints</h3>
+    <p>
+      The client loads official exam blueprint configurations:
+    </p>
+    <ul class="step-text" style="list-style-position: inside; margin-bottom: 12px; display: flex; flex-direction: column; gap: 4px;">
+      <li><b>Medical Pattern (MDCAT):</b> 180 questions (Bio 81, Chem 45, Phys 36, Eng 18) | 180 Mins | No negative marking (+1 correct, 0 incorrect/unattempted).</li>
+      <li><b>Engineering Pattern (ECAT):</b> 100 questions (Math 30, Phys 30, Chem 30, Eng 10) | 100 Mins | Negative marking (+4 correct, -1 incorrect, 0 unattempted).</li>
+    </ul>
+
+    <h3>Dynamic Mock Exam Run-Time &amp; Anti-Cheat</h3>
+    <div class="step-list">
+      <div class="step-item">
+         <div class="step-badge">1</div>
+         <div class="step-content">
+           <div class="step-label">Firestore Session Tracking</div>
+           <div class="step-text">When a student launches a mock exam, a session record is created in Firestore (<code>test_history</code>) with a status of <code>started</code>. Exiting early updates the status to <code>aborted</code>.</div>
+         </div>
+      </div>
+      <div class="step-item">
+         <div class="step-badge">2</div>
+         <div class="step-content">
+           <div class="step-label">Anti-Cheat Tab Visibility Warning</div>
+           <div class="step-text">A <code>visibilitychange</code> event listener tracks browser window switches. The student receives warning overlays for the first two switches. On the 3rd switch, the test is auto-submitted.</div>
+         </div>
+      </div>
+      <div class="step-item">
+         <div class="step-badge">3</div>
+         <div class="step-content">
+           <div class="step-label">Practice Mode vs Test Mode</div>
+           <div class="step-text">Practice tests display answers immediately, highlighting correct options in green, incorrect options in red, and opening an explanation card. Full mock tests hide checks until submission.</div>
+         </div>
+      </div>
+    </div>
+
+    <h3>Pakistan Board Blueprint Grading Code</h3>
+    <div class="code-block">
+      <pre><span class="cm">// Score calculations matching official Pakistan board blueprints</span>
+let correctCount = 0;
+let incorrectCount = 0;
+let unattemptedCount = 0;
+
+questions.forEach((q, idx) => {
+    const userAns = answers[idx];
+    if (userAns === undefined || userAns === "") unattemptedCount++;
+    else if (userAns === q.answer) correctCount++;
+    else incorrectCount++;
+});
+
+let score = correctCount;
+let maxScore = questions.length;
+
+if (isEcat) {
+    // ECAT Negative Marking Formula
+    score = (correctCount * 4) - incorrectCount;
+    maxScore = questions.length * 4;
+}</pre>
+    </div>
+
+    <div class="callout">
+      <div class="callout-title">Interactive Animations</div>
+      <p>The client leverages Framer Motion spring transitions for smooth layout animations. Practice checks slide down dynamically, the visual timer changes color, and alerts pulse to keep the student engaged and alert.</p>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <span>EduNest Documentation</span>
+    <span>Section 4: React Mock Engine</span>
+    <span>Page 5</span>
+  </div>
+</div>
+
+<!-- ════════════════════════════════════════════
+     PAGE 6: CONCEPT VIDEO BOT & ANTI-CHEAT IMPLEMENTATION
+     ════════════════════════════════════════════ -->
+<div class="sheet">
+  <div class="sheet-body">
+    <h2><span class="sec-num">5</span>Concept Video Companion &amp; Anti-Cheat Logic</h2>
+    <p>
+      The final components of the Entry Test Module are the <b>Concept Video Companion</b> and the client-side safety handlers. These features provide resources for difficult questions and maintain exam integrity.
+    </p>
+
+    <h3>Concept Video Companion Details</h3>
+    <p>
+      If a student struggles with a concept during a practice test, they can query it directly in the resources dashboard. The system integrates:
+    </p>
+    <ul class="step-text" style="list-style-position: inside; margin-bottom: 12px; display: flex; flex-direction: column; gap: 4px;">
+      <li><b>Keyword Query Enrichment:</b> The dashboard appends academic qualifiers (e.g. <i>"FSc entry test complete tutorial"</i>) to standard keywords before passing them to the YouTube search endpoint. This removes irrelevant videos.</li>
+      <li><b>Bookmark Storage Cache:</b> Bookmarked cards are stored locally in the student's browser. This is done by writing key-value lists to <code>localStorage</code> under <code>edunest_saved_videos</code>. This saves user progress offline.</li>
+      <li><b>Overlay Iframe Player:</b> YouTube embed links load inside a dark, full-screen React overlay layout. This prevents student distraction by keeping them inside the EduNest app environment.</li>
+    </ul>
+
+    <h3>Anti-Cheat Visibility Implementation</h3>
+    <div class="code-block">
+      <pre><span class="cm">// React Event Hook to prevent window swapping during live tests</span>
+useEffect(() => {
+    const handleVisibilityChange = () => {
+        if (document.hidden && !isFinishedRef.current) {
+            setTabSwitchCount(prev => {
+                const newCount = prev + 1;
+                if (newCount >= 3) {
+                    setIsFinished(true);
+                    saveResult(true, "Tab Switch Limit Exceeded");
+                } else {
+                    setShowWarning(true);
+                }
+                return newCount;
+            });
+        }
+    };
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+}, []);</pre>
+    </div>
+
+    <div class="callout">
+      <div class="callout-title">Summary of Educational Benefits</div>
+      <p>By connecting verified RAG syllabus assessments with an enriched visual learning loop, students get a complete preparation workflow: self-assessment, instant error explanation, target revision lectures, and full mock tests administered under strict testing conditions.</p>
+    </div>
+  </div>
+
+  <div class="page-footer">
+    <span>EduNest Documentation</span>
+    <span>Section 5: Video Bot &amp; Anti-Cheat</span>
+    <span>Page 6</span>
+  </div>
+</div>
+
+</body>
+</html>
