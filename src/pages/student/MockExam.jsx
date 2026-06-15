@@ -330,7 +330,7 @@ const MockExam = () => {
                     </h2>
                     <p className="text-slate-400 dark:text-slate-500 text-sm mb-8">
                         {isFull
-                            ? (type === 'mdcat' ? '180 Questions • 5 Subjects • PMDC Pattern' : '100 Questions • 4 Subjects • UET Pattern')
+                            ? (type === 'mdcat' ? '180 Questions • 5 Subjects • Official Pattern' : '100 Questions • 4 Subjects • Official Pattern')
                             : `Subject-specific practice · Official ${type.toUpperCase()} pattern`
                         }
                     </p>

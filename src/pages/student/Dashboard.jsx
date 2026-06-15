@@ -182,10 +182,10 @@ const Dashboard = () => {
                         <div className="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center mr-3">
                             <BookOpen className="text-blue-600 dark:text-blue-400" size={20} />
                         </div>
-                        Recommended Universities
+                        Recommended Pathways
                     </h3>
                     <p className="text-slate-600 dark:text-slate-400 leading-relaxed">
-                        Based on your interest in <span className="font-semibold text-blue-600 dark:text-blue-400">"AI"</span>, we recommend checking out <span className="font-semibold">NUST</span> and <span className="font-semibold">COMSATS</span>.
+                        Based on your interest in <span className="font-semibold text-blue-600 dark:text-blue-400">"AI"</span>, we recommend checking out top engineering and computer science university options.
                     </p>
                 </GlassCard>
             </motion.div>

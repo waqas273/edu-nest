@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
-import { Microscope, Ruler, Clock, FileText, ChevronRight, Zap, Shield, Target, Search, Play, Sparkles, Youtube, X, Bookmark } from 'lucide-react';
+import { Microscope, Ruler, Clock, FileText, ChevronRight, Zap, Shield, Target, Search, Play, Sparkles, Youtube, X, Bookmark, ArrowLeft } from 'lucide-react';
 import { fetchVideos, getVideoEmbedUrl } from '../../services/resourceService';
 
 const TESTS = [
@@ -14,7 +14,7 @@ const TESTS = [
         gradient: 'from-rose-500 to-pink-600',
         glow: 'shadow-rose-500/25',
         border: 'hover:border-rose-300 dark:hover:border-rose-700',
-        authority: 'PMDC — Pakistan Medical Commission',
+        authority: 'Official MDCAT Syllabus & Pattern',
         icon: Microscope,
         duration: '180 Minutes',
         questions: '180 Questions',
@@ -32,7 +32,7 @@ const TESTS = [
         gradient: 'from-blue-500 to-indigo-600',
         glow: 'shadow-blue-500/25',
         border: 'hover:border-blue-300 dark:hover:border-blue-700',
-        authority: 'UET — University of Engineering & Technology',
+        authority: 'Official ECAT Syllabus & Pattern',
         icon: Ruler,
         duration: '100 Minutes',
         questions: '100 Questions',
@@ -98,6 +98,17 @@ const EntryTestPrep = () => {
 
     return (
         <div className="min-h-[90vh] flex flex-col items-center justify-center py-12 px-4 relative">
+            {/* Back Button */}
+            <div className="absolute top-6 left-6 z-20">
+                <button
+                    onClick={() => navigate('/student')}
+                    className="flex items-center gap-2 px-4 py-2 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:shadow-md transition-all shadow-sm group"
+                >
+                    <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />
+                    Back to Dashboard
+                </button>
+            </div>
+
             {/* Ambient Background Orbs */}
             <div className="pointer-events-none fixed top-0 left-1/4 w-96 h-96 bg-rose-300/20 dark:bg-rose-500/10 rounded-full blur-[120px]" />
             <div className="pointer-events-none fixed bottom-0 right-1/4 w-96 h-96 bg-blue-300/20 dark:bg-blue-500/10 rounded-full blur-[120px]" />
@@ -120,7 +131,7 @@ const EntryTestPrep = () => {
                     </span>
                 </h1>
                 <p className="text-slate-500 dark:text-slate-400 max-w-xl mx-auto text-lg leading-relaxed">
-                    Practice with AI-generated questions that strictly follow official PMDC & UET exam patterns.
+                    Practice with AI-generated questions that strictly follow official syllabus patterns.
                 </p>
             </motion.div>
 

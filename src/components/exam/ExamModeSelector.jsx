@@ -1,5 +1,6 @@
 import { motion } from 'framer-motion';
-import { Zap, Flag, BookOpen, ChevronRight, Shield, FlaskConical, Atom, Calculator, Globe, Brain, Lightbulb } from 'lucide-react';
+import { Zap, Flag, BookOpen, ChevronRight, Shield, FlaskConical, Atom, Calculator, Globe, Brain, Lightbulb, ArrowLeft } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 const SUBJECT_META = {
     Biology:          { icon: FlaskConical, color: 'from-emerald-500 to-green-600',   light: 'bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-900/20 dark:border-emerald-700 dark:text-emerald-300' },
@@ -29,6 +30,7 @@ const item = {
 };
 
 export default function ExamModeSelector({ type, selectedSubject, setSelectedSubject, onStart, error, isGenerating }) {
+    const navigate = useNavigate();
     const isMdcat   = type === 'mdcat';
     const subjects  = isMdcat ? MDCAT_SUBJECTS : ECAT_SUBJECTS;
     const accentCls = isMdcat
@@ -37,6 +39,16 @@ export default function ExamModeSelector({ type, selectedSubject, setSelectedSub
 
     return (
         <div className="min-h-screen flex flex-col items-center justify-center bg-slate-50 dark:bg-[#0a0f1e] p-4 relative overflow-hidden">
+            {/* Back Button */}
+            <div className="absolute top-6 left-6 z-20">
+                <button
+                    onClick={() => navigate('/student/entry-test')}
+                    className="flex items-center gap-2 px-4 py-2 bg-white/80 dark:bg-slate-900/80 backdrop-blur-md border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 hover:shadow-md transition-all shadow-sm group"
+                >
+                    <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" />
+                    Back to Entry Tests
+                </button>
+            </div>
 
             {/* Ambient orbs */}
             <div className="pointer-events-none absolute -top-32 -left-32 w-[500px] h-[500px] rounded-full blur-[130px] bg-rose-300/25 dark:bg-rose-500/10" />
@@ -55,7 +67,7 @@ export default function ExamModeSelector({ type, selectedSubject, setSelectedSub
                         className={`inline-flex items-center gap-2 px-5 py-2 rounded-full bg-gradient-to-r ${accentCls} text-white text-xs font-black uppercase tracking-widest shadow-lg mb-5`}
                     >
                         <BookOpen size={13} />
-                        {isMdcat ? 'PMDC Official Pattern · 2024–25' : 'UET Official Pattern · 2024–25'}
+                        {isMdcat ? 'Official Pattern · 2024–25' : 'Official Pattern · 2024–25'}
                     </motion.div>
                     <h1 className="text-5xl font-black text-slate-900 dark:text-white tracking-tight">
                         {type.toUpperCase()}{' '}
