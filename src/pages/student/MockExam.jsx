@@ -59,15 +59,31 @@ const MockExam = () => {
 
         const currentAnswers = answersRef.current;
         const currentQs = questionsRef.current;
+        const isEcat = type?.toLowerCase() === 'ecat';
 
         let correctCount = 0;
+        let incorrectCount = 0;
+        let unattemptedCount = 0;
+
         currentQs.forEach((q, idx) => {
-            if (currentAnswers[idx] === q.answer) correctCount++;
+            const userAns = currentAnswers[idx];
+            if (userAns === undefined || userAns === null || userAns === '') {
+                unattemptedCount++;
+            } else if (userAns === q.answer) {
+                correctCount++;
+            } else {
+                incorrectCount++;
+            }
         });
 
-        const score = correctCount;
-        const total = currentQs.length;
-        const percentage = total > 0 ? ((score / total) * 100).toFixed(1) : 0;
+        let score = correctCount;
+        let maxScore = currentQs.length;
+        if (isEcat) {
+            score = (correctCount * 4) - incorrectCount;
+            maxScore = currentQs.length * 4;
+        }
+
+        const percentage = maxScore > 0 ? Math.max(0, (score / maxScore) * 100).toFixed(1) : 0;
 
         try {
             await updateDoc(doc(db, 'test_history', activeTestDocId), {
@@ -84,6 +100,7 @@ const MockExam = () => {
             console.error("Error updating result:", error);
         }
     };
+
 
     // Anti-Cheat: Visibility & Navigation
     useEffect(() => {
@@ -193,13 +210,33 @@ const MockExam = () => {
 
     // --- RESULT VIEW ---
     if (isFinished) {
-        const correctCount = questions.reduce((acc, q, idx) => {
+        const isEcat = type?.toLowerCase() === 'ecat';
+        let correctCount = 0;
+        let incorrectCount = 0;
+        let unattemptedCount = 0;
+
+        questions.forEach((q, idx) => {
             const userAnswer = answers[idx] || (idx === currentIdx && selectedOption ? selectedOption : null);
-            return userAnswer === q.answer ? acc + 1 : acc;
-        }, 0);
+            if (userAnswer === undefined || userAnswer === null || userAnswer === '') {
+                unattemptedCount++;
+            } else if (userAnswer === q.answer) {
+                correctCount++;
+            } else {
+                incorrectCount++;
+            }
+        });
+
         const total = questions.length;
-        const percentage = total > 0 ? ((correctCount / total) * 100).toFixed(1) : 0;
-        const passed = parseFloat(percentage) >= (blueprint?.passingPercent || 55);
+        let score = correctCount;
+        let maxScore = total;
+        if (isEcat) {
+            score = (correctCount * 4) - incorrectCount;
+            maxScore = total * 4;
+        }
+
+        const percentage = maxScore > 0 ? Math.max(0, (score / maxScore) * 100).toFixed(1) : 0;
+        const passed = parseFloat(percentage) >= (blueprint?.passingPercent || (isEcat ? 50 : 55));
+
         return (
             <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 p-6 relative overflow-hidden">
                 <div className="pointer-events-none absolute top-0 left-1/4 w-96 h-96 rounded-full blur-[120px] bg-emerald-200/30 dark:bg-emerald-500/10" />
@@ -222,12 +259,26 @@ const MockExam = () => {
                         <h1 className="text-4xl font-black text-slate-800 dark:text-white mb-1">
                             {passed ? 'Excellent Work!' : 'Keep Practicing!'}
                         </h1>
-                        <p className="text-slate-500 dark:text-slate-400 text-sm mb-8">
+                        <p className="text-slate-500 dark:text-slate-400 text-sm mb-6">
                             {selectedSubject ? `${selectedSubject} Practice` : `${type.toUpperCase()} Full Mock Exam`} · Completed
                         </p>
+
+                        {/* Answers breakdown chips */}
+                        <div className="flex justify-center gap-2 mb-6">
+                            <span className="px-3 py-1 bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 border border-emerald-100 dark:border-emerald-900 text-xs font-bold rounded-full">
+                                Correct: {correctCount}
+                            </span>
+                            <span className="px-3 py-1 bg-red-50 dark:bg-red-950/30 text-red-500 dark:text-red-400 border border-red-100 dark:border-red-900 text-xs font-bold rounded-full">
+                                Incorrect: {incorrectCount}
+                            </span>
+                            <span className="px-3 py-1 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 text-xs font-bold rounded-full">
+                                Unattempted: {unattemptedCount}
+                            </span>
+                        </div>
+
                         <div className="grid grid-cols-3 gap-3 mb-8">
                             {[
-                                { label: 'Score', val: `${correctCount}/${total}`, color: 'text-emerald-500' },
+                                { label: isEcat ? 'Marks Obtain' : 'Score', val: `${score}/${maxScore}`, color: 'text-emerald-500' },
                                 { label: 'Percentage', val: `${percentage}%`, color: passed ? 'text-blue-500' : 'text-orange-500' },
                                 { label: 'Time Taken', val: formatTime(DURATION - timeLeft), color: 'text-purple-500' },
                             ].map(({ label, val, color }) => (
@@ -237,6 +288,7 @@ const MockExam = () => {
                                 </div>
                             ))}
                         </div>
+
                         <div className="flex gap-3 justify-center">
                             <button onClick={() => navigate('/student/history')}
                                 className="px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-2xl transition-all text-sm">

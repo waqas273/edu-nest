@@ -1,8 +1,5 @@
 import { getFallbackExam } from '../data/fallbackQuestions';
 
-const GROQ_API_KEY = import.meta.env.VITE_GROQ_API_KEY;
-const GROQ_MODEL = 'llama-3.3-70b-versatile';
-
 /**
  * REAL EXAM BLUEPRINTS (Official Pakistan Pattern)
  *
@@ -49,80 +46,27 @@ const EXAM_BLUEPRINTS = {
  * @param {string} subject - Subject name
  * @param {number} count - Number of questions to generate
  * @param {number} chunkIndex - Current chunk index (for variety)
+ * @param {string} [year] - Consistent past paper year
  * @returns {Array} Array of question objects
  */
-const generateChunk = async (examType, subject, count, chunkIndex) => {
-    const blueprint = EXAM_BLUEPRINTS[examType];
-    const examName = examType.toUpperCase();
-
-    // Difficulty distribution: 20% Easy, 60% Moderate, 20% Hard
-    const easyCount = Math.round(count * 0.2);
-    const hardCount = Math.round(count * 0.2);
-    const moderateCount = count - easyCount - hardCount;
-
-    const markingNote = blueprint.negativeMarking
-        ? `Note: This exam has NEGATIVE MARKING (${blueprint.correctMarks} for correct, ${blueprint.incorrectMarks} for incorrect). Questions should test precise knowledge.`
-        : `Note: No negative marking. Questions should be conceptual and application-based.`;
-
-    const prompt = `You are an expert ${examName} examiner from Pakistan. Generate EXACTLY ${count} high-quality ${subject} MCQs for the official ${examName} entrance exam.
-
-EXAM CONTEXT:
-- Exam: ${examName} (${blueprint.totalQuestions} total questions, ${blueprint.durationMinutes} minutes)
-- Subject: ${subject} (this batch)
-- Batch: ${chunkIndex + 1} (ensure questions are UNIQUE and not repetitive)
-- Syllabus: Standard Pakistani FSc/Intermediate Level
-${markingNote}
-
-DIFFICULTY BREAKDOWN (MANDATORY):
-- Easy (${easyCount} questions): Direct factual recall, definitions, basic formulas
-- Moderate (${moderateCount} questions): Application of concepts, multi-step reasoning
-- Hard (${hardCount} questions): Complex problem-solving, integrated concepts, numerical calculations
-
-STRICT RULES:
-1. Generate EXACTLY ${count} questions — no more, no less.
-2. All 4 options must be plausible (no obviously wrong distractors).
-3. Questions must strictly follow the ${examName} official syllabus.
-4. Use real scientific values, formulas, and terminology.
-5. The correct answer MUST exactly match one of the 4 options.
-6. Each question must be unique. Do NOT repeat concepts from previous batches.
-7. Return ONLY a valid JSON array. No markdown, no explanation.
-
-JSON format (strictly follow this):
-[
-  {
-    "subject": "${subject}",
-    "difficulty": "Easy | Moderate | Hard",
-    "question": "Full question text here?",
-    "options": ["Option A", "Option B", "Option C", "Option D"],
-    "answer": "Exact correct option string",
-    "explanation": "One sentence explaining why this is correct."
-  }
-]
-
-Generate the ${count} ${subject} questions now:`;
-
+const generateChunk = async (examType, subject, count, chunkIndex, year = null) => {
     const callWithRetry = async (retries = 3) => {
         for (let attempt = 1; attempt <= retries; attempt++) {
-            const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+            const response = await fetch('http://localhost:5001/api/generate-rag-exam', {
                 method: 'POST',
                 headers: {
-                    'Authorization': `Bearer ${GROQ_API_KEY}`,
                     'Content-Type': 'application/json'
                 },
                 body: JSON.stringify({
-                    model: GROQ_MODEL,
-                    messages: [
-                        { role: 'system', content: 'You are an expert Pakistan exam question setter. Always respond with valid JSON arrays only.' },
-                        { role: 'user', content: prompt }
-                    ],
-                    temperature: 0.4,
-                    max_tokens: 8192,
-                    response_format: { type: 'json_object' }
+                    examType: examType.toLowerCase(),
+                    subject: subject,
+                    count: count,
+                    year: year
                 })
             });
 
             if (response.status === 429) {
-                const waitMs = attempt * 30000; // 30s, 60s, 90s
+                const waitMs = attempt * 15000; // 15s
                 console.warn(`⏳ Rate limited (attempt ${attempt}/${retries}). Waiting ${waitMs / 1000}s...`);
                 await new Promise(resolve => setTimeout(resolve, waitMs));
                 continue;
@@ -130,31 +74,17 @@ Generate the ${count} ${subject} questions now:`;
 
             if (!response.ok) {
                 const errData = await response.json().catch(() => ({}));
-                console.error(`Groq Error (${subject}):`, errData);
-                throw new Error(`Groq API Error ${response.status} for ${subject}: ${errData?.error?.message || response.statusText}`);
+                console.error(`Backend RAG Error (${subject}):`, errData);
+                throw new Error(`Backend Error ${response.status} for ${subject}: ${errData?.error || response.statusText}`);
             }
 
             const data = await response.json();
-            let content = data.choices?.[0]?.message?.content?.trim();
-            if (!content) throw new Error(`Empty response from Groq for ${subject}`);
-
-            // Groq with json_object returns an object, find the array inside
-            let parsed;
-            try {
-                const obj = JSON.parse(content);
-                // The array might be nested under any key
-                parsed = Array.isArray(obj) ? obj : Object.values(obj).find(v => Array.isArray(v));
-                if (!parsed) throw new Error('No array found in response');
-            } catch {
-                // Try direct parse as array
-                content = content.replace(/^```json\s*/i, '').replace(/^```\s*/i, '').replace(/\s*```$/i, '').trim();
-                parsed = JSON.parse(content);
+            if (!Array.isArray(data)) {
+                throw new Error(`Invalid response structure from backend RAG API for ${subject}`);
             }
-
-            if (!Array.isArray(parsed)) throw new Error(`Invalid JSON structure for ${subject}`);
-            return parsed;
+            return data;
         }
-        throw new Error(`Rate limit hit for ${subject} after ${retries} retries. Please try again shortly.`);
+        throw new Error(`Failed to generate ${subject} after ${retries} attempts.`);
     };
 
     return await callWithRetry();
@@ -167,17 +97,19 @@ Generate the ${count} ${subject} questions now:`;
  * @returns {Array} Full array of question objects with sequential IDs
  */
 const generateFullExamFromAI = async (examType, onProgress) => {
-    if (!GROQ_API_KEY) {
-        throw new Error('GROQ_API_KEY is missing!');
-    }
-
     const blueprint = EXAM_BLUEPRINTS[examType.toLowerCase()];
     if (!blueprint) throw new Error(`Invalid exam type: "${examType}". Use "mdcat" or "ecat".`);
 
     const allQuestions = [];
     const totalChunks = blueprint.chunks.length;
 
-    onProgress?.(`🚀 Starting ${examType.toUpperCase()} generation — ${blueprint.totalQuestions} questions across ${totalChunks} subjects...`);
+    // Pick a random past paper year for consistent sequence template across all subjects in the full mock
+    const years = examType.toLowerCase() === 'mdcat'
+        ? ['2008', '2009', '2010', '2011', '2012', '2013', '2014', '2015', '2016', '2017']
+        : ['2010', '2011', '2012', '2013', '2014', '2015', '2016', '2017', '2018'];
+    const selectedYear = years[Math.floor(Math.random() * years.length)];
+
+    onProgress?.(`🚀 Starting ${examType.toUpperCase()} generation (Year ${selectedYear}) — ${blueprint.totalQuestions} questions across ${totalChunks} subjects...`);
 
     for (let i = 0; i < totalChunks; i++) {
         const { subject, count } = blueprint.chunks[i];
@@ -187,7 +119,7 @@ const generateFullExamFromAI = async (examType, onProgress) => {
         );
 
         try {
-            const chunkQuestions = await generateChunk(examType.toLowerCase(), subject, count, i);
+            const chunkQuestions = await generateChunk(examType.toLowerCase(), subject, count, i, selectedYear);
 
             // Validate and sanitize each question
             for (const q of chunkQuestions) {
@@ -206,12 +138,12 @@ const generateFullExamFromAI = async (examType, onProgress) => {
 
             console.log(`✅ ${subject}: ${chunkQuestions.length} questions generated. Total so far: ${allQuestions.length}`);
 
-            // Delay between chunks to stay within Groq's token-per-minute limits
+            // Delay between subjects to avoid API rate limits
             if (i < totalChunks - 1) {
                 onProgress?.(
-                    `⏳ ${subject} done (${allQuestions.length}/${blueprint.totalQuestions}). Preparing next subject in 15s...`
+                    `⏳ ${subject} done (${allQuestions.length}/${blueprint.totalQuestions}). Preparing next subject in 5s...`
                 );
-                await new Promise(resolve => setTimeout(resolve, 15000));
+                await new Promise(resolve => setTimeout(resolve, 5000));
             }
 
         } catch (error) {
@@ -235,16 +167,16 @@ export const generateSubjectExam = async (examType, subject, onProgress) => {
     const subjectInfo = blueprint.chunks.find(c => c.subject.toLowerCase() === subject.toLowerCase());
     const count = subjectInfo ? subjectInfo.count : 30;
 
-    onProgress?.(`🚀 Preparing ${subject} practice test (${count} questions)...`);
+    // Pick a random past paper year for subject-specific practice sequence template
+    const years = examType.toLowerCase() === 'mdcat'
+        ? ['2008', '2009', '2010', '2011', '2012', '2013', '2014', '2015', '2016', '2017']
+        : ['2010', '2011', '2012', '2013', '2014', '2015', '2016', '2017', '2018'];
+    const selectedYear = years[Math.floor(Math.random() * years.length)];
 
-    if (!GROQ_API_KEY) {
-        onProgress?.('⚠️ No API key found. Loading offline questions...');
-        const fallback = getFallbackExam(examType, [{ subject, count }]);
-        return fallback.filter(q => q.subject.toLowerCase() === subject.toLowerCase());
-    }
+    onProgress?.(`🚀 Preparing ${subject} practice test (${count} questions, Year ${selectedYear})...`);
 
     try {
-        const questions = await generateChunk(examType.toLowerCase(), subject, count, 0);
+        const questions = await generateChunk(examType.toLowerCase(), subject, count, 0, selectedYear);
         return questions.map((q, idx) => ({
             id: idx + 1,
             subject: q.subject || subject,
@@ -267,11 +199,6 @@ export const generateSubjectExam = async (examType, subject, onProgress) => {
  */
 export const generateFullExam = async (examType, onProgress) => {
     const blueprint = EXAM_BLUEPRINTS[examType.toLowerCase()];
-    if (!GROQ_API_KEY) {
-        onProgress?.('⚠️ No API key found. Loading offline question bank...');
-        return getFallbackExam(examType, blueprint.chunks);
-    }
-
     try {
         return await generateFullExamFromAI(examType, onProgress);
     } catch (error) {

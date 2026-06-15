@@ -1,0 +1,106 @@
+[
+  {
+    "subject": "Physics",
+    "topic": "Electrostatics",
+    "question": "The electric potential at a point at a distance 'r' from a point charge 'q' is proportional to:",
+    "options": ["r", "1/r", "r^2", "1/r^2"],
+    "answer": "1/r",
+    "source": "MDCAT 2022"
+  },
+  {
+    "subject": "Physics",
+    "topic": "Electromagnetism",
+    "question": "The magnetic force on a charge moving parallel to a magnetic field is:",
+    "options": ["Maximum", "Zero", "Infinity", "Negative"],
+    "answer": "Zero",
+    "source": "MDCAT 2023"
+  },
+  {
+    "subject": "Physics",
+    "topic": "Work and Energy",
+    "question": "When the velocity of a moving body is doubled, its kinetic energy becomes:",
+    "options": ["Doubled", "Half", "Three times", "Four times"],
+    "answer": "Four times",
+    "source": "ECAT 2021"
+  },
+  {
+    "subject": "Physics",
+    "topic": "Waves",
+    "question": "The speed of sound in air is independent of changes in:",
+    "options": ["Temperature", "Pressure", "Humidity", "Density"],
+    "answer": "Pressure",
+    "source": "MDCAT 2021"
+  },
+  {
+    "subject": "Chemistry",
+    "topic": "Atomic Structure",
+    "question": "The maximum number of electrons in a subshell with l = 2 is:",
+    "options": ["2", "6", "10", "14"],
+    "answer": "10",
+    "source": "MDCAT 2023"
+  },
+  {
+    "subject": "Chemistry",
+    "topic": "Chemical Equilibrium",
+    "question": "For a reversible reaction, if the temperature is increased, the equilibrium constant for an exothermic reaction:",
+    "options": ["Increases", "Decreases", "Remains constant", "First increases then decreases"],
+    "answer": "Decreases",
+    "source": "ECAT 2022"
+  },
+  {
+    "subject": "Chemistry",
+    "topic": "Organic Chemistry",
+    "question": "Which of the following hydrocarbons is the most reactive towards electrophilic addition reactions?",
+    "options": ["Methane", "Ethane", "Ethene", "Ethyne"],
+    "answer": "Ethene",
+    "source": "MDCAT 2022"
+  },
+  {
+    "subject": "Biology",
+    "topic": "Cell Biology",
+    "question": "Which organelle is known as the powerhouse of the cell?",
+    "options": ["Nucleus", "Ribosome", "Mitochondria", "Lysosome"],
+    "answer": "Mitochondria",
+    "source": "MDCAT 2023"
+  },
+  {
+    "subject": "Biology",
+    "topic": "Genetics",
+    "question": "An organism with two identical alleles for a specific trait is said to be:",
+    "options": ["Heterozygous", "Homozygous", "Dominant", "Recessive"],
+    "answer": "Homozygous",
+    "source": "MDCAT 2022"
+  },
+  {
+    "subject": "Biology",
+    "topic": "Biological Molecules",
+    "question": "Which of the following is a polysaccharide stored in animal liver and muscles?",
+    "options": ["Starch", "Glycogen", "Cellulose", "Chitin"],
+    "answer": "Glycogen",
+    "source": "MDCAT 2021"
+  },
+  {
+    "subject": "Mathematics",
+    "topic": "Calculus",
+    "question": "The derivative of sin(x^2) with respect to x is:",
+    "options": ["cos(x^2)", "2x * cos(x^2)", "-2x * cos(x^2)", "2 * sin(x)"],
+    "answer": "2x * cos(x^2)",
+    "source": "ECAT 2023"
+  },
+  {
+    "subject": "Mathematics",
+    "topic": "Matrices",
+    "question": "If matrix A is symmetric, then its transpose A^T is equal to:",
+    "options": ["-A", "A", "A^-1", "Identity Matrix"],
+    "answer": "A",
+    "source": "ECAT 2022"
+  },
+  {
+    "subject": "Mathematics",
+    "topic": "Trigonometry",
+    "question": "The value of sin(theta) * cosec(theta) is equal to:",
+    "options": ["0", "1", "sin^2(theta)", "cos^2(theta)"],
+    "answer": "1",
+    "source": "ECAT 2021"
+  }
+]

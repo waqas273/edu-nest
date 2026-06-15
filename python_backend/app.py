@@ -3,9 +3,54 @@ from flask_cors import CORS
 import joblib
 import numpy as np
 import os
-from openai import OpenAI
+import json
+import re
 import traceback
+from openai import OpenAI
 from dotenv import load_dotenv
+
+# ── RAG Imports (lazy-loaded on first request to avoid slow startup) ──────────
+_rag_collection = None
+
+def get_rag_resources():
+    """Lazy-load ChromaDB on first RAG request."""
+    global _rag_collection
+    if _rag_collection is None:
+        try:
+            import chromadb
+            BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+            VECTOR_DB_PATH = os.path.join(BASE_DIR, "vector_db", "chroma")
+            client = chromadb.PersistentClient(path=VECTOR_DB_PATH)
+            _rag_collection = client.get_collection("fsc_syllabus")
+            print(f"[RAG] Loaded vector DB with {_rag_collection.count()} chunks.")
+        except Exception as e:
+            print(f"[RAG] Failed to load resources: {e}")
+    return None, _rag_collection
+
+
+def get_query_embedding(text):
+    """Generate embedding for a query text using OpenRouter openai/text-embedding-3-small."""
+    key = os.environ.get("VITE_OPENROUTER_EXAM_KEY")
+    if not key:
+        raise ValueError("VITE_OPENROUTER_EXAM_KEY is not configured in .env")
+        
+    url = "https://openrouter.ai/api/v1/embeddings"
+    headers = {
+        "Authorization": f"Bearer {key}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": "openai/text-embedding-3-small",
+        "input": text
+    }
+    import requests
+    response = requests.post(url, headers=headers, json=payload, timeout=15)
+    if response.status_code == 200:
+        res_data = response.json()
+        return res_data["data"][0]["embedding"]
+    else:
+        raise Exception(f"OpenRouter embedding call failed: {response.text}")
+
 
 # Load env from parent directory (where .env typically is in this project structure)
 # Attempt to load from parent first, then current
@@ -45,6 +90,19 @@ if api_key:
     print("OpenRouter client initialized.")
 else:
     print("WARNING: VITE_OPENROUTER_API_KEY environment variable not found. Dynamic generation might fail.")
+
+# --- Groq Setup (Secure RAG Inference) ---
+groq_key = os.environ.get("VITE_GROQ_API_KEY")
+groq_client = None
+
+if groq_key:
+    groq_client = OpenAI(
+        base_url="https://api.groq.com/openai/v1",
+        api_key=groq_key,
+    )
+    print("Groq client initialized for secure RAG pipeline.")
+else:
+    print("WARNING: VITE_GROQ_API_KEY environment variable not found. RAG generation might fail.")
 
 
 
@@ -158,7 +216,354 @@ def generate_dynamic():
             "question": f"I prefer {class_a} over {class_b}.", 
             "focus_class": class_a
         })
+def get_offline_fallback(subject, count):
+    """Gets fallback questions from past_papers.json"""
+    try:
+        past_papers_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "past_papers.json")
+        if os.path.exists(past_papers_path):
+            with open(past_papers_path, "r", encoding="utf-8") as f:
+                pool = json.load(f)
+                subject_qs = [q for q in pool if q.get("subject", "").lower() == subject.lower()]
+                if subject_qs:
+                    import random
+                    # If count is greater than available questions, repeat or pad
+                    if len(subject_qs) >= count:
+                        selected = random.sample(subject_qs, count)
+                    else:
+                        selected = [random.choice(subject_qs) for _ in range(count)]
+                    
+                    # Add IDs
+                    formatted_selected = []
+                    for idx, q in enumerate(selected):
+                        formatted_selected.append({
+                            "id": idx + 1,
+                            "subject": q.get("subject", subject),
+                            "difficulty": q.get("difficulty", "Moderate"),
+                            "question": q.get("question"),
+                            "options": q.get("options"),
+                            "answer": q.get("answer"),
+                            "explanation": q.get("explanation", "This is an offline fallback question.")
+                        })
+                    return formatted_selected
+    except Exception as e:
+        print(f"Error loading offline fallback: {e}")
+    
+    # Absolute minimal fallback if even past_papers.json is missing or fails
+    return [
+        {
+            "id": idx + 1,
+            "subject": subject,
+            "difficulty": "Moderate",
+            "question": f"Default offline reference question for {subject} dynamic practice.",
+            "options": ["A) Option A", "B) Option B", "C) Option C", "D) Option D"],
+            "answer": "Option A",
+            "explanation": "This is a placeholder fallback question because the database was unreachable."
+        }
+        for idx in range(count)
+    ]
 
+
+def call_groq_completion_with_retry(groq_client, prompt, model="llama-3.3-70b-versatile", retries=3, backoff=2):
+    import time
+    for attempt in range(retries):
+        try:
+            response = groq_client.chat.completions.create(
+                model=model,
+                messages=[
+                    {"role": "system", "content": "You are an expert Pakistan entry test examiner. Always respond with raw JSON arrays only."},
+                    {"role": "user", "content": prompt}
+                ],
+                temperature=0.35,
+                response_format={"type": "json_object"}
+            )
+            return response.choices[0].message.content.strip()
+        except Exception as e:
+            if attempt < retries - 1:
+                sleep_time = backoff ** attempt
+                print(f"[RAG API] Groq call failed: {e}. Retrying in {sleep_time}s...")
+                time.sleep(sleep_time)
+            else:
+                raise e
+    raise Exception("Failed after max retries")
+
+
+def get_query_embeddings_batch(texts):
+    """Generate embeddings for a list of texts in a single OpenRouter API batch call."""
+    key = os.environ.get("VITE_OPENROUTER_EXAM_KEY")
+    if not key:
+        raise ValueError("VITE_OPENROUTER_EXAM_KEY is not configured in .env")
+        
+    url = "https://openrouter.ai/api/v1/embeddings"
+    headers = {
+        "Authorization": f"Bearer {key}",
+        "Content-Type": "application/json"
+    }
+    payload = {
+        "model": "openai/text-embedding-3-small",
+        "input": texts
+    }
+    import requests
+    response = requests.post(url, headers=headers, json=payload, timeout=25)
+    if response.status_code == 200:
+        res_data = response.json()
+        return [item["embedding"] for item in res_data.get("data", [])]
+    else:
+        raise Exception(f"OpenRouter batch embedding call failed: {response.text}")
+
+
+@app.route('/api/generate-rag-exam', methods=['POST'])
+def generate_rag_exam():
+    """
+    Sequence-aligned RAG exam question generator.
+    Replicates the exact chronological layout, topic order, and style of real past papers.
+    Uses concurrency to deliver fast responses.
+    Accepts JSON:
+    {
+        "examType": "mdcat" | "ecat",
+        "subject": "Physics",
+        "count": 10,
+        "year": "2015" (optional)
+    }
+    """
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "Missing JSON request body."}), 400
+
+        exam_type = data.get("examType", "mdcat").lower()
+        subject = data.get("subject")
+        count = data.get("count", 10)
+        year = data.get("year")
+
+        if not subject:
+            return jsonify({"error": "Missing 'subject' parameter."}), 400
+
+        try:
+            count = int(count)
+        except ValueError:
+            count = 10
+
+        print(f"[Sequence RAG API] Request: {exam_type.upper()} {subject} | Count: {count} | Year Option: {year}")
+
+        # 1. Load syllabus weightage sequence map
+        map_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "data", "syllabus_weightage_map.json")
+        sequence_map = {}
+        if os.path.exists(map_path):
+            try:
+                with open(map_path, "r", encoding="utf-8") as f:
+                    sequence_map = json.load(f)
+            except Exception as e:
+                print(f"[Sequence RAG API] Error loading sequence map: {e}")
+
+        # 2. Get past paper sequence template for this exam type and subject
+        subject_qs = []
+        exam_years = sequence_map.get(exam_type, {})
+        
+        # Look for years that have valid questions for our target subject
+        valid_years = []
+        for yr, qs in exam_years.items():
+            year_subject_qs = [q for q in qs if q.get("subject", "").lower() == subject.lower()]
+            if year_subject_qs:
+                valid_years.append(yr)
+
+        selected_year = None
+        if valid_years:
+            if year and str(year) in valid_years:
+                selected_year = str(year)
+            else:
+                import random
+                selected_year = random.choice(valid_years)
+            print(f"[Sequence RAG API] Using sequence template from {exam_type.upper()} Year {selected_year}")
+            full_year_qs = exam_years[selected_year]
+            # Filter and keep original question positions
+            subject_qs = [q for q in full_year_qs if q.get("subject", "").lower() == subject.lower()]
+        else:
+            print(f"[Sequence RAG API] No template sequence found for {exam_type} - {subject}")
+
+        # If sequence map is completely missing or empty, use fallback questions immediately
+        if not subject_qs:
+            print("[Sequence RAG API] Triggering absolute offline fallback.")
+            fallback_questions = get_offline_fallback(subject, count)
+            return jsonify(fallback_questions)
+
+        # 3. Create list of selected template question slots of length `count`
+        # Cycle through template questions if count is larger than the template size
+        selected_template_qs = []
+        for i in range(count):
+            selected_template_qs.append(subject_qs[i % len(subject_qs)])
+
+        # 4. Perform targeted vector search by batching the unique chapter embeddings
+        unique_chapters = list(set([q["chapter"] for q in selected_template_qs]))
+        print(f"[Sequence RAG API] Unique chapters to retrieve: {unique_chapters}")
+        
+        chapter_contexts = {}
+        _, collection = get_rag_resources()
+        
+        if collection is not None:
+            try:
+                # Get embeddings for all unique chapters in one batch call
+                chapter_vectors = get_query_embeddings_batch([f"{ch} {subject} FSc textbook syllabus" for ch in unique_chapters])
+                
+                for idx, chapter in enumerate(unique_chapters):
+                    vector = chapter_vectors[idx]
+                    # Query ChromaDB for this specific chapter (Retrieving 2 results to optimize token usage and avoid rate limits)
+                    results = collection.query(
+                        query_embeddings=[vector],
+                        n_results=2,
+                        where={"subject": subject}
+                    )
+                    if results and "documents" in results and results["documents"] and results["documents"][0]:
+                        chapter_contexts[chapter] = results["documents"][0]
+                    else:
+                        chapter_contexts[chapter] = []
+                print(f"[Sequence RAG API] Successfully retrieved textbook contexts for {len(chapter_contexts)} chapters.")
+            except Exception as db_err:
+                print(f"[Sequence RAG API] Database vector matching failed: {db_err}")
+        else:
+            print("[Sequence RAG API] Vector collection not loaded. Textbook context will be empty.")
+
+        # Helper function to parse questions list safely
+        def parse_questions_list(parsed_data, batch_qs):
+            questions_list = None
+            if isinstance(parsed_data, list):
+                questions_list = parsed_data
+            elif isinstance(parsed_data, dict):
+                for k, val in parsed_data.items():
+                    if isinstance(val, list):
+                        questions_list = val
+                        break
+            
+            parsed_results = []
+            if questions_list and isinstance(questions_list, list):
+                for idx, q in enumerate(questions_list):
+                    ref_template = batch_qs[idx % len(batch_qs)]
+                    parsed_results.append({
+                        "subject": q.get("subject", subject),
+                        "difficulty": q.get("difficulty", ref_template["difficulty"]),
+                        "question": q.get("question") or ref_template["style_reference"]["question"],
+                        "options": q.get("options") or ref_template["style_reference"]["options"],
+                        "answer": q.get("answer") or ref_template["style_reference"]["answer"],
+                        "explanation": q.get("explanation", "Grounded in textbook curriculum notes.")
+                    })
+            return parsed_results
+
+        # Helper function to process a single batch concurrently
+        def process_single_batch(batch_offset, batch_qs):
+            batch_count = len(batch_qs)
+            print(f"[Sequence RAG API - Worker] Starting batch offset {batch_offset} (size: {batch_count})...")
+            
+            # Build prompt matching the sequence structure
+            prompt = f"You are an expert Pakistan entry test (MDCAT/ECAT) question setter. Generate EXACTLY {batch_count} high-quality, unique multiple-choice questions (MCQs) for the subject '{subject}' based strictly on the textbook context and past paper styles below.\n\n"
+            
+            for idx, q_info in enumerate(batch_qs):
+                prompt += f"QUESTION POSITION {idx + 1}:\n"
+                prompt += f"CHAPTER/TOPIC: {q_info['chapter']}\n"
+                prompt += f"DIFFICULTY LEVEL: {q_info['difficulty']}\n"
+                
+                # Append retrieved textbook contexts
+                chunks = chapter_contexts.get(q_info['chapter'], [])
+                context_text = "\n\n".join(chunks) if chunks else "No book context available."
+                prompt += f"TEXTBOOK CONTEXT:\n{context_text}\n"
+                
+                # Append style reference from past paper at this index
+                style = q_info['style_reference']
+                prompt += f"PAST PAPER STYLE REFERENCE:\n"
+                prompt += f"Question: {style['question']}\n"
+                prompt += f"Options: {style['options']}\n"
+                prompt += f"Answer: {style['answer']}\n\n"
+
+            prompt += "STRICT GENERATION INSTRUCTIONS:\n"
+            prompt += f"1. Generate EXACTLY {batch_count} questions — no more, no less. Match the question positions in order.\n"
+            prompt += "2. All questions must be strictly grounded in their respective textbook contexts. Do not use outside facts.\n"
+            prompt += "3. Provide exactly 4 options for each question (A, B, C, D).\n"
+            prompt += "4. Output a valid JSON list of objects containing the fields: 'subject', 'difficulty', 'question', 'options', 'answer', and 'explanation'.\n"
+            prompt += "5. Match the difficulty level specified for each question position. Label the difficulty field exactly as 'Easy', 'Moderate', or 'Hard'.\n"
+            prompt += "6. Do NOT output any markdown, HTML, backticks, or preamble. Return ONLY the raw JSON array.\n\n"
+
+            prompt += "JSON schema template:\n"
+            prompt += "[\n"
+            prompt += "  {\n"
+            prompt += f"    \"subject\": \"{subject}\",\n"
+            prompt += f"    \"difficulty\": \"Easy | Moderate | Hard\",\n"
+            prompt += f"    \"question\": \"Question text...\",\n"
+            prompt += f"    \"options\": [\"A) option1\", \"B) option2\", \"C) option3\", \"D) option4\"],\n"
+            prompt += "    \"answer\": \"Exact matching option text or letter\",\n"
+            prompt += "    \"explanation\": \"A short explanation based on the textbook context.\"\n"
+            prompt += "  }\n"
+            prompt += "]"
+
+            # Execute API call with 3-tier resilient fallback
+            batch_success = False
+            batch_results = []
+            
+            if groq_client and chapter_contexts:
+                # Tier 1: Try llama-3.3-70b-versatile
+                try:
+                    print(f"[Sequence RAG API - Worker] Trying Tier 1 (Llama 3.3 70B) for batch offset {batch_offset}...")
+                    content = call_groq_completion_with_retry(groq_client, prompt, model="llama-3.3-70b-versatile", retries=1)
+                    parsed_data = json.loads(content)
+                    batch_results = parse_questions_list(parsed_data, batch_qs)
+                    if batch_results:
+                        print(f"[Sequence RAG API - Worker] Tier 1 successful for batch offset {batch_offset}.")
+                        batch_success = True
+                except Exception as tier1_err:
+                    print(f"[Sequence RAG API - Worker] Tier 1 failed: {tier1_err}. Trying Tier 2 (Llama 3.1 8B Instant)...")
+                    
+                    # Tier 2: Try llama-3.1-8b-instant (Higher Rate Limits)
+                    try:
+                        content = call_groq_completion_with_retry(groq_client, prompt, model="llama-3.1-8b-instant", retries=1)
+                        parsed_data = json.loads(content)
+                        batch_results = parse_questions_list(parsed_data, batch_qs)
+                        if batch_results:
+                            print(f"[Sequence RAG API - Worker] Tier 2 successful for batch offset {batch_offset}.")
+                            batch_success = True
+                    except Exception as tier2_err:
+                        print(f"[Sequence RAG API - Worker] Tier 2 failed: {tier2_err}.")
+
+            # Tier 3: Zero-latency solved past paper fallback
+            if not batch_success:
+                print(f"[Sequence RAG API - Worker] Tier 3: Loading real past paper fallback questions for batch offset {batch_offset}.")
+                batch_results = []
+                for q_info in batch_qs:
+                    style = q_info["style_reference"]
+                    batch_results.append({
+                        "subject": subject,
+                        "difficulty": q_info["difficulty"],
+                        "question": style["question"],
+                        "options": style["options"],
+                        "answer": style["answer"],
+                        "explanation": f"Real past paper question matching historical chronological pattern."
+                    })
+            return batch_results
+
+        # 5. Process batches concurrently using ThreadPoolExecutor
+        batch_size = 10
+        all_generated_questions = []
+        
+        from concurrent.futures import ThreadPoolExecutor
+        with ThreadPoolExecutor(max_workers=5) as executor:
+            futures = []
+            for offset in range(0, count, batch_size):
+                batch_qs = selected_template_qs[offset:offset+batch_size]
+                futures.append(executor.submit(process_single_batch, offset, batch_qs))
+                
+            # Collect results in order
+            for f in futures:
+                try:
+                    all_generated_questions.extend(f.result())
+                except Exception as f_err:
+                    print(f"[Sequence RAG API] Future retrieval failed: {f_err}")
+
+        # 6. Assign final sequential ID values
+        for idx, q in enumerate(all_generated_questions):
+            q["id"] = idx + 1
+
+        print(f"[Sequence RAG API] Successfully compiled {len(all_generated_questions)} final questions.")
+        return jsonify(all_generated_questions)
+
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == '__main__':
     # Run on port 5001 to avoid React (3000) or other conflicts
