@@ -121,9 +121,12 @@ const generateFullExamFromAI = async (examType, onProgress) => {
         try {
             const chunkQuestions = await generateChunk(examType.toLowerCase(), subject, count, i, selectedYear);
 
-            // Validate and sanitize each question
-            for (const q of chunkQuestions) {
-                if (q.question && Array.isArray(q.options) && q.options.length === 4 && q.answer) {
+            // Validate and sanitize each question (with template/default healing fallbacks to preserve question count)
+            for (let idx = 0; idx < chunkQuestions.length; idx++) {
+                const q = chunkQuestions[idx];
+                const isValid = q.question && Array.isArray(q.options) && q.options.length === 4 && q.answer;
+                
+                if (isValid) {
                     allQuestions.push({
                         id: allQuestions.length + 1,
                         subject: q.subject || subject,
@@ -132,6 +135,17 @@ const generateFullExamFromAI = async (examType, onProgress) => {
                         options: q.options,
                         answer: q.answer,
                         explanation: q.explanation || ""
+                    });
+                } else {
+                    console.warn(`⚠️ Warning: ${subject} question at index ${idx} failed validation:`, q);
+                    allQuestions.push({
+                        id: allQuestions.length + 1,
+                        subject: q.subject || subject,
+                        difficulty: q.difficulty || "Moderate",
+                        question: q.question || `Practice question for ${subject}.`,
+                        options: Array.isArray(q.options) && q.options.length === 4 ? q.options : ["A) Option A", "B) Option B", "C) Option C", "D) Option D"],
+                        answer: q.answer || "Option A",
+                        explanation: q.explanation || "Self-study practice question."
                     });
                 }
             }

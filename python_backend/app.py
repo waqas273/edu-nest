@@ -3,6 +3,19 @@ from flask_cors import CORS
 import joblib
 import numpy as np
 import os
+import sys
+
+# Force UTF-8 encoding for stdout and stderr on Windows to prevent UnicodeEncodeError in task runner logs
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
+if hasattr(sys.stderr, "reconfigure"):
+    try:
+        sys.stderr.reconfigure(encoding="utf-8")
+    except Exception:
+        pass
 import json
 import re
 import traceback
@@ -436,12 +449,17 @@ def generate_rag_exam():
             parsed_results = []
             if questions_list and isinstance(questions_list, list):
                 for idx, q in enumerate(questions_list):
+                    if not isinstance(q, dict):
+                        continue
                     ref_template = batch_qs[idx % len(batch_qs)]
+                    options = q.get("options")
+                    if not isinstance(options, list) or len(options) != 4:
+                        options = ref_template["style_reference"]["options"]
                     parsed_results.append({
                         "subject": q.get("subject", subject),
                         "difficulty": q.get("difficulty", ref_template["difficulty"]),
                         "question": q.get("question") or ref_template["style_reference"]["question"],
-                        "options": q.get("options") or ref_template["style_reference"]["options"],
+                        "options": options,
                         "answer": q.get("answer") or ref_template["style_reference"]["answer"],
                         "explanation": q.get("explanation", "Grounded in textbook curriculum notes.")
                     })
@@ -503,7 +521,7 @@ def generate_rag_exam():
                     content = call_groq_completion_with_retry(groq_client, prompt, model="llama-3.3-70b-versatile", retries=1)
                     parsed_data = json.loads(content)
                     batch_results = parse_questions_list(parsed_data, batch_qs)
-                    if batch_results:
+                    if batch_results and len(batch_results) == batch_count:
                         print(f"[Sequence RAG API - Worker] Tier 1 successful for batch offset {batch_offset}.")
                         batch_success = True
                 except Exception as tier1_err:
@@ -514,7 +532,7 @@ def generate_rag_exam():
                         content = call_groq_completion_with_retry(groq_client, prompt, model="llama-3.1-8b-instant", retries=1)
                         parsed_data = json.loads(content)
                         batch_results = parse_questions_list(parsed_data, batch_qs)
-                        if batch_results:
+                        if batch_results and len(batch_results) == batch_count:
                             print(f"[Sequence RAG API - Worker] Tier 2 successful for batch offset {batch_offset}.")
                             batch_success = True
                     except Exception as tier2_err:
@@ -548,11 +566,24 @@ def generate_rag_exam():
                 futures.append(executor.submit(process_single_batch, offset, batch_qs))
                 
             # Collect results in order
-            for f in futures:
+            for idx, f in enumerate(futures):
+                offset = idx * batch_size
+                batch_qs = selected_template_qs[offset:offset+batch_size]
                 try:
                     all_generated_questions.extend(f.result())
                 except Exception as f_err:
-                    print(f"[Sequence RAG API] Future retrieval failed: {f_err}")
+                    print(f"[Sequence RAG API] Future retrieval failed for batch offset {offset}: {f_err}")
+                    # Load real past paper fallback questions for this failed batch
+                    for q_info in batch_qs:
+                        style = q_info["style_reference"]
+                        all_generated_questions.append({
+                            "subject": subject,
+                            "difficulty": q_info["difficulty"],
+                            "question": style["question"],
+                            "options": style["options"],
+                            "answer": style["answer"],
+                            "explanation": "Real past paper question matching historical chronological pattern (thread fallback)."
+                        })
 
         # 6. Assign final sequential ID values
         for idx, q in enumerate(all_generated_questions):
