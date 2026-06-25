@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useStudentState } from '../../context/StudentStateContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Microscope, Ruler, Clock, FileText, ChevronRight, Zap, Shield, Target, Search, Play, Sparkles, Youtube, X, Bookmark, ArrowLeft } from 'lucide-react';
@@ -53,11 +54,18 @@ const subjectColors = [
 
 const EntryTestPrep = () => {
     const navigate = useNavigate();
-    const [searchQuery, setSearchQuery] = useState('');
-    const [videos, setVideos] = useState([]);
+
+    const {
+        prepSearchQuery: searchQuery,
+        setPrepSearchQuery: setSearchQuery,
+        prepVideos: videos,
+        setPrepVideos: setVideos,
+        prepActiveTab: activeTab,
+        setPrepActiveTab: setActiveTab
+    } = useStudentState();
+
     const [isSearching, setIsSearching] = useState(false);
     const [selectedVideo, setSelectedVideo] = useState(null);
-    const [activeTab, setActiveTab] = useState('search'); // 'search' | 'saved'
     const [savedVideos, setSavedVideos] = useState(() => {
         try {
             return JSON.parse(localStorage.getItem('edunest_saved_videos') || '[]');

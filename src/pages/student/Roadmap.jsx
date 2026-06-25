@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { useStudentState } from '../../context/StudentStateContext';
 import { motion, AnimatePresence, useMotionValue, useTransform, useSpring } from 'framer-motion';
 import {
     Code, Calculator, Atom, Dna, FlaskConical, Brain,
@@ -126,20 +127,22 @@ const Roadmap = () => {
     const { skill } = useParams();
     const navigate = useNavigate();
 
-    // UI State
-    const [wizardStep, setWizardStep] = useState(1);
-    const [selectedClass, setSelectedClass] = useState(null);
-    const [selectedSkill, setSelectedSkill] = useState(null);
-    const [isRoadmapActive, setIsRoadmapActive] = useState(false);
+    const {
+        wizardStep, setWizardStep,
+        selectedClass, setSelectedClass,
+        selectedSkill, setSelectedSkill,
+        isRoadmapActive, setIsRoadmapActive,
+        topics, setTopics,
+        progress, setProgress,
+        loading,
+        isGenerating,
+        loadOrGenerateRoadmapBackground,
+        resetRoadmapState,
+        calculateProgress
+    } = useStudentState();
+
+    // Modal States & UI States
     const [hoveredCard, setHoveredCard] = useState(null);
-
-    // Roadmap Data State
-    const [topics, setTopics] = useState([]);
-    const [progress, setProgress] = useState(0);
-    const [loading, setLoading] = useState(false);
-    const [isGenerating, setIsGenerating] = useState(false);
-
-    // Modal States
     const [showGiveUpModal, setShowGiveUpModal] = useState(false);
     const [selectedTopic, setSelectedTopic] = useState(null);
     const [testTopic, setTestTopic] = useState(null);
@@ -153,7 +156,7 @@ const Roadmap = () => {
         if (skill && currentUser) {
             setSelectedSkill(decodeURIComponent(skill));
             setIsRoadmapActive(true);
-            loadOrGenerateRoadmap(decodeURIComponent(skill));
+            loadOrGenerateRoadmapBackground(decodeURIComponent(skill), currentUser);
         }
     }, [skill, currentUser]);
 
@@ -162,76 +165,6 @@ const Roadmap = () => {
         if (!currentUser) return null;
         const sanitizedSkill = skillName.replace(/[^a-zA-Z0-9]/g, '_');
         return `${currentUser.uid}_${sanitizedSkill}`;
-    };
-
-    const calculateProgress = (topicsArray) => {
-        if (!topicsArray || topicsArray.length === 0) return 0;
-        const completed = topicsArray.filter(t => t.status === 'completed').length;
-        return Math.round((completed / topicsArray.length) * 100);
-    };
-
-    // Core Logic
-    const loadOrGenerateRoadmap = async (skillName) => {
-        if (!currentUser) return;
-        setLoading(true);
-        const docId = getDocId(skillName);
-
-        try {
-            const roadmapRef = doc(db, 'roadmaps', docId);
-            const roadmapSnap = await getDoc(roadmapRef);
-
-            if (roadmapSnap.exists()) {
-                const data = roadmapSnap.data();
-                // Ensure all topics are unlocked for viewing if coming from old data
-                const processedTopics = (data.topics || []).map(t => ({
-                    ...t,
-                    status: t.status === 'locked' ? 'unlocked' : t.status
-                }));
-                // Ensure subtopics structure exists if upgrading from old data
-                processedTopics.forEach(t => {
-                    if (!t.subtopics) t.subtopics = [];
-                    // Ensure subtopics are objects if they were strings in old versions
-                    t.subtopics = t.subtopics.map((sub, idx) => {
-                        if (typeof sub === 'string') {
-                            return { id: `sub-${t.id}-${idx}`, title: sub, description: 'Explore this concept.', status: 'unlocked' };
-                        }
-                        return sub;
-                    });
-                });
-
-                setTopics(processedTopics);
-                setProgress(data.progress || 0);
-            } else {
-                setIsGenerating(true);
-                let generatedTopics;
-                try {
-                    generatedTopics = await generateRoadmap(skillName);
-                } catch (aiError) {
-                    console.warn('OpenAI failed, using fallback:', aiError.message);
-                    generatedTopics = generateFallbackRoadmap(skillName);
-                }
-
-                // Ensure they are all unlocked
-                generatedTopics = generatedTopics.map(t => ({ ...t, status: 'unlocked' }));
-
-                await setDoc(roadmapRef, {
-                    skill: skillName,
-                    topics: generatedTopics,
-                    progress: 0,
-                    createdAt: serverTimestamp(),
-                    userId: currentUser.uid
-                });
-
-                setTopics(generatedTopics);
-                setProgress(0);
-            }
-        } catch (error) {
-            console.error('Error loading/generating roadmap:', error);
-            setTopics(generateFallbackRoadmap(skillName).map(t => ({ ...t, status: 'unlocked' })));
-        } finally {
-            setLoading(false);
-            setIsGenerating(false);
-        }
     };
 
     // Event Handlers
@@ -255,7 +188,7 @@ const Roadmap = () => {
     const handleInitializeRoadmap = async () => {
         if (!selectedSkill) return;
         setIsRoadmapActive(true);
-        await loadOrGenerateRoadmap(selectedSkill);
+        await loadOrGenerateRoadmapBackground(selectedSkill, currentUser);
     };
 
     const handleBack = () => {
@@ -277,11 +210,7 @@ const Roadmap = () => {
         try {
             await deleteDoc(doc(db, 'roadmaps', docId));
             setShowGiveUpModal(false);
-            setTopics([]);
-            setProgress(0);
-            setIsRoadmapActive(false);
-            setWizardStep(2);
-            setSelectedSkill(null);
+            resetRoadmapState();
         } catch (error) {
             console.error('Error deleting roadmap:', error);
         }

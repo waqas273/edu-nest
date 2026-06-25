@@ -5,6 +5,8 @@ import { AnimatePresence } from 'framer-motion';
 
 import { ThemeProvider } from './context/ThemeContext';
 import { AuthProvider } from './context/AuthContext';
+import { ExamGenerationProvider } from './context/ExamGenerationContext';
+import { StudentStateProvider } from './context/StudentStateContext';
 import MainLayout from './layout/MainLayout';
 import PublicLayout from './layout/PublicLayout';
 import SplashScreen from './components/SplashScreen';
@@ -77,10 +79,12 @@ function App() {
   return (
     <ThemeProvider>
       <AuthProvider>
-        <GlobalToaster />
-        <BrowserRouter>
-          <AnimatePresence mode="wait">
-            {isLoading ? (
+        <ExamGenerationProvider>
+          <StudentStateProvider>
+            <GlobalToaster />
+            <BrowserRouter>
+              <AnimatePresence mode="wait">
+              {isLoading ? (
               <SplashScreen key="splash" />
             ) : (
               <div key="app">
@@ -274,6 +278,8 @@ function App() {
             )}
           </AnimatePresence>
         </BrowserRouter>
+        </StudentStateProvider>
+        </ExamGenerationProvider>
       </AuthProvider>
     </ThemeProvider >
   );

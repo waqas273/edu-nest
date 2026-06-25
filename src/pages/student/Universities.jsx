@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useStudentState } from '../../context/StudentStateContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Search, MapPin, Star, ArrowRight,
@@ -18,9 +19,16 @@ const Universities = () => {
     const navigate = useNavigate();
     const { userProfile } = useAuth();
 
-    const [universities, setUniversities] = useState([]);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [ratingFilter, setRatingFilter] = useState('all');
+    const {
+        uniSearchTerm: searchTerm,
+        setUniSearchTerm: setSearchTerm,
+        uniRatingFilter: ratingFilter,
+        setUniRatingFilter: setRatingFilter,
+        universitiesCache,
+        setUniversitiesCache
+    } = useStudentState();
+
+    const universities = universitiesCache || [];
     const [loading, setLoading] = useState(true);
     const [studentCoords, setStudentCoords] = useState(null);
 
@@ -43,6 +51,11 @@ const Universities = () => {
     }, []);
 
     useEffect(() => {
+        if (universitiesCache) {
+            setLoading(false);
+            return;
+        }
+
         const fetchUniversities = async () => {
             try {
                 const q = query(
@@ -76,7 +89,7 @@ const Universities = () => {
                     };
                 }));
 
-                setUniversities(universitiesEnriched);
+                setUniversitiesCache(universitiesEnriched);
             } catch (err) {
                 console.error('Error fetching universities:', err);
             } finally {
@@ -85,7 +98,7 @@ const Universities = () => {
         };
 
         fetchUniversities();
-    }, []);
+    }, [universitiesCache, setUniversitiesCache]);
 
     // ── Scored & filtered universities ──────────────────────────────────────────
     const { recommended, allScored } = useMemo(() => {

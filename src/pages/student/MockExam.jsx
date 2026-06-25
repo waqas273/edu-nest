@@ -7,6 +7,7 @@ import { generateFullExam, generateSubjectExam, getExamBlueprint } from '../../s
 import { useAuth } from '../../context/AuthContext';
 import { db } from '../../firebase';
 import { collection, addDoc, serverTimestamp, doc, updateDoc } from 'firebase/firestore';
+import { useExamGeneration } from '../../context/ExamGenerationContext';
 
 const MockExam = () => {
     const { type } = useParams();
@@ -18,6 +19,19 @@ const MockExam = () => {
     const [error, setError] = useState(null);
     const [selectedSubject, setSelectedSubject] = useState(null);
     const [activeTestDocId, setActiveTestDocId] = useState(null);
+
+    // Global background generation context hook
+    const {
+        isGenerating: isGenGlobal,
+        loadingStatus: loadStatusGlobal,
+        questions: qsGlobal,
+        examType: examTypeGlobal,
+        selectedSubject: subjectGlobal,
+        activeTestDocId: docIdGlobal,
+        error: errorGlobal,
+        startGenerationBackground,
+        resetGeneration
+    } = useExamGeneration();
 
     // Constants — durations from official blueprint
     const blueprint = getExamBlueprint(type);
@@ -33,8 +47,29 @@ const MockExam = () => {
     const isFinishedRef = useRef(false);
     const answersRef = useRef({});
     const questionsRef = useRef([]);
+    const hasStartedRef = useRef(false);
 
     useEffect(() => { questionsRef.current = questions; }, [questions]);
+    useEffect(() => { hasStartedRef.current = hasStarted; }, [hasStarted]);
+
+    // Sync context generation state to local page state
+    useEffect(() => {
+        const matchesContext = examTypeGlobal === type && subjectGlobal === selectedSubject;
+        if (matchesContext) {
+            if (isGenGlobal) {
+                setIsGenerating(true);
+                setLoadingStatus(loadStatusGlobal);
+            } else if (qsGlobal && qsGlobal.length > 0) {
+                setQuestions(qsGlobal);
+                setActiveTestDocId(docIdGlobal);
+                setIsGenerating(false);
+                setHasStarted(true);
+            } else if (errorGlobal) {
+                setError(errorGlobal);
+                setIsGenerating(false);
+            }
+        }
+    }, [examTypeGlobal, subjectGlobal, qsGlobal, isGenGlobal, loadStatusGlobal, errorGlobal, type, selectedSubject]);
 
     // State
     const [currentIdx, setCurrentIdx] = useState(0);
@@ -140,8 +175,8 @@ const MockExam = () => {
             window.removeEventListener('beforeunload', handleBeforeUnload);
 
             // Check if unmounting while test is active (Internal Navigation)
-            // We use the Ref to check the latest state during cleanup
-            if (!isFinishedRef.current) {
+            // We use the Ref to check the latest state during cleanup. We only abort if the exam actually started.
+            if (!isFinishedRef.current && hasStartedRef.current) {
                 // We cannot use async/await comfortably here for all browsers, but triggering it works for most
                 saveResult(true, "Navigated Away / Aborted");
             }
@@ -290,11 +325,11 @@ const MockExam = () => {
                         </div>
 
                         <div className="flex gap-3 justify-center">
-                            <button onClick={() => navigate('/student/history')}
+                            <button onClick={() => { resetGeneration(); navigate('/student/history'); }}
                                 className="px-6 py-3 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-700 dark:text-slate-300 font-bold rounded-2xl transition-all text-sm">
                                 View History
                             </button>
-                            <button onClick={() => navigate('/student/entry-test')}
+                            <button onClick={() => { resetGeneration(); navigate('/student/entry-test'); }}
                                 className="px-6 py-3 bg-slate-900 dark:bg-white text-white dark:text-slate-900 font-bold rounded-2xl hover:shadow-lg transition-all text-sm">
                                 Back to Tests
                             </button>
@@ -348,32 +383,12 @@ const MockExam = () => {
 
     if (!hasStarted) {
         const handleStart = async () => {
-            setIsGenerating(true);
             setError(null);
+            setIsGenerating(true);
             try {
-                if (currentUser) {
-                    const docRef = await addDoc(collection(db, 'test_history'), {
-                        userId: currentUser.uid,
-                        testName: selectedSubject ? `${type.toUpperCase()} ${selectedSubject}` : `${type.toUpperCase()} Full Mock`,
-                        category: 'Entry Test',
-                        status: 'started',
-                        timestamp: serverTimestamp(),
-                        topicName: selectedSubject || 'Full Exam',
-                        skill: type.toUpperCase()
-                    });
-                    setActiveTestDocId(docRef.id);
-                }
-                const generatedQuestions = selectedSubject
-                    ? await generateSubjectExam(type, selectedSubject, setLoadingStatus)
-                    : await generateFullExam(type, setLoadingStatus);
-                setQuestions(generatedQuestions);
-                setHasStarted(true);
+                await startGenerationBackground(type, selectedSubject, currentUser);
             } catch (err) {
                 setError(err.message);
-                if (activeTestDocId) {
-                    await updateDoc(doc(db, 'test_history', activeTestDocId), { status: 'failed' });
-                }
-            } finally {
                 setIsGenerating(false);
             }
         };
@@ -429,7 +444,7 @@ const MockExam = () => {
             {/* Top Bar */}
             <header className="relative z-20 px-4 md:px-6 py-3 flex justify-between items-center bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-100 dark:border-slate-800 sticky top-0 shadow-sm">
                 <div className="flex items-center gap-3">
-                    <button onClick={() => { if (window.confirm('Quit exam? Your progress will be saved as aborted.')) navigate('/student/entry-test'); }}
+                    <button onClick={() => { if (window.confirm('Quit exam? Your progress will be saved as aborted.')) { resetGeneration(); navigate('/student/entry-test'); } }}
                         className="p-2 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-xl transition text-slate-400 hover:text-red-500">
                         <X size={20} />
                     </button>

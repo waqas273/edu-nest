@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
+import { useStudentState } from '../../context/StudentStateContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
     Search, GraduationCap, Clock, DollarSign, Building2,
@@ -299,14 +300,26 @@ export default function StudentPrograms() {
     const navigate = useNavigate();
     const { currentUser, userProfile } = useAuth();
 
-    const [programs, setPrograms] = useState([]);
-    const [applications, setApplications] = useState({});
+    const {
+        progSearch: search,
+        setProgSearch: setSearch,
+        progDegreeFilter: degreeFilter,
+        setProgDegreeFilter: setDegreeFilter,
+        progDurationFilter: durationFilter,
+        setProgDurationFilter: setDurationFilter,
+        progStatusFilter: statusFilter,
+        setProgStatusFilter: setStatusFilter,
+        progShowFilters: showFilters,
+        setProgShowFilters: setShowFilters,
+        programsCache,
+        setProgramsCache,
+        applicationsCache,
+        setApplicationsCache
+    } = useStudentState();
+
+    const programs = programsCache || [];
+    const applications = applicationsCache || {};
     const [loading, setLoading] = useState(true);
-    const [search, setSearch] = useState('');
-    const [degreeFilter, setDegreeFilter] = useState('All');
-    const [durationFilter, setDurationFilter] = useState('All');
-    const [statusFilter, setStatusFilter] = useState('all');
-    const [showFilters, setShowFilters] = useState(false);
     const [detailModal, setDetailModal] = useState(null); // { prog, uniName, uniLocation, uniId, isOpen }
     const [studentCoords, setStudentCoords] = useState(null);
 
@@ -333,6 +346,11 @@ export default function StudentPrograms() {
     };
 
     useEffect(() => {
+        if (programsCache && applicationsCache) {
+            setLoading(false);
+            return;
+        }
+
         const fetchAll = async () => {
             try {
                 // Fetch ALL universities (no status filter — so all programs show correctly)
@@ -352,17 +370,17 @@ export default function StudentPrograms() {
                 }));
 
                 // Fetch student's applications (correct collection: 'admissions')
+                let appMap = {};
                 if (currentUser) {
                     const appSnap = await getDocs(query(
                         collection(db, 'admissions'),
                         where('studentId', '==', currentUser.uid)
                     ));
-                    const appMap = {};
                     appSnap.docs.forEach(d => { appMap[d.data().programId] = d.data().status; });
-                    setApplications(appMap);
                 }
 
-                setPrograms(progs);
+                setProgramsCache(progs);
+                setApplicationsCache(appMap);
             } catch (e) {
                 console.error('Programs fetch error:', e);
             } finally {
@@ -370,7 +388,7 @@ export default function StudentPrograms() {
             }
         };
         fetchAll();
-    }, [currentUser]);
+    }, [currentUser, programsCache, applicationsCache, setProgramsCache, setApplicationsCache]);
 
     const filtered = useMemo(() => {
         return programs.filter(p => {
