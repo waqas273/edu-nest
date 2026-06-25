@@ -52,7 +52,8 @@ const EXAM_BLUEPRINTS = {
 const generateChunk = async (examType, subject, count, chunkIndex, year = null) => {
     const callWithRetry = async (retries = 3) => {
         for (let attempt = 1; attempt <= retries; attempt++) {
-            const response = await fetch('http://localhost:5001/api/generate-rag-exam', {
+            const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
+            const response = await fetch(`${backendUrl}/api/generate-rag-exam`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'

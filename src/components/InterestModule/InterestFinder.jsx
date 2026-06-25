@@ -8,7 +8,7 @@ import { db } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
 import { QUESTION_BANK } from '../../data/questionBank';
 
-const FLASK_API_URL = 'http://localhost:5001';
+const FLASK_API_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
 
 // The order of categories matching the actual dataset columns (7 features)
 // The order of categories MUST strictly match the trained pandas dataset columns:
