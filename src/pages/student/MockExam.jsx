@@ -13,12 +13,22 @@ const MockExam = () => {
     const { type } = useParams();
     const navigate = useNavigate();
     const { currentUser } = useAuth();
+    
+    // --- State Declarations ---
     const [questions, setQuestions] = useState([]);
     const [isGenerating, setIsGenerating] = useState(false);
     const [loadingStatus, setLoadingStatus] = useState("");
     const [error, setError] = useState(null);
     const [selectedSubject, setSelectedSubject] = useState(null);
     const [activeTestDocId, setActiveTestDocId] = useState(null);
+    const [currentIdx, setCurrentIdx] = useState(0);
+    const [selectedOption, setSelectedOption] = useState(null);
+    const [answers, setAnswers] = useState({});
+    const [revealedAnswers, setRevealedAnswers] = useState({});
+    const [isFinished, setIsFinished] = useState(false);
+    const [hasStarted, setHasStarted] = useState(false);
+    const [showWarning, setShowWarning] = useState(false);
+    const [tabSwitchCount, setTabSwitchCount] = useState(0);
 
     // Global background generation context hook
     const {
@@ -42,6 +52,7 @@ const MockExam = () => {
         return chunk ? chunk.count * 60 : 30 * 60; // 1 min per question
     };
     const DURATION = getExamDuration(selectedSubject);
+    const [timeLeft, setTimeLeft] = useState(DURATION);
 
     // State Refs for Event Listeners
     const isFinishedRef = useRef(false);
@@ -70,19 +81,6 @@ const MockExam = () => {
             }
         }
     }, [examTypeGlobal, subjectGlobal, qsGlobal, isGenGlobal, loadStatusGlobal, errorGlobal, type, selectedSubject]);
-
-    // State
-    const [currentIdx, setCurrentIdx] = useState(0);
-    const [selectedOption, setSelectedOption] = useState(null);
-    const [answers, setAnswers] = useState({});
-    // Subject practice: tracks which question indices have been revealed
-    const [revealedAnswers, setRevealedAnswers] = useState({});
-    const [timeLeft, setTimeLeft] = useState(DURATION);
-    const [isFinished, setIsFinished] = useState(false);
-    const [hasStarted, setHasStarted] = useState(false);
-    const [showWarning, setShowWarning] = useState(false);
-    const [tabSwitchCount, setTabSwitchCount] = useState(0);
-    // isSubmitting removed — updateDoc is idempotent, double-save is safe
 
     // Sync refs
     useEffect(() => { answersRef.current = answers; }, [answers]);
