@@ -400,6 +400,106 @@ def generate_explanations_for_batch(batch_qs, subject):
     return None
 
 
+def generate_questions_via_ai(subject, count, exam_type):
+    if not groq_client:
+        return None
+        
+    print(f"[AI Generator] Generating {count} questions for {subject} ({exam_type}) using AI...")
+    
+    batch_size = 10
+    all_qs = []
+    
+    for offset in range(0, count, batch_size):
+        batch_count = min(batch_size, count - offset)
+        
+        prompt = (
+            f"You are an expert Pakistan entry test ({exam_type.upper()}) question setter.\n"
+            f"Generate EXACTLY {batch_count} high-quality, unique multiple-choice questions (MCQs) for the subject '{subject}'.\n\n"
+        )
+        
+        if subject.lower() == "english":
+            prompt += (
+                "Focus on entrance test English topics such as grammar, vocabulary, sentence correction, "
+                "synonyms, antonyms, prepositions, and spot-the-error style questions.\n"
+            )
+        elif subject.lower() == "logical reasoning":
+            prompt += (
+                "Focus on entry test Logical Reasoning topics such as letter/number series, logical deductions, "
+                "coding-decoding, logical games, patterns, and analytical reasoning.\n"
+            )
+        else:
+            prompt += f"Focus on topics from the standard FSc {subject} curriculum.\n"
+            
+        prompt += (
+            "\nSTRICT FORMATTING INSTRUCTIONS:\n"
+            "1. Return ONLY a valid JSON list of objects. No intro, no markdown, no code blocks.\n"
+            "2. Each object in the list must have these exact keys:\n"
+            "   - 'question': The question text.\n"
+            "   - 'options': A list of exactly 4 options. Do NOT prepend letters like A), B), C), D) to the options.\n"
+            "   - 'answer': The correct option text (must match one of the options exactly).\n"
+            "   - 'explanation': A brief, clear, one-sentence explanation of why the answer is correct.\n"
+            "   - 'difficulty': 'Easy', 'Moderate', or 'Hard'.\n"
+            "\n"
+            "Example JSON output:\n"
+            "[\n"
+            "  {\n"
+            "    \"question\": \"Choose the correct synonym of 'Aghast':\",\n"
+            "    \"options\": [\"Critical\", \"Reluctant\", \"Horrified\", \"Happy\"],\n"
+            "    \"answer\": \"Horrified\",\n"
+            "    \"explanation\": \"'Aghast' means filled with horror or shock; hence 'Horrified' is the correct synonym.\",\n"
+            "    \"difficulty\": \"Moderate\"\n"
+            "  }\n"
+            "]"
+        )
+        
+        try:
+            # Call Groq (Llama-3.3-70b-versatile or Llama-3.1-8b-instant as fallback)
+            model = "llama-3.3-70b-versatile"
+            content = call_groq_completion_with_retry(groq_client, prompt, model=model, retries=2)
+            parsed_data = json.loads(content)
+            
+            if isinstance(parsed_data, list):
+                for q in parsed_data:
+                    if q.get("question") and isinstance(q.get("options"), list) and len(q["options"]) == 4 and q.get("answer"):
+                        all_qs.append({
+                            "subject": subject,
+                            "difficulty": q.get("difficulty", "Moderate"),
+                            "question": q["question"],
+                            "options": q["options"],
+                            "answer": q["answer"],
+                            "explanation": q.get("explanation", "AI generated practice question.")
+                        })
+            print(f"[AI Generator] Successfully generated batch of {batch_count} questions.")
+        except Exception as e:
+            print(f"[AI Generator] Error generating batch: {e}")
+            try:
+                content = call_groq_completion_with_retry(groq_client, prompt, model="llama-3.1-8b-instant", retries=1)
+                parsed_data = json.loads(content)
+                if isinstance(parsed_data, list):
+                    for q in parsed_data:
+                        if q.get("question") and isinstance(q.get("options"), list) and len(q["options"]) == 4 and q.get("answer"):
+                            all_qs.append({
+                                "subject": subject,
+                                "difficulty": q.get("difficulty", "Moderate"),
+                                "question": q["question"],
+                                "options": q["options"],
+                                "answer": q["answer"],
+                                "explanation": q.get("explanation", "AI generated practice question.")
+                            })
+            except Exception as e2:
+                print(f"[AI Generator] Retry failed: {e2}")
+                
+    if len(all_qs) >= count:
+        return all_qs[:count]
+    elif len(all_qs) > 0:
+        import random
+        while len(all_qs) < count:
+            all_qs.append(random.choice(all_qs).copy())
+        return all_qs
+        
+    return None
+
+
 @app.route('/api/generate-rag-exam', methods=['POST'])
 def generate_rag_exam():
     """
@@ -471,6 +571,12 @@ def generate_rag_exam():
 
         # If sequence map is completely missing or empty, use fallback questions immediately
         if not subject_qs:
+            print(f"[Sequence RAG API] Subject '{subject}' template sequence not found. Attempting AI generation...")
+            ai_qs = generate_questions_via_ai(subject, count, exam_type)
+            if ai_qs:
+                for idx, q in enumerate(ai_qs):
+                    q["id"] = idx + 1
+                return jsonify(clean_and_enrich_questions(ai_qs, subject))
             print("[Sequence RAG API] Triggering absolute offline fallback.")
             fallback_questions = get_offline_fallback(subject, count)
             return jsonify(clean_and_enrich_questions(fallback_questions, subject))
