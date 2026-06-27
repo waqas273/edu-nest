@@ -364,7 +364,7 @@ def generate_explanations_for_batch(batch_qs, subject):
         return None
         
     # Build a compact prompt
-    prompt = f"You are an expert tutor for {subject}. Write a brief, clear, one-sentence explanation for why the specified option is the correct answer for each of the following multiple choice questions.\n\n"
+    prompt = f"You are an expert tutor for {subject}. Write a highly detailed, comprehensive, and clear explanation (at least 3 sentences) explaining the underlying scientific/logical concept, how the correct option is derived, and why the other options are incorrect for each of the following multiple choice questions.\n\n"
     
     questions_data = []
     for idx, q_info in enumerate(batch_qs):
@@ -379,7 +379,7 @@ def generate_explanations_for_batch(batch_qs, subject):
     prompt += json.dumps(questions_data, indent=2)
     prompt += "\n\nSTRICT INSTRUCTIONS:\n"
     prompt += f"1. Return a JSON object containing a single key 'explanations', which is a list of exactly {len(batch_qs)} strings.\n"
-    prompt += "2. Each string must be a concise, one-sentence explanation for the corresponding question.\n"
+    prompt += "2. Each string must be a highly detailed, comprehensive explanation (at least 3 sentences) for the corresponding question.\n"
     prompt += "3. Do not include any HTML, markdown, backticks, or introduction. Return ONLY raw JSON.\n"
     
     try:
@@ -437,7 +437,7 @@ def generate_questions_via_ai(subject, count, exam_type):
             "   - 'question': The question text.\n"
             "   - 'options': A list of exactly 4 options. Do NOT prepend letters like A), B), C), D) to the options.\n"
             "   - 'answer': The correct option text (must match one of the options exactly).\n"
-            "   - 'explanation': A brief, clear, one-sentence explanation of why the answer is correct.\n"
+            "   - 'explanation': A comprehensive, highly detailed explanation of why the correct option is right, explaining the underlying concept thoroughly (3 sentences minimum).\n"
             "   - 'difficulty': 'Easy', 'Moderate', or 'Hard'.\n"
             "\n"
             "Example JSON output:\n"
@@ -446,7 +446,7 @@ def generate_questions_via_ai(subject, count, exam_type):
             "    \"question\": \"Choose the correct synonym of 'Aghast':\",\n"
             "    \"options\": [\"Critical\", \"Reluctant\", \"Horrified\", \"Happy\"],\n"
             "    \"answer\": \"Horrified\",\n"
-            "    \"explanation\": \"'Aghast' means filled with horror or shock; hence 'Horrified' is the correct synonym.\",\n"
+            "    \"explanation\": \"'Aghast' means filled with horror or shock; hence 'Horrified' is the correct synonym. The other options do not carry this meaning: 'Critical' denotes expressing criticism or finding fault, 'Reluctant' means unwilling or hesitant, and 'Happy' is a state of pleasure or contentment. Thus, 'Horrified' is the only logical choice.\",\n"
             "    \"difficulty\": \"Moderate\"\n"
             "  }\n"
             "]"
@@ -678,7 +678,8 @@ def generate_rag_exam():
             prompt += "3. Provide exactly 4 options for each question (A, B, C, D).\n"
             prompt += "4. Output a valid JSON list of objects containing the fields: 'subject', 'difficulty', 'question', 'options', 'answer', and 'explanation'.\n"
             prompt += "5. Match the difficulty level specified for each question position. Label the difficulty field exactly as 'Easy', 'Moderate', or 'Hard'.\n"
-            prompt += "6. Do NOT output any markdown, HTML, backticks, or preamble. Return ONLY the raw JSON array.\n\n"
+            prompt += "6. Write a comprehensive, detailed explanation (minimum 3 sentences) for each question, thoroughly explaining the scientific/logical principles involved, how the correct answer is derived from the context, and why the other options are wrong.\n"
+            prompt += "7. Do NOT output any markdown, HTML, backticks, or preamble. Return ONLY the raw JSON array.\n\n"
 
             prompt += "JSON schema template:\n"
             prompt += "[\n"
@@ -688,7 +689,7 @@ def generate_rag_exam():
             prompt += f"    \"question\": \"Question text...\",\n"
             prompt += f"    \"options\": [\"A) option1\", \"B) option2\", \"C) option3\", \"D) option4\"],\n"
             prompt += "    \"answer\": \"Exact matching option text or letter\",\n"
-            prompt += "    \"explanation\": \"A short explanation based on the textbook context.\"\n"
+            prompt += "    \"explanation\": \"A highly detailed and comprehensive explanation (minimum 3 sentences) explaining the key concept, the reasoning behind the correct answer, and why other options are incorrect.\"\n"
             prompt += "  }\n"
             prompt += "]"
 

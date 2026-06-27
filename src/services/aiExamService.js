@@ -110,7 +110,7 @@ const generateFullExamFromAI = async (examType, onProgress) => {
         : ['2010', '2011', '2012', '2013', '2014', '2015', '2016', '2017', '2018'];
     const selectedYear = years[Math.floor(Math.random() * years.length)];
 
-    onProgress?.(`🚀 Starting ${examType.toUpperCase()} generation (Year ${selectedYear}) — ${blueprint.totalQuestions} questions across ${totalChunks} subjects...`);
+    onProgress?.(`🚀 Starting ${examType.toUpperCase()} generation — ${blueprint.totalQuestions} questions across ${totalChunks} subjects...`);
 
     for (let i = 0; i < totalChunks; i++) {
         const { subject, count } = blueprint.chunks[i];
@@ -188,7 +188,7 @@ export const generateSubjectExam = async (examType, subject, onProgress) => {
         : ['2010', '2011', '2012', '2013', '2014', '2015', '2016', '2017', '2018'];
     const selectedYear = years[Math.floor(Math.random() * years.length)];
 
-    onProgress?.(`🚀 Preparing ${subject} practice test (${count} questions, Year ${selectedYear})...`);
+    onProgress?.(`🚀 Preparing ${subject} practice test (${count} questions)...`);
 
     try {
         const questions = await generateChunk(examType.toLowerCase(), subject, count, 0, selectedYear);

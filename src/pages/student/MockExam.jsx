@@ -505,13 +505,6 @@ const MockExam = () => {
                                 <span className="px-3 py-1.5 rounded-full bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 text-[10px] font-black uppercase tracking-widest border border-indigo-100 dark:border-indigo-800">
                                     {q.subject}
                                 </span>
-                                {q.difficulty && (
-                                    <span className={`px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest border ${
-                                        q.difficulty === 'Hard'   ? 'bg-red-50 text-red-600 border-red-100 dark:bg-red-900/20 dark:text-red-400 dark:border-red-900'
-                                        : q.difficulty === 'Easy' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-900/20 dark:text-emerald-400 dark:border-emerald-900'
-                                        : 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-900/20 dark:text-amber-400 dark:border-amber-900'
-                                    }`}>{q.difficulty}</span>
-                                )}
                                 {isPracticeMode && (
                                     <span className="ml-auto px-3 py-1.5 rounded-full bg-teal-50 dark:bg-teal-900/20 text-teal-600 dark:text-teal-400 text-[10px] font-black uppercase tracking-widest border border-teal-100 dark:border-teal-800">
                                         Practice Mode
