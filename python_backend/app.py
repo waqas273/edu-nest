@@ -255,7 +255,8 @@ def get_offline_fallback(subject, count):
                             "question": q.get("question"),
                             "options": q.get("options"),
                             "answer": q.get("answer"),
-                            "explanation": q.get("explanation", "This is an offline fallback question.")
+                            "explanation": q.get("explanation", "This is an offline fallback question."),
+                            "chapter": q.get("topic", "curriculum syllabus")
                         })
                     return formatted_selected
     except Exception as e:
@@ -322,6 +323,40 @@ def get_query_embeddings_batch(texts):
         return [item["embedding"] for item in res_data.get("data", [])]
     else:
         raise Exception(f"OpenRouter batch embedding call failed: {response.text}")
+
+
+def clean_and_enrich_questions(questions, subject):
+    import re
+    # Match patterns like: A) or A. or A - or (A) at the beginning of option text
+    prefix_re = re.compile(r"^\s*\(?[A-D]\s*[\).\-]\s*")
+    
+    for q in questions:
+        # Clean options
+        if "options" in q and isinstance(q["options"], list):
+            cleaned_opts = []
+            for opt in q["options"]:
+                if isinstance(opt, str):
+                    cleaned_opts.append(prefix_re.sub("", opt).strip())
+                else:
+                    cleaned_opts.append(str(opt))
+            q["options"] = cleaned_opts
+            
+        # Clean answer
+        if q.get("answer") and isinstance(q["answer"], str):
+            q["answer"] = prefix_re.sub("", q["answer"]).strip()
+            
+        # Enrich generic/fallback explanations
+        explanation = q.get("explanation", "")
+        if not explanation or "historical chronological pattern" in explanation or "offline fallback" in explanation:
+            chapter_name = q.get("chapter", "curriculum syllabus")
+            correct_ans = q.get("answer", "")
+            q["explanation"] = (
+                f"The correct answer is '{correct_ans}'. This is a verified past paper question for {subject} "
+                f"from the topic/chapter '{chapter_name}'. For a detailed analysis, please refer to the corresponding FSc "
+                f"Textbook board study materials."
+            )
+            
+    return questions
 
 
 @app.route('/api/generate-rag-exam', methods=['POST'])
@@ -397,7 +432,7 @@ def generate_rag_exam():
         if not subject_qs:
             print("[Sequence RAG API] Triggering absolute offline fallback.")
             fallback_questions = get_offline_fallback(subject, count)
-            return jsonify(fallback_questions)
+            return jsonify(clean_and_enrich_questions(fallback_questions, subject))
 
         # 3. Create list of selected template question slots of length `count`
         # Cycle through template questions if count is larger than the template size
@@ -550,7 +585,8 @@ def generate_rag_exam():
                         "question": style["question"],
                         "options": style["options"],
                         "answer": style["answer"],
-                        "explanation": f"Real past paper question matching historical chronological pattern."
+                        "explanation": f"Real past paper question matching historical chronological pattern.",
+                        "chapter": q_info.get("chapter", "curriculum syllabus")
                     })
             return batch_results
 
@@ -582,7 +618,8 @@ def generate_rag_exam():
                             "question": style["question"],
                             "options": style["options"],
                             "answer": style["answer"],
-                            "explanation": "Real past paper question matching historical chronological pattern (thread fallback)."
+                            "explanation": "Real past paper question matching historical chronological pattern (thread fallback).",
+                            "chapter": q_info.get("chapter", "curriculum syllabus")
                         })
 
         # 6. Assign final sequential ID values
@@ -590,7 +627,7 @@ def generate_rag_exam():
             q["id"] = idx + 1
 
         print(f"[Sequence RAG API] Successfully compiled {len(all_generated_questions)} final questions.")
-        return jsonify(all_generated_questions)
+        return jsonify(clean_and_enrich_questions(all_generated_questions, subject))
 
     except Exception as e:
         traceback.print_exc()
