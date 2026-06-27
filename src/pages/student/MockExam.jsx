@@ -54,6 +54,13 @@ const MockExam = () => {
     const DURATION = getExamDuration(selectedSubject);
     const [timeLeft, setTimeLeft] = useState(DURATION);
 
+    // Reset timer when exam starts or selectedSubject changes
+    useEffect(() => {
+        if (hasStarted) {
+            setTimeLeft(getExamDuration(selectedSubject));
+        }
+    }, [hasStarted, selectedSubject]);
+
     // State Refs for Event Listeners
     const isFinishedRef = useRef(false);
     const answersRef = useRef({});
