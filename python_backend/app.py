@@ -806,6 +806,107 @@ def generate_rag_exam():
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
+
+@app.route('/api/generate-roadmap', methods=['POST'])
+def generate_roadmap_api():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "Missing JSON request body."}), 400
+            
+        skill = data.get("skill")
+        if not skill:
+            return jsonify({"error": "Missing 'skill' parameter."}), 400
+            
+        print(f"[Roadmap API] Generating roadmap for skill: {skill}")
+        
+        prompt = (
+            f"Generate a STRUCTURED learning roadmap for \"{skill}\".\n"
+            f"Target Audience: Average Student.\n"
+            f"Return ONLY a valid JSON array with STRICTLY 10 MAIN TOPICS.\n"
+            f"Each Main Topic MUST have EXACTLY 7 SUBTOPICS.\n"
+            f"Focus on deep technical details.\n"
+            f"Format:\n"
+            f"[\n"
+            f"  {{ \"title\": \"...\", \"description\": \"...\", \"subtopics\": [\"...\", \"...\", \"...\", \"...\", \"...\", \"...\", \"...\"] }}\n"
+            f"]"
+        )
+        
+        if groq_client:
+            try:
+                # Call Groq
+                content = call_groq_completion_with_retry(
+                    groq_client,
+                    prompt,
+                    model="llama-3.3-70b-versatile",
+                    retries=2
+                )
+                
+                # Parse to ensure it is valid JSON
+                parsed_data = json.loads(content)
+                if isinstance(parsed_data, list):
+                    return jsonify(parsed_data)
+            except Exception as ai_err:
+                print(f"[Roadmap API] AI Generation failed: {ai_err}")
+                
+        return jsonify({"error": "AI generation failed"}), 500
+        
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route('/api/generate-roadmap-test', methods=['POST'])
+def generate_roadmap_test_api():
+    try:
+        data = request.get_json()
+        if not data:
+            return jsonify({"error": "Missing JSON request body."}), 400
+            
+        topic = data.get("topic")
+        skill = data.get("skill")
+        count = data.get("count", 15)
+        difficulty = data.get("difficulty", "Beginner")
+        
+        if not topic or not skill:
+            return jsonify({"error": "Missing required parameters."}), 400
+            
+        print(f"[Roadmap Test API] Generating {count} questions for topic '{topic}' in skill '{skill}'")
+        
+        prompt = (
+            f"Generate {count} {difficulty.upper()}-LEVEL multiple choice questions on \"{topic}\" for \"{skill}\".\n"
+            f"JSON Only: [{{ \"question\": \"...\", \"options\": [\"A\",\"B\",\"C\",\"D\"], \"correctIndex\": 0, \"explanation\": \"...\" }}]\n\n"
+            f"IMPORTANT INSTRUCTIONS FOR \"explanation\":\n"
+            f"1. Explain WHY the correct answer is the right choice.\n"
+            f"2. Use Simple, Professional English (Easy to understand).\n"
+            f"3. Length: Approximately 150 words.\n"
+            f"4. Do not simply repeat the question. Break down the concept clearly."
+        )
+        
+        if groq_client:
+            try:
+                # Call Groq
+                content = call_groq_completion_with_retry(
+                    groq_client,
+                    prompt,
+                    model="llama-3.3-70b-versatile",
+                    retries=2
+                )
+                
+                # Parse to ensure it is valid JSON
+                parsed_data = json.loads(content)
+                if isinstance(parsed_data, list):
+                    return jsonify(parsed_data)
+            except Exception as ai_err:
+                print(f"[Roadmap Test API] AI Generation failed: {ai_err}")
+                
+        return jsonify({"error": "AI generation failed"}), 500
+        
+    except Exception as e:
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+
 if __name__ == '__main__':
     # Run on port 5001 to avoid React (3000) or other conflicts
     app.run(debug=True, port=5001)

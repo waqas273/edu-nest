@@ -85,29 +85,27 @@ export async function generateRoadmap(skill) {
     if (isOfflineMode) return getStaticRoadmap(skill);
 
     try {
-        const prompt = `Generate a STRUCTURED learning roadmap for "${skill}".
-        Target Audience: Average Student.
-        Return ONLY a valid JSON array with STRICTLY 10 MAIN TOPICS.
-        Each Main Topic MUST have EXACTLY 7 SUBTOPICS.
-        Focus on deep technical details.
-        Format:
-        [
-          { "title": "...", "description": "...", "subtopics": ["...", "...", "...", "...", "...", "...", "..."] }
-        ]`;
-
-        const content = await callAI([
-            { role: 'system', content: 'Senior Curriculum Architect. Return JSON Array Only. No text.' },
-            { role: 'user', content: prompt }
-        ]);
-
-        const topics = parseJSON(content);
-        if (!Array.isArray(topics) || topics.length === 0) throw new Error('Invalid AI response');
+        const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
+        const response = await fetch(`${backendUrl}/api/generate-roadmap`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ skill })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Backend returned status: ${response.status}`);
+        }
+        
+        const topics = await response.json();
+        if (!Array.isArray(topics) || topics.length === 0) throw new Error('Invalid response');
 
         // Sanitize and Map for Firestore
         return topics.map((topic, index) => sanitizeTopic(topic, index));
 
     } catch (error) {
-        console.warn('Dynamic Generation Failed. Using Static Fallback.');
+        console.warn('Dynamic Generation Failed. Using Static Fallback:', error);
         return getStaticRoadmap(skill);
     }
 }
@@ -225,23 +223,23 @@ export function generateFallbackRoadmap(skill) {
 }
 
 export async function generateTestQuestions(topic, skill, count = 15, difficulty = 'Beginner') {
-    const prompt = `Generate ${count} ${difficulty.toUpperCase()}-LEVEL multiple choice questions on "${topic}" for "${skill}".
-    JSON Only: [{"question": "...", "options": ["A","B","C","D"], "correctIndex": 0, "explanation": "..."}]
-    
-    IMPORTANT INSTRUCTIONS FOR "explanation":
-    1. Explain WHY the correct answer is the right choice.
-    2. Use Simple, Professional English (Easy to understand).
-    3. Length: Approximately 150 words.
-    4. Do not simply repeat the question. Break down the concept clearly.`;
-
     try {
-        const content = await callAI([
-            { role: 'system', content: 'Test Creator. Return JSON Only. No markdown.' },
-            { role: 'user', content: prompt }
-        ]);
+        const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
+        const response = await fetch(`${backendUrl}/api/generate-roadmap-test`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ topic, skill, count, difficulty })
+        });
+        
+        if (!response.ok) {
+            throw new Error(`Backend returned status: ${response.status}`);
+        }
 
-        const questions = parseJSON(content);
-        if (questions.length === 0) throw new Error('Empty');
+        const questions = await response.json();
+        if (!Array.isArray(questions) || questions.length === 0) throw new Error('Empty or invalid response');
+        
         return questions.slice(0, count).map((q, index) => {
             let cIndex = q.correctIndex;
             if (typeof cIndex === 'string') {
@@ -258,7 +256,7 @@ export async function generateTestQuestions(topic, skill, count = 15, difficulty
         });
 
     } catch (error) {
-        // Fallback
+        console.warn('AI test generation failed, using static fallback:', error);
         return Array.from({ length: count }, (_, i) => ({
             id: i + 1,
             question: `What is a core concept of ${topic}?`,
