@@ -359,6 +359,47 @@ def clean_and_enrich_questions(questions, subject):
     return questions
 
 
+def generate_explanations_for_batch(batch_qs, subject):
+    if not groq_client:
+        return None
+        
+    # Build a compact prompt
+    prompt = f"You are an expert tutor for {subject}. Write a brief, clear, one-sentence explanation for why the specified option is the correct answer for each of the following multiple choice questions.\n\n"
+    
+    questions_data = []
+    for idx, q_info in enumerate(batch_qs):
+        style = q_info["style_reference"]
+        questions_data.append({
+            "index": idx + 1,
+            "question": style["question"],
+            "options": style["options"],
+            "answer": style["answer"]
+        })
+        
+    prompt += json.dumps(questions_data, indent=2)
+    prompt += "\n\nSTRICT INSTRUCTIONS:\n"
+    prompt += f"1. Return a JSON object containing a single key 'explanations', which is a list of exactly {len(batch_qs)} strings.\n"
+    prompt += "2. Each string must be a concise, one-sentence explanation for the corresponding question.\n"
+    prompt += "3. Do not include any HTML, markdown, backticks, or introduction. Return ONLY raw JSON.\n"
+    
+    try:
+        # Use llama-3.1-8b-instant as it has high limits and is super fast for simple tutor tasks
+        response = call_groq_completion_with_retry(
+            groq_client, 
+            prompt, 
+            model="llama-3.1-8b-instant", 
+            retries=2
+        )
+        data = json.loads(response)
+        explanations = data.get("explanations", [])
+        if isinstance(explanations, list) and len(explanations) == len(batch_qs):
+            return explanations
+    except Exception as e:
+        print(f"[Sequence RAG API] Failed to generate AI explanations for batch: {e}")
+        
+    return None
+
+
 @app.route('/api/generate-rag-exam', methods=['POST'])
 def generate_rag_exam():
     """
@@ -575,17 +616,32 @@ def generate_rag_exam():
 
             # Tier 3: Zero-latency solved past paper fallback
             if not batch_success:
-                print(f"[Sequence RAG API - Worker] Tier 3: Loading real past paper fallback questions for batch offset {batch_offset}.")
+                print(f"[Sequence RAG API - Worker] Tier 3: Loading real past paper fallback questions for batch offset {batch_offset}...")
+                
+                # Generate AI explanations for this batch
+                ai_explanations = generate_explanations_for_batch(batch_qs, subject)
+                
                 batch_results = []
-                for q_info in batch_qs:
+                for idx, q_info in enumerate(batch_qs):
                     style = q_info["style_reference"]
+                    
+                    # Determine explanation text
+                    exp_text = ""
+                    if ai_explanations and idx < len(ai_explanations):
+                        exp_text = ai_explanations[idx]
+                        
+                    if not exp_text:
+                        # Dynamic clean fallback if AI explanation call fails
+                        chapter_name = q_info.get("chapter", "curriculum syllabus")
+                        exp_text = f"The correct answer is {style['answer']}. Please review the topic '{chapter_name}' in your FSc textbook for detailed study."
+                        
                     batch_results.append({
                         "subject": subject,
                         "difficulty": q_info["difficulty"],
                         "question": style["question"],
                         "options": style["options"],
                         "answer": style["answer"],
-                        "explanation": f"Real past paper question matching historical chronological pattern.",
+                        "explanation": exp_text,
                         "chapter": q_info.get("chapter", "curriculum syllabus")
                     })
             return batch_results
@@ -610,15 +666,25 @@ def generate_rag_exam():
                 except Exception as f_err:
                     print(f"[Sequence RAG API] Future retrieval failed for batch offset {offset}: {f_err}")
                     # Load real past paper fallback questions for this failed batch
-                    for q_info in batch_qs:
+                    ai_explanations = generate_explanations_for_batch(batch_qs, subject)
+                    for idx, q_info in enumerate(batch_qs):
                         style = q_info["style_reference"]
+                        
+                        exp_text = ""
+                        if ai_explanations and idx < len(ai_explanations):
+                            exp_text = ai_explanations[idx]
+                            
+                        if not exp_text:
+                            chapter_name = q_info.get("chapter", "curriculum syllabus")
+                            exp_text = f"The correct answer is {style['answer']}. Please review the topic '{chapter_name}' in your FSc textbook for detailed study."
+                            
                         all_generated_questions.append({
                             "subject": subject,
                             "difficulty": q_info["difficulty"],
                             "question": style["question"],
                             "options": style["options"],
                             "answer": style["answer"],
-                            "explanation": "Real past paper question matching historical chronological pattern (thread fallback).",
+                            "explanation": exp_text,
                             "chapter": q_info.get("chapter", "curriculum syllabus")
                         })
 
