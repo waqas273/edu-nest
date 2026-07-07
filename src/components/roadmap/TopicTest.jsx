@@ -13,8 +13,9 @@ import { generateTestQuestions, generateGrandTestQuestions } from '../../service
 
 // Test Configuration
 const TEST_CONFIG = {
-    topic: { questions: 10, passingScore: 65 },
-    grand: { questions: 50, passingScore: 65 }
+    grand: { questions: 50, passingScore: 65 },
+    topic: { questions: 25, passingScore: 65 },
+    subtopic: { questions: 20, passingScore: 65 }
 };
 
 const TopicTest = ({
@@ -28,7 +29,13 @@ const TopicTest = ({
     isGrandTest = false
 }) => {
     const { currentUser } = useAuth();
-    const config = isGrandTest ? TEST_CONFIG.grand : TEST_CONFIG.topic;
+    
+    // Determine which config to use
+    let configType = 'topic';
+    if (isGrandTest) configType = 'grand';
+    else if (topic && topic.isSubtopic) configType = 'subtopic';
+    
+    const config = TEST_CONFIG[configType];
 
     // Test State
     const [difficulty, setDifficulty] = useState(null); // 'Simple', 'Medium', 'Hard'

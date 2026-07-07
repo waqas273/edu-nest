@@ -68,7 +68,7 @@ async function callGroq(messages) {
         body: JSON.stringify({
             model: GROQ_MODEL,
             messages: messages,
-            temperature: 0.2,
+            temperature: 0.7,
             max_tokens: 8192
         })
     });
@@ -82,33 +82,80 @@ async function callGroq(messages) {
 }
 
 export async function generateRoadmap(skill) {
-    if (isOfflineMode) return getStaticRoadmap(skill);
+    console.log(`%c[EduNest AI] 🚀 Starting roadmap generation for: "${skill}"`, 'color: #6366f1; font-weight: bold; font-size: 13px;');
+    
+    if (isOfflineMode) {
+        console.warn('[EduNest AI] ⚠️ Offline mode - using static roadmap');
+        return getStaticRoadmap(skill);
+    }
 
+    // --- Strategy 1: Direct Groq API (FIRST PRIORITY) ---
+    console.log('[EduNest AI] 🤖 Calling Groq AI directly...');
+    try {
+        const prompt = `Generate a STRUCTURED learning roadmap for "${skill}".
+Target Audience: Average Student.
+Return ONLY a valid JSON array with STRICTLY 10 MAIN TOPICS.
+Each Main Topic MUST have EXACTLY 7 SUBTOPICS.
+Do NOT use "..." or placeholder text - Generate actual real educational content.
+Format:
+[
+  {
+    "title": "Topic Title Here",
+    "description": "Brief engaging description of this topic",
+    "subtopics": ["Actual Subtopic 1", "Actual Subtopic 2", "Actual Subtopic 3", "Actual Subtopic 4", "Actual Subtopic 5", "Actual Subtopic 6", "Actual Subtopic 7"]
+  }
+]`;
+
+        const content = await callGroq([{ role: 'user', content: prompt }]);
+        console.log(`[EduNest AI] 📨 Groq responded (${content.length} chars)`);
+
+        const topics = parseJSON(content);
+        console.log(`[EduNest AI] Parsed ${topics.length} topics from Groq`);
+
+        if (!Array.isArray(topics) || topics.length === 0) {
+            throw new Error('Groq returned empty or invalid JSON');
+        }
+
+        const sanitized = topics.map((topic, index) => sanitizeTopic(topic, index));
+        console.log('%c[EduNest AI] ✅ Groq Roadmap generated successfully!', 'color: green; font-weight: bold;', sanitized);
+        return sanitized;
+
+    } catch (groqError) {
+        console.warn(`[EduNest AI] ❌ Groq failed: ${groqError.message}`);
+        console.log('[EduNest AI] 🔄 Trying backend fallback...');
+    }
+
+    // --- Strategy 2: Local Flask backend (Fallback) ---
     try {
         const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
+        console.log(`[EduNest AI] 📡 Calling backend: ${backendUrl}/api/generate-roadmap`);
+
         const response = await fetch(`${backendUrl}/api/generate-roadmap`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ skill })
         });
-        
-        if (!response.ok) {
-            throw new Error(`Backend returned status: ${response.status}`);
-        }
-        
+
+        console.log(`[EduNest AI] Backend responded: HTTP ${response.status}`);
+
+        if (!response.ok) throw new Error(`Backend status: ${response.status}`);
+
         const topics = await response.json();
-        if (!Array.isArray(topics) || topics.length === 0) throw new Error('Invalid response');
+        console.log(`[EduNest AI] ✅ Backend returned ${topics.length} topics`);
 
-        // Sanitize and Map for Firestore
-        return topics.map((topic, index) => sanitizeTopic(topic, index));
+        if (!Array.isArray(topics) || topics.length === 0) throw new Error('Backend returned empty array');
 
-    } catch (error) {
-        console.warn('Dynamic Generation Failed. Using Static Fallback:', error);
+        const sanitized = topics.map((topic, index) => sanitizeTopic(topic, index));
+        console.log('%c[EduNest AI] ✅ Backend Roadmap generated!', 'color: green; font-weight: bold;');
+        return sanitized;
+
+    } catch (backendError) {
+        console.error(`[EduNest AI] ❌ Backend also failed: ${backendError.message}`);
+        console.warn('[EduNest AI] ⚠️ Using static fallback roadmap');
         return getStaticRoadmap(skill);
     }
 }
+
 
 // --- STATIC BACKUP DATA (Professional 10x10) ---
 const STATIC_ROADMAPS = {
@@ -223,24 +270,93 @@ export function generateFallbackRoadmap(skill) {
 }
 
 export async function generateTestQuestions(topic, skill, count = 15, difficulty = 'Beginner') {
+    console.log(`%c[EduNest AI] 🎯 Generating ${count} questions for: "${topic}" (${skill} - ${difficulty})`, 'color: #6366f1; font-weight: bold;');
+    
+    // --- Strategy 1: Direct Groq API (FIRST PRIORITY) ---
+    console.log('[EduNest AI] 🤖 Calling Groq AI directly for test questions...');
+    try {
+        let allQuestions = [];
+        let attempts = 0;
+
+        while (allQuestions.length < count && attempts < 3) {
+            const remaining = count - allQuestions.length;
+            
+            const prompt = `Generate ${remaining} ${difficulty.toUpperCase()}-LEVEL multiple choice questions on "${topic}" for "${skill}".
+Return ONLY a valid JSON array of objects. Do not use "..." or placeholders. Generate actual questions and options.
+Format:
+[
+  {
+    "question": "Actual question text here?",
+    "options": ["Option 1", "Option 2", "Option 3", "Option 4"],
+    "correctIndex": 0,
+    "explanation": "Detailed explanation here."
+  }
+]
+
+IMPORTANT INSTRUCTIONS FOR "explanation":
+1. Explain WHY the correct answer is the right choice.
+2. Use Simple, Professional English (Easy to understand).
+3. Length: Approximately 3 to 4 sentences.
+4. Do not simply repeat the question. Break down the concept clearly.`;
+
+            const content = await callGroq([{ role: 'user', content: prompt }]);
+            const rawQuestions = parseJSON(content);
+            
+            if (Array.isArray(rawQuestions) && rawQuestions.length > 0) {
+                allQuestions = [...allQuestions, ...rawQuestions];
+            }
+            
+            attempts++;
+        }
+
+        if (allQuestions.length === 0) {
+            throw new Error('Groq returned empty or invalid JSON across all attempts');
+        }
+
+        const questions = allQuestions.slice(0, count).map((q, index) => {
+            let cIndex = q.correctIndex;
+            if (typeof cIndex === 'string') {
+                const map = { 'A': 0, 'a': 0, 'B': 1, 'b': 1, 'C': 2, 'c': 2, 'D': 3, 'd': 3, '1': 0, '2': 1, '3': 2, '4': 3 };
+                cIndex = map[cIndex] !== undefined ? map[cIndex] : parseInt(cIndex);
+            }
+            return {
+                id: index + 1,
+                question: q.question,
+                options: q.options || ['A', 'B', 'C', 'D'],
+                correctIndex: typeof cIndex === 'number' && !isNaN(cIndex) ? cIndex : 0,
+                explanation: q.explanation || 'Correct answer highlighted.'
+            };
+        });
+        
+        console.log(`%c[EduNest AI] ✅ Groq Test Questions generated successfully! (${questions.length}/${count})`, 'color: green; font-weight: bold;');
+        return questions;
+
+    } catch (groqError) {
+        console.warn(`[EduNest AI] ❌ Groq failed for test questions: ${groqError.message}`);
+        console.log('[EduNest AI] 🔄 Trying backend fallback...');
+    }
+
+    // --- Strategy 2: Local Flask backend (Fallback) ---
     try {
         const backendUrl = import.meta.env.VITE_BACKEND_URL || 'http://localhost:5001';
+        console.log(`[EduNest AI] 📡 Calling: ${backendUrl}/api/generate-roadmap-test`);
+        
         const response = await fetch(`${backendUrl}/api/generate-roadmap-test`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ topic, skill, count, difficulty })
         });
         
-        if (!response.ok) {
-            throw new Error(`Backend returned status: ${response.status}`);
-        }
-
-        const questions = await response.json();
-        if (!Array.isArray(questions) || questions.length === 0) throw new Error('Empty or invalid response');
+        console.log(`[EduNest AI] Backend responded: HTTP ${response.status}`);
         
-        return questions.slice(0, count).map((q, index) => {
+        if (!response.ok) throw new Error(`Backend returned status: ${response.status}`);
+
+        const rawQuestions = await response.json();
+        console.log(`[EduNest AI] ✅ Got ${rawQuestions.length} questions from backend`, rawQuestions[0]);
+        
+        if (!Array.isArray(rawQuestions) || rawQuestions.length === 0) throw new Error('Empty or invalid response');
+        
+        return rawQuestions.slice(0, count).map((q, index) => {
             let cIndex = q.correctIndex;
             if (typeof cIndex === 'string') {
                 const map = { 'A': 0, 'a': 0, 'B': 1, 'b': 1, 'C': 2, 'c': 2, 'D': 3, 'd': 3, '1': 0, '2': 1, '3': 2, '4': 3 };
@@ -256,7 +372,8 @@ export async function generateTestQuestions(topic, skill, count = 15, difficulty
         });
 
     } catch (error) {
-        console.warn('AI test generation failed, using static fallback:', error);
+        console.error(`[EduNest AI] ❌ Backend test generation failed: ${error.message}`);
+        console.warn('[EduNest AI] ⚠️ Using static fallback questions');
         return Array.from({ length: count }, (_, i) => ({
             id: i + 1,
             question: `What is a core concept of ${topic}?`,
@@ -267,14 +384,47 @@ export async function generateTestQuestions(topic, skill, count = 15, difficulty
     }
 }
 
+
 export async function generateGrandTestQuestions(skill, topics, count = 50) {
-    const topicNames = Array.isArray(topics) ? topics.map(t => typeof t === 'string' ? t : t.title).join(', ') : 'Mixed Topics';
     try {
-        const qs = await generateTestQuestions(topicNames, skill, count, 'Mixed');
-        if (!qs || qs.length === 0) throw new Error('Empty responses');
-        return qs;
+        console.log(`%c[EduNest AI] 🏆 Starting Grand Test Generation for ${count} questions`, 'color: #eab308; font-weight: bold;');
+        
+        let allQuestions = [];
+        let attempts = 0;
+        const CHUNK_SIZE = 20; // LLMs lose count if asked for 50 at once, 20 is safe
+        
+        // Split topics into chunks to ensure variety and avoid duplicates
+        const topicNamesArray = Array.isArray(topics) ? topics.map(t => typeof t === 'string' ? t : t.title) : ['Mixed Topics'];
+        
+        while (allQuestions.length < count && attempts < 5) {
+            const remaining = count - allQuestions.length;
+            const currentChunkSize = Math.min(remaining, CHUNK_SIZE);
+            
+            // Pick a random subset of topics for this chunk to ensure variety
+            const shuffledTopics = [...topicNamesArray].sort(() => 0.5 - Math.random());
+            const selectedTopics = shuffledTopics.slice(0, 3).join(', '); // Use 3 random topics per chunk
+            
+            console.log(`[EduNest AI] ⏳ Grand Test Chunk ${attempts + 1}: Requesting ${currentChunkSize} questions on topics: ${selectedTopics}`);
+            
+            const qs = await generateTestQuestions(selectedTopics || skill, skill, currentChunkSize, 'Mixed');
+            
+            if (qs && qs.length > 0) {
+                allQuestions = [...allQuestions, ...qs];
+                console.log(`[EduNest AI] ✅ Received ${qs.length} questions. Total so far: ${allQuestions.length}/${count}`);
+            } else {
+                console.warn('[EduNest AI] ⚠️ This chunk returned 0 questions, trying again...');
+            }
+            
+            attempts++;
+        }
+
+        if (allQuestions.length === 0) throw new Error('Failed to generate any questions after multiple attempts');
+        
+        // Slice to exact count and re-assign IDs to be perfectly sequential
+        return allQuestions.slice(0, count).map((q, i) => ({ ...q, id: i + 1 }));
+
     } catch (err) {
-        console.error('Grand test AI failed:', err);
+        console.error('[EduNest AI] ❌ Grand test AI failed:', err);
         return Array.from({ length: count }, (_, i) => ({
             id: i + 1,
             question: `Grand Test Question ${i + 1} for ${skill}`,

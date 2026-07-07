@@ -117,6 +117,25 @@ if groq_key:
 else:
     print("WARNING: VITE_GROQ_API_KEY environment variable not found. RAG generation might fail.")
 
+def call_groq_completion_with_retry(client, prompt, model="llama-3.3-70b-versatile", retries=2):
+    """Call Groq chat completion with retry logic."""
+    last_err = None
+    for attempt in range(retries + 1):
+        try:
+            print(f"[Groq] Attempt {attempt + 1}/{retries + 1} calling model: {model}")
+            response = client.chat.completions.create(
+                model=model,
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.7,
+                max_tokens=4096
+            )
+            content = response.choices[0].message.content
+            print(f"[Groq] Response received ({len(content)} chars)")
+            return content
+        except Exception as e:
+            last_err = e
+            print(f"[Groq] Attempt {attempt + 1} failed: {e}")
+    raise last_err
 
 
 
@@ -828,8 +847,13 @@ def generate_roadmap_api():
             f"Focus on deep technical details.\n"
             f"Format:\n"
             f"[\n"
-            f"  {{ \"title\": \"...\", \"description\": \"...\", \"subtopics\": [\"...\", \"...\", \"...\", \"...\", \"...\", \"...\", \"...\"] }}\n"
-            f"]"
+            f"  {{\n"
+            f"    \"title\": \"Topic Title\",\n"
+            f"    \"description\": \"Detailed description of the topic\",\n"
+            f"    \"subtopics\": [\"Subtopic 1\", \"Subtopic 2\", \"Subtopic 3\", \"Subtopic 4\", \"Subtopic 5\", \"Subtopic 6\", \"Subtopic 7\"]\n"
+            f"  }}\n"
+            f"]\n"
+            f"Do not use \"...\". Provide actual content for all 10 topics and 7 subtopics each."
         )
         
         if groq_client:
@@ -842,6 +866,16 @@ def generate_roadmap_api():
                     retries=2
                 )
                 
+                print(f"\n[Roadmap API] AI Raw Output:\n{content}\n")
+                
+                # Robust JSON extraction
+                import re
+                content = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL).strip()
+                first_idx = content.find('[')
+                last_idx = content.rfind(']')
+                if first_idx != -1 and last_idx != -1:
+                    content = content[first_idx:last_idx+1]
+                    
                 # Parse to ensure it is valid JSON
                 parsed_data = json.loads(content)
                 if isinstance(parsed_data, list):
@@ -875,11 +909,20 @@ def generate_roadmap_test_api():
         
         prompt = (
             f"Generate {count} {difficulty.upper()}-LEVEL multiple choice questions on \"{topic}\" for \"{skill}\".\n"
-            f"JSON Only: [{{ \"question\": \"...\", \"options\": [\"A\",\"B\",\"C\",\"D\"], \"correctIndex\": 0, \"explanation\": \"...\" }}]\n\n"
+            f"Return ONLY a valid JSON array of objects. Do not use \"...\". Generate actual questions and options.\n"
+            f"Format:\n"
+            f"[\n"
+            f"  {{\n"
+            f"    \"question\": \"Actual question text here?\",\n"
+            f"    \"options\": [\"Option 1\", \"Option 2\", \"Option 3\", \"Option 4\"],\n"
+            f"    \"correctIndex\": 0,\n"
+            f"    \"explanation\": \"Detailed explanation here.\"\n"
+            f"  }}\n"
+            f"]\n\n"
             f"IMPORTANT INSTRUCTIONS FOR \"explanation\":\n"
             f"1. Explain WHY the correct answer is the right choice.\n"
             f"2. Use Simple, Professional English (Easy to understand).\n"
-            f"3. Length: Approximately 150 words.\n"
+            f"3. Length: Approximately 3 to 4 sentences.\n"
             f"4. Do not simply repeat the question. Break down the concept clearly."
         )
         
@@ -893,6 +936,16 @@ def generate_roadmap_test_api():
                     retries=2
                 )
                 
+                print(f"\n[Roadmap Test API] AI Raw Output:\n{content}\n")
+                
+                # Robust JSON extraction
+                import re
+                content = re.sub(r'<think>.*?</think>', '', content, flags=re.DOTALL).strip()
+                first_idx = content.find('[')
+                last_idx = content.rfind(']')
+                if first_idx != -1 and last_idx != -1:
+                    content = content[first_idx:last_idx+1]
+                    
                 # Parse to ensure it is valid JSON
                 parsed_data = json.loads(content)
                 if isinstance(parsed_data, list):

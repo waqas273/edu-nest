@@ -53,20 +53,20 @@ export const StudentStateProvider = ({ children }) => {
         const docId = getDocId(skillName, currentUser);
 
         try {
+            // Check Firestore for existing roadmap (for progress data only)
             const roadmapRef = doc(db, 'roadmaps', docId);
             const roadmapSnap = await getDoc(roadmapRef);
 
             if (roadmapSnap.exists()) {
+                // Load from Firestore (cached with progress)
+                console.log(`%c[EduNest Roadmap] 📂 Loading saved roadmap for "${skillName}" from Firestore`, 'color: #22c55e; font-weight: bold;');
                 const data = roadmapSnap.data();
-                // Ensure all topics are unlocked for viewing if coming from old data
                 const processedTopics = (data.topics || []).map(t => ({
                     ...t,
                     status: t.status === 'locked' ? 'unlocked' : t.status
                 }));
-                // Ensure subtopics structure exists if upgrading from old data
                 processedTopics.forEach(t => {
                     if (!t.subtopics) t.subtopics = [];
-                    // Ensure subtopics are objects if they were strings in old versions
                     t.subtopics = t.subtopics.map((sub, idx) => {
                         if (typeof sub === 'string') {
                             return { id: `sub-${t.id}-${idx}`, title: sub, description: 'Explore this concept.', status: 'unlocked' };
@@ -77,18 +77,25 @@ export const StudentStateProvider = ({ children }) => {
 
                 setTopics(processedTopics);
                 setProgress(data.progress || 0);
+                console.log(`[EduNest Roadmap] ✅ Loaded ${processedTopics.length} topics from cache`);
             } else {
+                // Fresh generation from Groq AI
+                console.log(`%c[EduNest Roadmap] 🤖 No saved roadmap found. Generating fresh AI roadmap for "${skillName}"...`, 'color: #6366f1; font-weight: bold; font-size: 13px;');
+                
                 let generatedTopics;
                 try {
                     generatedTopics = await generateRoadmap(skillName);
+                    console.log(`%c[EduNest Roadmap] ✅ AI generated ${generatedTopics?.length} topics`, 'color: green; font-weight: bold;');
                 } catch (aiError) {
-                    console.warn('OpenAI failed, using fallback:', aiError.message);
+                    console.warn('[EduNest Roadmap] ⚠️ AI failed, using fallback:', aiError.message);
                     generatedTopics = generateFallbackRoadmap(skillName);
                 }
 
                 // Ensure they are all unlocked
                 generatedTopics = generatedTopics.map(t => ({ ...t, status: 'unlocked' }));
 
+                // Save to Firestore
+                console.log('[EduNest Roadmap] 💾 Saving roadmap to Firestore...');
                 await setDoc(roadmapRef, {
                     skill: skillName,
                     topics: generatedTopics,
@@ -96,12 +103,13 @@ export const StudentStateProvider = ({ children }) => {
                     createdAt: serverTimestamp(),
                     userId: currentUser.uid
                 });
+                console.log('[EduNest Roadmap] ✅ Saved to Firestore');
 
                 setTopics(generatedTopics);
                 setProgress(0);
             }
         } catch (error) {
-            console.error('Error loading/generating roadmap:', error);
+            console.error('[EduNest Roadmap] ❌ Error loading/generating roadmap:', error);
             setRoadmapError(error.message);
             // Fallback locally
             const fallback = generateFallbackRoadmap(skillName).map(t => ({ ...t, status: 'unlocked' }));
@@ -112,6 +120,7 @@ export const StudentStateProvider = ({ children }) => {
             isGeneratingRef.current = false;
         }
     };
+
 
     const resetRoadmapState = () => {
         setWizardStep(1);
