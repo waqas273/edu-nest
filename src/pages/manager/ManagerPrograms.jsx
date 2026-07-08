@@ -1163,7 +1163,7 @@ const ManagerPrograms = () => {
                                                 id: t.id,
                                                 scholarshipTitle: scholarshipFormData.title,
                                                 type: scholarshipFormData.type,
-                                                criteriaTitle: 'Intermediate / Equivalent',
+                                                criteriaTitle: t.criteriaTitle || scholarshipFormData.criteriaTitle || 'Intermediate (Local Board) - Inter Part II (12th) - F.Sc Pre-Medical',
                                                 minPercentage: t.min,
                                                 maxPercentage: t.max,
                                                 position: t.position,
@@ -1173,13 +1173,19 @@ const ManagerPrograms = () => {
                                             onChange={(updatedFlatList) => {
                                                 const rebuiltTiers = updatedFlatList.map(item => ({
                                                     id: item.id || Math.random().toString(),
+                                                    criteriaTitle: item.criteriaTitle || '',
                                                     min: item.minPercentage || '',
                                                     max: item.maxPercentage || '',
                                                     position: item.position || '',
                                                     condition: item.condition || '',
                                                     grant: item.grantPercentage || ''
                                                 }));
-                                                setScholarshipFormData(prev => ({ ...prev, tiers: rebuiltTiers }));
+                                                const topCriteria = rebuiltTiers[0]?.criteriaTitle || '';
+                                                setScholarshipFormData(prev => ({ 
+                                                    ...prev, 
+                                                    criteriaTitle: topCriteria,
+                                                    tiers: rebuiltTiers 
+                                                }));
                                             }}
                                         />
                                     </div>
@@ -1447,8 +1453,7 @@ const ManagerPrograms = () => {
                                                             <th className="p-4 w-28">Scope</th>
                                                             <th className="p-4 w-28">Tag</th>
                                                             <th className="p-4 w-28">Type</th>
-                                                            <th className="p-4 w-52">Education Class</th>
-                                                            <th className="p-4">Tiers Mapped</th>
+                                                            <th className="p-4">Tiers & Target Education Class Mapping</th>
                                                         </tr>
                                                     </thead>
                                                     <tbody className="divide-y divide-slate-100 dark:divide-white/[0.04] text-slate-600 dark:text-slate-350">
@@ -1472,25 +1477,29 @@ const ManagerPrograms = () => {
                                                                     <td className="p-4 font-mono">{row.tag || <span className="text-slate-400">-</span>}</td>
                                                                     <td className="p-4 capitalize">{row.type}</td>
                                                                     <td className="p-4">
-                                                                        <select
-                                                                            value={row.criteriaTitle}
-                                                                            onChange={(e) => {
-                                                                                const updated = schParsedData.map(s => s.title === row.title ? { ...s, criteriaTitle: e.target.value } : s);
-                                                                                setSchParsedData(updated);
-                                                                            }}
-                                                                            className="w-full px-2 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-750 dark:text-slate-350 focus:outline-none cursor-pointer"
-                                                                        >
-                                                                            {getFlatEducationOptions().map((opt, oIdx) => (
-                                                                                <option key={oIdx} value={opt}>{opt}</option>
-                                                                            ))}
-                                                                        </select>
-                                                                    </td>
-                                                                    <td className="p-4">
-                                                                        <div className="flex flex-wrap gap-1">
+                                                                        <div className="space-y-2">
                                                                             {row.tiers.map((t, tIdx) => (
-                                                                                <span key={tIdx} className="px-2 py-0.5 rounded bg-slate-100 dark:bg-white/[0.04] text-slate-500 dark:text-slate-400 text-[10px]">
-                                                                                    {t.min ? `${t.min}%-${t.max || 100}%` : t.position || t.condition || 'Rule'} → <b>{t.grant}%</b>
-                                                                                </span>
+                                                                                <div key={tIdx} className="flex flex-col sm:flex-row items-start sm:items-center gap-2 p-2 rounded-xl bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.05]">
+                                                                                    <span className="text-[10px] font-bold text-slate-500 whitespace-nowrap min-w-[100px]">
+                                                                                        {t.min ? `${t.min}% - ${t.max || 100}%` : t.position || t.condition || 'Waiver'} → <b className="text-slate-800 dark:text-white">{t.grant}% Off</b>
+                                                                                    </span>
+                                                                                    <div className="flex items-center gap-1.5 w-full">
+                                                                                        <span className="text-[9px] text-slate-400 font-bold uppercase tracking-wider shrink-0">For Class:</span>
+                                                                                        <select
+                                                                                            value={t.criteriaTitle}
+                                                                                            onChange={(e) => {
+                                                                                                const updatedTiers = row.tiers.map((item, idx) => idx === tIdx ? { ...item, criteriaTitle: e.target.value } : item);
+                                                                                                const updated = schParsedData.map(s => s.title === row.title ? { ...s, criteriaTitle: updatedTiers[0].criteriaTitle, tiers: updatedTiers } : s);
+                                                                                                setSchParsedData(updated);
+                                                                                            }}
+                                                                                            className="w-full px-2 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[10px] font-semibold text-slate-700 dark:text-slate-350 focus:outline-none cursor-pointer max-w-[280px] truncate"
+                                                                                        >
+                                                                                            {getFlatEducationOptions().map((opt, oIdx) => (
+                                                                                                <option key={oIdx} value={opt}>{opt}</option>
+                                                                                            ))}
+                                                                                        </select>
+                                                                                    </div>
+                                                                                </div>
                                                                             ))}
                                                                         </div>
                                                                     </td>
