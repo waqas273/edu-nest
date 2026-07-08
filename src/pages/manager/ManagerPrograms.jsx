@@ -1477,31 +1477,33 @@ const ManagerPrograms = () => {
                                                                     <td className="p-4 font-mono">{row.tag || <span className="text-slate-400">-</span>}</td>
                                                                     <td className="p-4 capitalize">{row.type}</td>
                                                                     <td className="p-4">
-                                                                        <div className="space-y-2">
+                                                                        <div className="space-y-2 min-w-[420px]">
                                                                             {row.tiers.map((t, tIdx) => (
-                                                                                <div key={tIdx} className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-white/[0.02] border border-slate-150 dark:border-white/[0.05]">
-                                                                                    <div className="flex items-center flex-wrap gap-2">
+                                                                                <div key={tIdx} className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-slate-50 dark:bg-white/[0.02] border border-slate-150 dark:border-white/[0.05]">
+                                                                                    {/* Left: compact status pills */}
+                                                                                    <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-700 dark:text-slate-350 shrink-0">
                                                                                         {t.min ? (
-                                                                                            <span className="px-2 py-1 rounded-lg bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 text-[10px] font-black tracking-wider">
-                                                                                                {t.min}% - {t.max || 100}% Marks
+                                                                                            <span className="px-2 py-0.5 rounded-lg bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 font-extrabold tracking-wider">
+                                                                                                {t.min}% - {t.max || 100}%
                                                                                             </span>
                                                                                         ) : t.position ? (
-                                                                                            <span className="px-2 py-1 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 text-[10px] font-black tracking-wider truncate max-w-[120px]" title={t.position}>
+                                                                                            <span className="px-2 py-0.5 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 font-extrabold tracking-wider max-w-[100px] truncate" title={t.position}>
                                                                                                 {t.position}
                                                                                             </span>
                                                                                         ) : (
-                                                                                            <span className="px-2 py-1 rounded-lg bg-slate-200/50 dark:bg-white/[0.06] text-slate-500 dark:text-slate-400 text-[10px] font-black tracking-wider truncate max-w-[120px]" title={t.condition}>
+                                                                                            <span className="px-2 py-0.5 rounded-lg bg-slate-200/60 dark:bg-white/[0.06] text-slate-500 dark:text-slate-400 font-extrabold tracking-wider max-w-[100px] truncate" title={t.condition}>
                                                                                                 {t.condition || 'Rule'}
                                                                                             </span>
                                                                                         )}
-                                                                                        <span className="text-[10px] font-bold text-slate-350 dark:text-slate-700">→</span>
-                                                                                        <span className="px-2 py-1 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[10px] font-black tracking-wider">
-                                                                                            {t.grant}% Waiver
+                                                                                        <span className="text-slate-300 dark:text-slate-700">→</span>
+                                                                                        <span className="px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-extrabold tracking-wider">
+                                                                                            {t.grant}% Off
                                                                                         </span>
                                                                                     </div>
                                                                                     
-                                                                                    <div className="flex items-center gap-2 w-full lg:w-auto shrink-0">
-                                                                                        <span className="text-[9px] text-slate-400 dark:text-slate-505 font-black uppercase tracking-wider">For:</span>
+                                                                                    {/* Right: dropdown */}
+                                                                                    <div className="flex items-center gap-2 shrink-0">
+                                                                                        <span className="text-[9px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-wider">For:</span>
                                                                                         <select
                                                                                             value={t.criteriaTitle}
                                                                                             onChange={(e) => {
@@ -1509,7 +1511,7 @@ const ManagerPrograms = () => {
                                                                                                 const updated = schParsedData.map(s => s.title === row.title ? { ...s, criteriaTitle: updatedTiers[0].criteriaTitle, tiers: updatedTiers } : s);
                                                                                                 setSchParsedData(updated);
                                                                                             }}
-                                                                                            className="px-2 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-[10px] font-bold text-slate-700 dark:text-slate-350 focus:outline-none cursor-pointer max-w-[280px] hover:border-slate-350 dark:hover:border-slate-600 transition"
+                                                                                            className="px-2 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[10px] font-bold text-slate-700 dark:text-slate-300 focus:outline-none cursor-pointer max-w-[240px] hover:border-slate-350 dark:hover:border-slate-600 transition"
                                                                                         >
                                                                                             {getFlatEducationOptions().map((opt, oIdx) => (
                                                                                                 <option key={oIdx} value={opt}>{opt}</option>
