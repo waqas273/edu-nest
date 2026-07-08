@@ -15,7 +15,6 @@ const MockExam = () => {
     const { currentUser } = useAuth();
     
     // --- State Declarations ---
-    const [questions, setQuestions] = useState([]);
     const [isGenerating, setIsGenerating] = useState(false);
     const [loadingStatus, setLoadingStatus] = useState("");
     const [error, setError] = useState(null);
@@ -28,7 +27,7 @@ const MockExam = () => {
     const {
         isGenerating: isGenGlobal,
         loadingStatus: loadStatusGlobal,
-        questions: qsGlobal,
+        questions: questions,
         examType: examTypeGlobal,
         selectedSubject: subjectGlobal,
         activeTestDocId: docIdGlobal,
@@ -87,8 +86,7 @@ const MockExam = () => {
             if (isGenGlobal) {
                 setIsGenerating(true);
                 setLoadingStatus(loadStatusGlobal);
-            } else if (qsGlobal && qsGlobal.length > 0) {
-                setQuestions(qsGlobal);
+            } else if (questions && questions.length > 0) {
                 setActiveTestDocId(docIdGlobal);
                 setIsGenerating(false);
                 if (selectedSubject !== subjectGlobal) {
@@ -100,7 +98,7 @@ const MockExam = () => {
                 setIsGenerating(false);
             }
         }
-    }, [examTypeGlobal, subjectGlobal, qsGlobal, isGenGlobal, loadStatusGlobal, errorGlobal, type, selectedSubject, subjectGlobal, setHasStarted]);
+    }, [examTypeGlobal, subjectGlobal, questions, isGenGlobal, loadStatusGlobal, errorGlobal, type, selectedSubject, setHasStarted, docIdGlobal]);
 
     // Sync refs
     useEffect(() => { answersRef.current = answers; }, [answers]);
@@ -448,6 +446,17 @@ const MockExam = () => {
             )}
         </AnimatePresence>
     );
+
+    if (hasStarted && !isFinished && (!questions || questions.length === 0 || !questions[currentIdx])) {
+        return (
+            <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950">
+                <div className="flex flex-col items-center gap-3">
+                    <Loader2 className="animate-spin text-blue-500" size={40} />
+                    <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Loading exam data...</p>
+                </div>
+            </div>
+        );
+    }
 
     const q = questions[currentIdx];
     const progress = ((currentIdx + 1) / questions.length) * 100;
