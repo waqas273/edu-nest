@@ -306,7 +306,7 @@ def call_groq_completion_with_retry(groq_client, prompt, model="llama-3.3-70b-ve
                     {"role": "system", "content": "You are an expert Pakistan entry test examiner. Always respond with raw JSON arrays only."},
                     {"role": "user", "content": prompt}
                 ],
-                temperature=0.35,
+                temperature=0.75,
                 response_format={"type": "json_object"}
             )
             return response.choices[0].message.content.strip()
@@ -601,10 +601,14 @@ def generate_rag_exam():
             return jsonify(clean_and_enrich_questions(fallback_questions, subject))
 
         # 3. Create list of selected template question slots of length `count`
-        # Cycle through template questions if count is larger than the template size
+        # Shuffle templates to ensure unique combinations of topics and past paper styles
+        import random
+        shuffled_subject_qs = list(subject_qs)
+        random.shuffle(shuffled_subject_qs)
+
         selected_template_qs = []
         for i in range(count):
-            selected_template_qs.append(subject_qs[i % len(subject_qs)])
+            selected_template_qs.append(shuffled_subject_qs[i % len(shuffled_subject_qs)])
 
         # 4. Perform targeted vector search by batching the unique chapter embeddings
         unique_chapters = list(set([q["chapter"] for q in selected_template_qs]))
