@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useStudentState } from '../../context/StudentStateContext';
+import { useExamGeneration } from '../../context/ExamGenerationContext';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { Microscope, Ruler, Clock, FileText, ChevronRight, Zap, Shield, Target, Search, Play, Sparkles, Youtube, X, Bookmark, ArrowLeft } from 'lucide-react';
@@ -63,6 +64,21 @@ const EntryTestPrep = () => {
         prepActiveTab: activeTab,
         setPrepActiveTab: setActiveTab
     } = useStudentState();
+
+    const {
+        hasStarted: hasStartedGlobal,
+        isFinished: isFinishedGlobal,
+        endTime: endTimeGlobal,
+        examType: examTypeGlobal
+    } = useExamGeneration();
+
+    // Auto-redirect back to exam if there is an active exam in progress
+    useEffect(() => {
+        if (hasStartedGlobal && !isFinishedGlobal && endTimeGlobal && Date.now() < endTimeGlobal) {
+            console.log(`[EntryTestPrep] Resuming active exam session: ${examTypeGlobal}`);
+            navigate(`/student/entry-test/${examTypeGlobal}`);
+        }
+    }, [hasStartedGlobal, isFinishedGlobal, endTimeGlobal, examTypeGlobal, navigate]);
 
     const [isSearching, setIsSearching] = useState(false);
     const [selectedVideo, setSelectedVideo] = useState(null);

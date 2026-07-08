@@ -22,6 +22,16 @@ export const ExamGenerationProvider = ({ children }) => {
     const [activeTestDocId, setActiveTestDocId] = useState(null);
     const [error, setError] = useState(null);
 
+    // Active exam session progress states
+    const [currentIdx, setCurrentIdx] = useState(0);
+    const [answers, setAnswers] = useState({});
+    const [revealedAnswers, setRevealedAnswers] = useState({});
+    const [endTime, setEndTime] = useState(null);
+    const [tabSwitchCount, setTabSwitchCount] = useState(0);
+    const [isFinished, setIsFinished] = useState(false);
+    const [hasStarted, setHasStarted] = useState(false);
+
+
     // Keep track of generating state with a ref to avoid stale closure issues during navigation
     const isGeneratingRef = useRef(false);
 
@@ -37,6 +47,15 @@ export const ExamGenerationProvider = ({ children }) => {
         setExamType(type);
         setSelectedSubject(subject);
         setActiveTestDocId(null);
+        
+        // Reset active session progress on new generation
+        setCurrentIdx(0);
+        setAnswers({});
+        setRevealedAnswers({});
+        setEndTime(null);
+        setTabSwitchCount(0);
+        setIsFinished(false);
+        setHasStarted(false);
 
         let docId = null;
 
@@ -94,6 +113,15 @@ export const ExamGenerationProvider = ({ children }) => {
         setSelectedSubject(null);
         setActiveTestDocId(null);
         setError(null);
+
+        // Reset progress states
+        setCurrentIdx(0);
+        setAnswers({});
+        setRevealedAnswers({});
+        setEndTime(null);
+        setTabSwitchCount(0);
+        setIsFinished(false);
+        setHasStarted(false);
     };
 
     return (
@@ -108,7 +136,23 @@ export const ExamGenerationProvider = ({ children }) => {
             startGenerationBackground,
             resetGeneration,
             setQuestions,
-            setActiveTestDocId
+            setActiveTestDocId,
+
+            // Active exam progress states and setters
+            currentIdx,
+            setCurrentIdx,
+            answers,
+            setAnswers,
+            revealedAnswers,
+            setRevealedAnswers,
+            endTime,
+            setEndTime,
+            tabSwitchCount,
+            setTabSwitchCount,
+            isFinished,
+            setIsFinished,
+            hasStarted,
+            setHasStarted
         }}>
             {children}
         </ExamGenerationContext.Provider>

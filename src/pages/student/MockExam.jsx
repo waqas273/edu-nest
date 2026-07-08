@@ -21,14 +21,8 @@ const MockExam = () => {
     const [error, setError] = useState(null);
     const [selectedSubject, setSelectedSubject] = useState(null);
     const [activeTestDocId, setActiveTestDocId] = useState(null);
-    const [currentIdx, setCurrentIdx] = useState(0);
     const [selectedOption, setSelectedOption] = useState(null);
-    const [answers, setAnswers] = useState({});
-    const [revealedAnswers, setRevealedAnswers] = useState({});
-    const [isFinished, setIsFinished] = useState(false);
-    const [hasStarted, setHasStarted] = useState(false);
     const [showWarning, setShowWarning] = useState(false);
-    const [tabSwitchCount, setTabSwitchCount] = useState(0);
 
     // Global background generation context hook
     const {
@@ -40,7 +34,23 @@ const MockExam = () => {
         activeTestDocId: docIdGlobal,
         error: errorGlobal,
         startGenerationBackground,
-        resetGeneration
+        resetGeneration,
+
+        // Persisted session states from context
+        currentIdx,
+        setCurrentIdx,
+        answers,
+        setAnswers,
+        revealedAnswers,
+        setRevealedAnswers,
+        endTime,
+        setEndTime,
+        tabSwitchCount,
+        setTabSwitchCount,
+        isFinished,
+        setIsFinished,
+        hasStarted,
+        setHasStarted
     } = useExamGeneration();
 
     // Constants — durations from official blueprint
@@ -54,12 +64,13 @@ const MockExam = () => {
     const DURATION = getExamDuration(selectedSubject);
     const [timeLeft, setTimeLeft] = useState(DURATION);
 
-    // Reset timer when exam starts or selectedSubject changes
+    // Set endTime globally once when the test starts
     useEffect(() => {
-        if (hasStarted) {
-            setTimeLeft(getExamDuration(selectedSubject));
+        if (hasStarted && !endTime) {
+            const duration = getExamDuration(selectedSubject);
+            setEndTime(Date.now() + duration * 1000);
         }
-    }, [hasStarted, selectedSubject]);
+    }, [hasStarted, selectedSubject, endTime, setEndTime]);
 
     // State Refs for Event Listeners
     const isFinishedRef = useRef(false);
@@ -72,8 +83,7 @@ const MockExam = () => {
 
     // Sync context generation state to local page state
     useEffect(() => {
-        const matchesContext = examTypeGlobal === type && subjectGlobal === selectedSubject;
-        if (matchesContext) {
+        if (examTypeGlobal === type) {
             if (isGenGlobal) {
                 setIsGenerating(true);
                 setLoadingStatus(loadStatusGlobal);
@@ -81,13 +91,16 @@ const MockExam = () => {
                 setQuestions(qsGlobal);
                 setActiveTestDocId(docIdGlobal);
                 setIsGenerating(false);
+                if (selectedSubject !== subjectGlobal) {
+                    setSelectedSubject(subjectGlobal);
+                }
                 setHasStarted(true);
             } else if (errorGlobal) {
                 setError(errorGlobal);
                 setIsGenerating(false);
             }
         }
-    }, [examTypeGlobal, subjectGlobal, qsGlobal, isGenGlobal, loadStatusGlobal, errorGlobal, type, selectedSubject]);
+    }, [examTypeGlobal, subjectGlobal, qsGlobal, isGenGlobal, loadStatusGlobal, errorGlobal, type, selectedSubject, subjectGlobal, setHasStarted]);
 
     // Sync refs
     useEffect(() => { answersRef.current = answers; }, [answers]);
@@ -178,32 +191,29 @@ const MockExam = () => {
             document.removeEventListener('visibilitychange', handleVisibilityChange);
             document.removeEventListener('contextmenu', handleContextMenu);
             window.removeEventListener('beforeunload', handleBeforeUnload);
-
-            // Check if unmounting while test is active (Internal Navigation)
-            // We use the Ref to check the latest state during cleanup. We only abort if the exam actually started.
-            if (!isFinishedRef.current && hasStartedRef.current) {
-                // We cannot use async/await comfortably here for all browsers, but triggering it works for most
-                saveResult(true, "Navigated Away / Aborted");
-            }
-
-            // if (document.exitFullscreen) document.exitFullscreen().catch(() => { });
+            // Internal Navigation unmount cleanup: DO NOT abort/delete the test globally
+            // The state remains saved in the context and can be resumed on return.
         };
     }, []);
 
     // Timer
     useEffect(() => {
-        if (isFinished || !hasStarted) return;
-        const timer = setInterval(() => {
-            setTimeLeft(prev => {
-                if (prev <= 1) {
-                    handleSubmitExam();
-                    return 0;
-                }
-                return prev - 1;
-            });
-        }, 1000);
+        if (isFinished || !hasStarted || !endTime) return;
+
+        const updateTimer = () => {
+            const remaining = Math.max(0, Math.round((endTime - Date.now()) / 1000));
+            setTimeLeft(remaining);
+            if (remaining <= 0) {
+                handleSubmitExam();
+            }
+        };
+
+        // Run immediately
+        updateTimer();
+
+        const timer = setInterval(updateTimer, 1000);
         return () => clearInterval(timer);
-    }, [isFinished, hasStarted]);
+    }, [isFinished, hasStarted, endTime]);
 
     const formatTime = (s) => {
         const h = Math.floor(s / 3600);
