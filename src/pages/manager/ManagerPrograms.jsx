@@ -1530,7 +1530,7 @@ const ManagerPrograms = () => {
                                                         </div>
                                                     );
                                                 })}
-                                            </div>        </div>
+                                            </div>
                                         </div>
                                     </div>
                                 )}
