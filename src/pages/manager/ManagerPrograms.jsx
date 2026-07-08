@@ -14,6 +14,7 @@ import { useAuth } from '../../context/AuthContext';
 import { clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
 import ScholarshipManager from '../../components/ScholarshipManager';
+import { EDUCATION_HIERARCHY } from '../../data/educationHierarchy';
 
 function cn(...inputs) {
     return twMerge(clsx(inputs));
@@ -150,6 +151,82 @@ const ProgramCard = ({ program, onEdit, onDelete, onView, index }) => {
             </motion.div>
         </motion.div>
     );
+};
+
+// Helper: Flat list of all valid hierarchy strings for matching
+const getFlatEducationOptions = () => {
+    const list = [];
+    EDUCATION_HIERARCHY.forEach(sys => {
+        sys.levels.forEach(lvl => {
+            if (lvl.groups && lvl.groups.length > 0) {
+                lvl.groups.forEach(grp => {
+                    list.push(`${sys.label} - ${lvl.label} - ${grp}`);
+                });
+            } else {
+                list.push(`${sys.label} - ${lvl.label}`);
+            }
+        });
+    });
+    return list;
+};
+
+const findClosestEducationMatch = (text) => {
+    if (!text) return 'Intermediate (Local Board) - Inter Part II (12th) - F.Sc Pre-Medical'; // Default fallback
+    const flat = getFlatEducationOptions();
+    
+    // Normalize string
+    const clean = (s) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+    const cleanText = clean(text);
+
+    // Exact matches or simplified matches
+    if (cleanText.includes('premed') || (cleanText.includes('fsc') && cleanText.includes('med'))) {
+        return flat.find(x => x.includes('Pre-Medical')) || flat[0];
+    }
+    if (cleanText.includes('preeng') || (cleanText.includes('fsc') && cleanText.includes('eng'))) {
+        return flat.find(x => x.includes('Pre-Engineering')) || flat[0];
+    }
+    if (cleanText.includes('ics') && cleanText.includes('phys')) {
+        return flat.find(x => x.includes('ICS (Physics)')) || flat[0];
+    }
+    if (cleanText.includes('ics') && cleanText.includes('stat')) {
+        return flat.find(x => x.includes('ICS (Statistics)')) || flat[0];
+    }
+    if (cleanText.includes('ics')) {
+        return flat.find(x => x.includes('ICS (Physics)')) || flat[0];
+    }
+    if (cleanText.includes('icom')) {
+        return flat.find(x => x.includes('I.Com')) || flat[0];
+    }
+    if (cleanText.includes('matric') && cleanText.includes('comp')) {
+        return flat.find(x => x.includes('Matriculation') && x.includes('Computer')) || flat[0];
+    }
+    if (cleanText.includes('matric') && (cleanText.includes('bio') || cleanText.includes('science'))) {
+        return flat.find(x => x.includes('Matriculation') && x.includes('Biology')) || flat[0];
+    }
+    if (cleanText.includes('alevel') || cleanText.includes('aslevel')) {
+        return flat.find(x => x.includes('A-Level')) || flat[0];
+    }
+    if (cleanText.includes('olevel')) {
+        return flat.find(x => x.includes('O-Level')) || flat[0];
+    }
+
+    // Generic match
+    let bestMatch = flat[0];
+    let bestScore = 0;
+    flat.forEach(opt => {
+        const cleanOpt = clean(opt);
+        let score = 0;
+        const tokens = cleanText.split(/\s+/);
+        tokens.forEach(tok => {
+            if (tok && cleanOpt.includes(tok)) score += tok.length;
+        });
+        if (score > bestScore) {
+            bestScore = score;
+            bestMatch = opt;
+        }
+    });
+
+    return bestMatch;
 };
 
 const ManagerPrograms = () => {
@@ -568,7 +645,7 @@ const ManagerPrograms = () => {
             const scope = getVal('scope').toLowerCase() === 'specific' ? 'specific' : 'global';
             const tag = scope === 'specific' ? getVal('tag').toLowerCase().replace(/[^a-z0-9_-]/g, '') : '';
             const type = getVal('type').toLowerCase() || 'merit';
-            const criteriaTitle = getVal('criteriaTitle') || 'Intermediate / Equivalent';
+            const criteriaTitle = findClosestEducationMatch(getVal('criteriaTitle'));
 
             const tier = {
                 id: Math.random().toString(),
@@ -1370,6 +1447,7 @@ const ManagerPrograms = () => {
                                                             <th className="p-4 w-28">Scope</th>
                                                             <th className="p-4 w-28">Tag</th>
                                                             <th className="p-4 w-28">Type</th>
+                                                            <th className="p-4 w-52">Education Class</th>
                                                             <th className="p-4">Tiers Mapped</th>
                                                         </tr>
                                                     </thead>
@@ -1393,6 +1471,20 @@ const ManagerPrograms = () => {
                                                                     </td>
                                                                     <td className="p-4 font-mono">{row.tag || <span className="text-slate-400">-</span>}</td>
                                                                     <td className="p-4 capitalize">{row.type}</td>
+                                                                    <td className="p-4">
+                                                                        <select
+                                                                            value={row.criteriaTitle}
+                                                                            onChange={(e) => {
+                                                                                const updated = schParsedData.map(s => s.title === row.title ? { ...s, criteriaTitle: e.target.value } : s);
+                                                                                setSchParsedData(updated);
+                                                                            }}
+                                                                            className="w-full px-2 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-semibold text-slate-750 dark:text-slate-350 focus:outline-none cursor-pointer"
+                                                                        >
+                                                                            {getFlatEducationOptions().map((opt, oIdx) => (
+                                                                                <option key={oIdx} value={opt}>{opt}</option>
+                                                                            ))}
+                                                                        </select>
+                                                                    </td>
                                                                     <td className="p-4">
                                                                         <div className="flex flex-wrap gap-1">
                                                                             {row.tiers.map((t, tIdx) => (
