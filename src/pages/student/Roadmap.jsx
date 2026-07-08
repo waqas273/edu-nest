@@ -598,7 +598,8 @@ const Roadmap = () => {
                         </motion.div>
                     )}
 
-                    {/* ROADMAP LOADING & VIEW */}
+
+                    {/* ROADMAP ACTIVE VIEW — ULTRA PRO REDESIGN */}
                     {isRoadmapActive && (
                         <motion.div
                             key="roadmap-view"
@@ -606,365 +607,464 @@ const Roadmap = () => {
                             animate={{ opacity: 1 }}
                             className="w-full"
                         >
-                            {/* Header */}
-                            <div className="flex flex-col md:flex-row items-center justify-between mb-12 gap-6 bg-white/50 dark:bg-slate-900/50 backdrop-blur-xl p-8 rounded-3xl border border-white/20 dark:border-white/5 shadow-lg">
-                                <div>
-                                    <div className="flex items-center gap-3 mb-2">
-                                        <span className="px-3 py-1 rounded-full text-xs font-bold bg-cyan-100 text-cyan-700 dark:bg-cyan-500/10 dark:text-cyan-400 uppercase tracking-wider">
-                                            Beginner Level
-                                        </span>
-                                        <span className="px-3 py-1 rounded-full text-xs font-bold bg-purple-100 text-purple-700 dark:bg-purple-500/10 dark:text-purple-400 uppercase tracking-wider">
-                                            {progress === 100 ? 'Completed' : 'In Progress'}
-                                        </span>
-                                    </div>
-                                    <h2 className="text-4xl font-black text-slate-900 dark:text-white mb-2">
-                                        {selectedSkill}
-                                    </h2>
-                                    <p className="text-slate-500 dark:text-slate-400 font-medium">
-                                        Master this skill one step at a time. No restrictions.
-                                    </p>
-                                </div>
+                            {/* ── HERO HEADER ── */}
+                            <motion.div
+                                initial={{ opacity: 0, y: -30 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ type: 'spring', stiffness: 120 }}
+                                className="relative overflow-hidden rounded-[2.5rem] mb-10 p-10 border border-white/20 dark:border-white/5"
+                                style={{
+                                    background: 'linear-gradient(135deg, rgba(6,182,212,0.12) 0%, rgba(99,102,241,0.10) 50%, rgba(139,92,246,0.08) 100%)',
+                                    backdropFilter: 'blur(32px)',
+                                    WebkitBackdropFilter: 'blur(32px)',
+                                    boxShadow: '0 32px 80px rgba(6,182,212,0.10), inset 0 1px 0 rgba(255,255,255,0.15)',
+                                }}
+                            >
+                                {/* Decorative orbs */}
+                                <div className="absolute -top-20 -right-20 w-72 h-72 bg-gradient-to-br from-cyan-500/20 to-blue-600/10 rounded-full blur-3xl pointer-events-none" />
+                                <div className="absolute -bottom-16 -left-16 w-56 h-56 bg-gradient-to-tr from-purple-500/15 to-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
 
-                                {topics.length > 0 && (
-                                    <div className="flex gap-3">
-                                        <button
-                                            onClick={handleDownloadPDF}
-                                            className="px-5 py-2.5 bg-blue-50 text-blue-600 hover:bg-blue-100 dark:bg-blue-500/10 dark:hover:bg-blue-500/20 dark:text-blue-400 rounded-xl font-bold transition flex items-center text-sm"
-                                        >
-                                            <Download size={16} className="mr-2" /> Download PDF
-                                        </button>
-                                        <button
-                                            onClick={() => setShowGiveUpModal(true)}
-                                            className="px-5 py-2.5 bg-red-50 text-red-500 hover:bg-red-100 dark:bg-red-500/10 dark:hover:bg-red-500/20 dark:text-red-400 rounded-xl font-bold transition flex items-center text-sm"
-                                        >
-                                            <Trash2 size={16} className="mr-2" /> Reset Roadmap
-                                        </button>
-                                    </div>
-                                )}
-                            </div>
+                                <div className="relative flex flex-col lg:flex-row items-start lg:items-center justify-between gap-8">
+                                    <div className="flex-1">
+                                        <div className="flex flex-wrap items-center gap-2 mb-4">
+                                            <span className="px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-widest bg-cyan-500/15 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
+                                                AI Generated
+                                            </span>
+                                            <span className={`px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-widest border ${
+                                                progress === 100
+                                                    ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/20'
+                                                    : 'bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/20'
+                                            }`}>
+                                                {progress === 100 ? '🎉 Completed' : `${progress}% Done`}
+                                            </span>
+                                        </div>
 
-                            {/* Progress Ring & Stats */}
-                            {topics.length > 0 && (
-                                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-                                    {/* Stats Card 1: Progress */}
-                                    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm flex items-center gap-4">
-                                        <div className="w-16 h-16 rounded-full bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-blue-600 dark:text-blue-400 font-black text-xl">
-                                            {progress}%
-                                        </div>
-                                        <div>
-                                            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Total Progress</p>
-                                            <p className="text-lg font-bold text-slate-800 dark:text-white">Keep Going!</p>
-                                        </div>
-                                    </div>
+                                        <h2 className="text-4xl md:text-5xl font-black text-slate-900 dark:text-white mb-3 leading-tight">
+                                            {selectedSkill}
+                                        </h2>
+                                        <p className="text-slate-500 dark:text-slate-400 text-lg leading-relaxed max-w-xl">
+                                            Your personalized learning journey — step by step, topic by topic.
+                                        </p>
 
-                                    {/* Stats Card 2: Topics */}
-                                    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm flex items-center gap-4">
-                                        <div className="w-16 h-16 rounded-full bg-purple-50 dark:bg-purple-900/20 flex items-center justify-center text-purple-600 dark:text-purple-400">
-                                            <Map size={24} />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Milestones</p>
-                                            <p className="text-lg font-bold text-slate-800 dark:text-white">{topics.filter(t => t.status === 'completed').length} / {topics.length} Completed</p>
-                                        </div>
-                                    </div>
-
-                                    {/* Stats Card 3: Status */}
-                                    <div className="bg-white dark:bg-slate-800 p-6 rounded-2xl border border-slate-100 dark:border-slate-700 shadow-sm flex items-center gap-4">
-                                        <div className="w-16 h-16 rounded-full bg-yellow-50 dark:bg-yellow-900/20 flex items-center justify-center text-yellow-600 dark:text-yellow-400">
-                                            <Award size={24} />
-                                        </div>
-                                        <div>
-                                            <p className="text-sm text-slate-500 dark:text-slate-400 font-medium">Achievements</p>
-                                            <p className="text-lg font-bold text-slate-800 dark:text-white">{progress >= 65 ? 'Pass Certificate' : 'Learning...'}</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-
-                            {/* Loading State */}
-                            {loading && (
-                                <div className="flex flex-col items-center justify-center py-20 bg-white/50 dark:bg-slate-800/50 backdrop-blur-sm rounded-3xl border border-dashed border-slate-300 dark:border-slate-600">
-                                    <div className="relative">
-                                        <Loader2 size={64} className="text-cyan-500 animate-spin" />
-                                        {isGenerating && (
-                                            <Sparkles size={24} className="absolute -top-2 -right-2 text-yellow-500 animate-pulse" />
+                                        {/* Thin progress bar */}
+                                        {topics.length > 0 && (
+                                            <div className="mt-6 max-w-md">
+                                                <div className="flex items-center justify-between mb-2">
+                                                    <span className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wider">Overall Progress</span>
+                                                    <span className="text-xs font-black text-cyan-600 dark:text-cyan-400">{progress}%</span>
+                                                </div>
+                                                <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
+                                                    <motion.div
+                                                        initial={{ width: 0 }}
+                                                        animate={{ width: `${progress}%` }}
+                                                        transition={{ duration: 1.2, ease: 'easeOut', delay: 0.3 }}
+                                                        className="h-full rounded-full bg-gradient-to-r from-cyan-500 via-blue-500 to-indigo-500 shadow-sm shadow-cyan-500/50"
+                                                    />
+                                                </div>
+                                            </div>
                                         )}
                                     </div>
-                                    <h3 className="mt-8 text-2xl font-bold text-slate-800 dark:text-white">
-                                        {isGenerating ? 'Building Beginner Roadmap...' : 'Retrieving Your Path...'}
-                                    </h3>
-                                    <p className="text-slate-500 dark:text-slate-400 mt-2 max-w-sm text-center">
-                                        Creating fundamental steps tailored for absolute beginners.
-                                    </p>
+
+                                    {topics.length > 0 && (
+                                        <div className="flex flex-col sm:flex-row lg:flex-col gap-3 shrink-0">
+                                            <motion.button
+                                                whileHover={{ scale: 1.04, y: -2 }}
+                                                whileTap={{ scale: 0.97 }}
+                                                onClick={() => setShowGrandTest(true)}
+                                                className="group px-7 py-4 rounded-2xl font-black text-white text-base flex items-center gap-3 shadow-xl shadow-cyan-500/30 transition-all"
+                                                style={{ background: 'linear-gradient(135deg, #06b6d4, #3b82f6, #6366f1)' }}
+                                            >
+                                                <Trophy size={22} className="group-hover:animate-bounce" />
+                                                Grand Test
+                                            </motion.button>
+
+                                            <div className="flex gap-2">
+                                                <motion.button
+                                                    whileHover={{ scale: 1.04 }}
+                                                    whileTap={{ scale: 0.97 }}
+                                                    onClick={handleDownloadPDF}
+                                                    className="flex-1 px-5 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-blue-400 hover:text-blue-600 transition-all"
+                                                >
+                                                    <Download size={15} /> PDF
+                                                </motion.button>
+                                                <motion.button
+                                                    whileHover={{ scale: 1.04 }}
+                                                    whileTap={{ scale: 0.97 }}
+                                                    onClick={() => setShowGiveUpModal(true)}
+                                                    className="flex-1 px-5 py-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2 bg-white/60 dark:bg-slate-800/60 backdrop-blur-sm border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-300 hover:border-red-400 hover:text-red-500 transition-all"
+                                                >
+                                                    <Trash2 size={15} /> Reset
+                                                </motion.button>
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
+                            </motion.div>
+
+                            {/* ── STATS STRIP ── */}
+                            {topics.length > 0 && (
+                                <motion.div
+                                    initial={{ opacity: 0, y: 20 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: 0.15 }}
+                                    className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-10"
+                                >
+                                    {[
+                                        { label: 'Total Topics', value: topics.length, icon: Map, color: 'from-cyan-500 to-blue-500', bg: 'bg-cyan-50 dark:bg-cyan-950/40' },
+                                        { label: 'Completed', value: topics.filter(t => t.status === 'completed').length, icon: CheckCircle, color: 'from-emerald-500 to-teal-500', bg: 'bg-emerald-50 dark:bg-emerald-950/40' },
+                                        { label: 'Subtopics', value: topics.reduce((a, t) => a + (t.subtopics?.length || 0), 0), icon: Sparkles, color: 'from-violet-500 to-purple-500', bg: 'bg-violet-50 dark:bg-violet-950/40' },
+                                        { label: 'Progress', value: `${progress}%`, icon: Award, color: 'from-amber-500 to-orange-500', bg: 'bg-amber-50 dark:bg-amber-950/40' },
+                                    ].map((stat, i) => (
+                                        <motion.div
+                                            key={stat.label}
+                                            initial={{ opacity: 0, scale: 0.9 }}
+                                            animate={{ opacity: 1, scale: 1 }}
+                                            transition={{ delay: 0.1 + i * 0.07 }}
+                                            className={`${stat.bg} backdrop-blur-sm rounded-2xl p-5 border border-white/50 dark:border-white/5 shadow-sm flex items-center gap-4`}
+                                        >
+                                            <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${stat.color} text-white flex items-center justify-center shadow-md shrink-0`}>
+                                                <stat.icon size={22} />
+                                            </div>
+                                            <div>
+                                                <p className="text-xs font-bold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{stat.label}</p>
+                                                <p className="text-2xl font-black text-slate-800 dark:text-white">{stat.value}</p>
+                                            </div>
+                                        </motion.div>
+                                    ))}
+                                </motion.div>
                             )}
 
-                            {/* Start the Roadmap Button - At Top */}
+                            {/* ── SEARCH ── */}
                             {!loading && topics.length > 0 && (
-                                <div className="text-center mb-10">
-                                    <button
-                                        onClick={() => setShowGrandTest(true)}
-                                        className="px-10 py-5 rounded-2xl font-bold text-xl transition-all duration-300 flex items-center mx-auto bg-gradient-to-r from-cyan-500 to-blue-600 text-white shadow-2xl shadow-cyan-500/40 hover:scale-105"
-                                    >
-                                        <Trophy className="mr-3" size={28} />
-                                        Grand Test
-                                    </button>
-                                    <p className="mt-3 text-sm text-slate-500 dark:text-slate-400">
-                                        Test your knowledge across all topics suitable for beginners.
-                                    </p>
-                                </div>
-                            )}
-
-                            {/* Search Bar */}
-                            {!loading && topics.length > 0 && (
-                                <div className="mb-8">
-                                    <div className="relative max-w-xl mx-auto">
-                                        <div className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-400">
+                                <motion.div
+                                    initial={{ opacity: 0, y: 10 }}
+                                    animate={{ opacity: 1, y: 0 }}
+                                    transition={{ delay: 0.2 }}
+                                    className="mb-10"
+                                >
+                                    <div className="relative max-w-2xl mx-auto">
+                                        <div className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-400">
                                             <Search size={20} />
                                         </div>
                                         <input
                                             type="text"
                                             value={searchTerm}
                                             onChange={(e) => setSearchTerm(e.target.value)}
-                                            placeholder="Search topics and sub-topics..."
-                                            className="w-full pl-12 pr-12 py-4 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-2xl text-slate-900 dark:text-white placeholder-slate-400 focus:border-cyan-500 focus:ring-4 focus:ring-cyan-500/20 outline-none transition-all shadow-lg"
+                                            placeholder="Search topics and subtopics..."
+                                            className="w-full pl-14 pr-14 py-4 rounded-2xl text-slate-900 dark:text-white placeholder-slate-400 outline-none transition-all text-base"
+                                            style={{
+                                                background: 'rgba(255,255,255,0.7)',
+                                                backdropFilter: 'blur(20px)',
+                                                border: '1px solid rgba(6,182,212,0.25)',
+                                                boxShadow: '0 4px 24px rgba(6,182,212,0.08), inset 0 1px 0 rgba(255,255,255,0.6)',
+                                            }}
                                         />
                                         {searchTerm && (
                                             <button
                                                 onClick={() => setSearchTerm('')}
-                                                className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
+                                                className="absolute right-5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-300 transition-colors"
                                             >
-                                                <X size={20} />
+                                                <X size={18} />
                                             </button>
                                         )}
                                     </div>
-                                    {searchTerm && (
-                                        <p className="text-center text-sm text-slate-500 dark:text-slate-400 mt-3">
-                                            Showing results for "<span className="font-semibold text-cyan-500">{searchTerm}</span>"
-                                        </p>
-                                    )}
-                                </div>
+                                </motion.div>
                             )}
 
-                            {/* Timeline */}
+                            {/* ── LOADING ── */}
+                            {loading && (
+                                <motion.div
+                                    initial={{ opacity: 0 }}
+                                    animate={{ opacity: 1 }}
+                                    className="flex flex-col items-center justify-center py-32"
+                                >
+                                    <div className="relative mb-8">
+                                        <div className="w-24 h-24 rounded-full border-4 border-cyan-500/20 border-t-cyan-500 animate-spin" />
+                                        <div className="absolute inset-0 flex items-center justify-center">
+                                            <Sparkles size={28} className="text-cyan-500 animate-pulse" />
+                                        </div>
+                                    </div>
+                                    <h3 className="text-2xl font-black text-slate-800 dark:text-white mb-3">
+                                        {isGenerating ? 'AI Building Your Roadmap...' : 'Loading Your Path...'}
+                                    </h3>
+                                    <p className="text-slate-500 dark:text-slate-400 text-center max-w-sm">
+                                        {isGenerating ? 'Groq AI is crafting a personalized learning journey just for you.' : 'Retrieving your saved progress.'}
+                                    </p>
+                                    <div className="flex gap-2 mt-6">
+                                        {[0, 1, 2].map(i => (
+                                            <motion.div
+                                                key={i}
+                                                animate={{ y: [0, -10, 0] }}
+                                                transition={{ duration: 0.8, repeat: Infinity, delay: i * 0.2 }}
+                                                className="w-3 h-3 rounded-full bg-gradient-to-r from-cyan-500 to-blue-500"
+                                            />
+                                        ))}
+                                    </div>
+                                </motion.div>
+                            )}
+
+                            {/* ── TOPICS TIMELINE ── */}
                             {!loading && topics.length > 0 && (
-                                <div id="roadmap-timeline" className="max-w-5xl mx-auto space-y-16 pb-20 p-4 relative">
-                                    {/* Central Line for Tree Structure */}
-                                    <div className="absolute left-8 md:left-[3.5rem] top-0 bottom-0 w-1 bg-gradient-to-b from-cyan-500 via-blue-500 to-indigo-600 opacity-20 hidden md:block" />
+                                <div className="relative max-w-5xl mx-auto pb-20">
+                                    {/* Vertical spine */}
+                                    <div className="absolute left-8 md:left-10 top-8 bottom-8 w-0.5 bg-gradient-to-b from-cyan-500/60 via-violet-500/40 to-indigo-500/60 hidden md:block rounded-full" />
 
-                                    {topics
-                                        .map(topic => {
-                                            if (!searchTerm.trim()) return { ...topic, matchScore: 1, matchingSubtopics: new Set() };
+                                    <div className="space-y-8">
+                                        {topics
+                                            .map(topic => {
+                                                if (!searchTerm.trim()) return { ...topic, matchScore: 1, matchingSubtopics: new Set() };
+                                                const searchLower = searchTerm.toLowerCase();
+                                                const searchTerms = searchLower.split(/\s+/).filter(Boolean);
+                                                let score = 0;
+                                                const matchingSubtopics = new Set();
+                                                if (topic.title?.toLowerCase().includes(searchLower)) score += 50;
+                                                else if (searchTerms.some(term => topic.title?.toLowerCase().includes(term))) score += 20;
+                                                if (topic.description?.toLowerCase().includes(searchLower)) score += 10;
+                                                if (topic.subtopics) {
+                                                    topic.subtopics.forEach(sub => {
+                                                        const subTitle = sub.title?.toLowerCase() || '';
+                                                        if (subTitle.includes(searchLower)) { score += 30; matchingSubtopics.add(sub.id); }
+                                                        else if (searchTerms.some(term => subTitle.includes(term))) { score += 15; matchingSubtopics.add(sub.id); }
+                                                    });
+                                                }
+                                                return { ...topic, matchScore: score, matchingSubtopics };
+                                            })
+                                            .filter(t => t.matchScore > 0)
+                                            .sort((a, b) => b.matchScore - a.matchScore)
+                                            .map((topic, idx) => {
+                                                const shouldExpand = searchTerm && topic.matchingSubtopics.size > 0;
+                                                const isExpanded = expandedTopics.has(topic.id) || shouldExpand;
+                                                const isCompleted = topic.status === 'completed';
 
-                                            const searchLower = searchTerm.toLowerCase();
-                                            const searchTerms = searchLower.split(/\s+/).filter(Boolean); // Split by space for better matching
-
-                                            let score = 0;
-                                            const matchingSubtopics = new Set();
-
-                                            // 1. Main Topic Title Match (Highest Weight)
-                                            if (topic.title?.toLowerCase().includes(searchLower)) score += 50;
-                                            else if (searchTerms.some(term => topic.title?.toLowerCase().includes(term))) score += 20;
-
-                                            // 2. Main Topic Description Match
-                                            if (topic.description?.toLowerCase().includes(searchLower)) score += 10;
-
-                                            // 3. Subtopic Matches
-                                            if (topic.subtopics) {
-                                                topic.subtopics.forEach(sub => {
-                                                    const subTitle = sub.title?.toLowerCase() || '';
-                                                    const subDesc = sub.description?.toLowerCase() || '';
-
-                                                    if (subTitle.includes(searchLower)) {
-                                                        score += 30;
-                                                        matchingSubtopics.add(sub.id);
-                                                    }
-                                                    else if (searchTerms.some(term => subTitle.includes(term))) {
-                                                        score += 15;
-                                                        matchingSubtopics.add(sub.id);
-                                                    }
-
-                                                    if (subDesc.includes(searchLower)) {
-                                                        score += 5;
-                                                        matchingSubtopics.add(sub.id);
-                                                    }
-                                                });
-                                            }
-
-                                            return { ...topic, matchScore: score, matchingSubtopics };
-                                        })
-                                        .filter(t => t.matchScore > 0)
-                                        .sort((a, b) => b.matchScore - a.matchScore) // Sort by relevance
-                                        .map((topic, idx) => {
-                                            // Auto-expand if subtopics matched in search
-                                            const shouldExpand = searchTerm && topic.matchingSubtopics.size > 0;
-                                            const isExpanded = expandedTopics.has(topic.id) || shouldExpand;
-
-                                            return (
-                                                <div key={topic.id || `topic-${idx}`} className="relative z-10 w-full">
-                                                    {/* Main Topic Node */}
+                                                return (
                                                     <motion.div
-                                                        initial={{ opacity: 0, x: -50 }}
+                                                        key={topic.id || `topic-${idx}`}
+                                                        initial={{ opacity: 0, x: -30 }}
                                                         animate={{ opacity: 1, x: 0 }}
-                                                        transition={{ delay: idx * 0.1 }}
-                                                        className="relative ml-0 md:ml-24 mb-10"
+                                                        transition={{ delay: idx * 0.07, type: 'spring', stiffness: 120 }}
+                                                        className="relative flex gap-6"
                                                     >
-                                                        {/* Connecting Dot to Main Line */}
-                                                        <div className="absolute top-10 -left-[4.5rem] w-6 h-6 rounded-full bg-cyan-500 border-4 border-white dark:border-slate-900 shadow-xl hidden md:block z-10" />
-                                                        <div className="absolute top-[2.75rem] -left-[3.5rem] w-12 h-0.5 bg-cyan-500/30 hidden md:block" />
+                                                        {/* ── Spine dot ── */}
+                                                        <div className="hidden md:flex flex-col items-center shrink-0 mt-8" style={{ width: '2.5rem' }}>
+                                                            <motion.div
+                                                                animate={{
+                                                                    scale: isCompleted ? [1, 1.15, 1] : 1,
+                                                                    boxShadow: isCompleted
+                                                                        ? ['0 0 0 0px rgba(16,185,129,0.4)', '0 0 0 8px rgba(16,185,129,0)', '0 0 0 0px rgba(16,185,129,0)']
+                                                                        : '0 0 0 0px rgba(6,182,212,0)'
+                                                                }}
+                                                                transition={{ duration: 1.5, repeat: Infinity, delay: idx * 0.3 }}
+                                                                className={`w-9 h-9 rounded-full border-[3px] flex items-center justify-center text-xs font-black shadow-lg ${
+                                                                    isCompleted
+                                                                        ? 'bg-emerald-500 border-emerald-300 text-white'
+                                                                        : 'bg-white dark:bg-slate-900 border-cyan-500 text-cyan-600 dark:text-cyan-400'
+                                                                }`}
+                                                            >
+                                                                {isCompleted ? <CheckCircle size={16} /> : idx + 1}
+                                                            </motion.div>
+                                                        </div>
 
+                                                        {/* ── Topic Card ── */}
+                                                        <div className="flex-1 min-w-0">
+                                                            <div
+                                                                className={`rounded-[1.75rem] overflow-hidden border transition-all duration-300 group ${
+                                                                    isCompleted
+                                                                        ? 'border-emerald-400/30 dark:border-emerald-500/20'
+                                                                        : 'border-slate-200/60 dark:border-white/8 hover:border-cyan-400/40 dark:hover:border-cyan-500/30'
+                                                                }`}
+                                                                style={{
+                                                                    background: isCompleted
+                                                                        ? 'linear-gradient(135deg, rgba(16,185,129,0.05) 0%, rgba(255,255,255,0.8) 100%)'
+                                                                        : 'linear-gradient(135deg, rgba(255,255,255,0.85) 0%, rgba(248,250,252,0.9) 100%)',
+                                                                    backdropFilter: 'blur(24px)',
+                                                                    WebkitBackdropFilter: 'blur(24px)',
+                                                                    boxShadow: '0 8px 32px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.8)',
+                                                                }}
+                                                            >
+                                                                {/* Card top */}
+                                                                <div className="p-7 dark:bg-slate-900/70">
+                                                                    <div className="flex flex-col sm:flex-row sm:items-start gap-5">
+                                                                        {/* Number badge */}
+                                                                        <div className={`shrink-0 w-14 h-14 rounded-2xl flex items-center justify-center text-xl font-black shadow-lg ${
+                                                                            isCompleted
+                                                                                ? 'bg-gradient-to-br from-emerald-500 to-teal-500 text-white shadow-emerald-500/30'
+                                                                                : 'bg-gradient-to-br from-cyan-500 to-blue-600 text-white shadow-cyan-500/30'
+                                                                        }`}>
+                                                                            {isCompleted ? <CheckCircle size={24} /> : idx + 1}
+                                                                        </div>
 
-                                                        <div className="bg-white dark:bg-slate-800 rounded-[2rem] p-8 border border-slate-100 dark:border-slate-700 shadow-2xl relative overflow-hidden group hover:border-cyan-500/30 transition-all duration-300">
-                                                            <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/5 rounded-full blur-3xl -z-10 group-hover:bg-cyan-500/10 transition-colors" />
-
-                                                            <div className="flex flex-col gap-6">
-                                                                <div className="flex items-start gap-6">
-                                                                    <span className="flex-shrink-0 w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 text-white flex items-center justify-center text-2xl font-bold shadow-lg shadow-cyan-500/30">
-                                                                        {idx + 1}
-                                                                    </span>
-                                                                    <div>
-                                                                        <h3 className="text-3xl font-black text-slate-900 dark:text-white mb-2">
-                                                                            {topic.title}
-                                                                        </h3>
-                                                                        <p className="text-slate-600 dark:text-slate-400 text-lg leading-relaxed">
-                                                                            {topic.description}
-                                                                        </p>
+                                                                        <div className="flex-1 min-w-0">
+                                                                            <h3 className="text-2xl font-black text-slate-900 dark:text-white mb-2 leading-tight group-hover:text-cyan-700 dark:group-hover:text-cyan-400 transition-colors">
+                                                                                {topic.title}
+                                                                            </h3>
+                                                                            <p className="text-slate-500 dark:text-slate-400 text-base leading-relaxed">
+                                                                                {topic.description}
+                                                                            </p>
+                                                                        </div>
                                                                     </div>
-                                                                </div>
 
-                                                                {/* Main Topic Actions */}
-                                                                <div className="flex flex-wrap items-center justify-between gap-3 pt-4 border-t border-slate-100 dark:border-slate-700/50">
-                                                                    <div className="flex flex-wrap gap-2">
-                                                                        <button onClick={() => setSelectedTopic(topic)} className="px-4 py-2 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-300 rounded-lg font-bold text-xs flex items-center gap-2 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition">
-                                                                            <BookOpen size={16} /> Resources
-                                                                        </button>
-                                                                        {topic.status !== 'completed' && topic.status !== 'ready_for_test' && (
-                                                                            <button onClick={() => handleMarkAsDone(topic.id)} className="px-4 py-2 bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 dark:text-emerald-300 rounded-lg font-bold text-xs flex items-center gap-2 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 transition">
-                                                                                <CheckCircle size={16} /> Done
-                                                                            </button>
-                                                                        )}
-                                                                        {(topic.status === 'completed' || topic.status === 'ready_for_test') && (
-                                                                            <button onClick={() => { setSelectedTopic(null); setTestTopic(topic); }} className="px-4 py-2 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-300 rounded-lg font-bold text-xs flex items-center gap-2 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition shadow-sm">
-                                                                                <Trophy size={16} /> Test
-                                                                            </button>
-                                                                        )}
-                                                                    </div>
+                                                                    {/* Actions row */}
+                                                                    <div className="mt-6 pt-5 border-t border-slate-100 dark:border-slate-700/40 flex flex-wrap items-center justify-between gap-3">
+                                                                        <div className="flex flex-wrap gap-2">
+                                                                            <motion.button
+                                                                                whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}
+                                                                                onClick={() => setSelectedTopic(topic)}
+                                                                                className="px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 bg-blue-50 dark:bg-blue-500/10 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-500/20 transition border border-blue-200/50 dark:border-blue-500/20"
+                                                                            >
+                                                                                <BookOpen size={14} /> Resources
+                                                                            </motion.button>
 
-                                                                    {/* Accordion Toggle - Ultra Pro Max Style */}
-                                                                    {topic.subtopics && topic.subtopics.length > 0 && (
-                                                                        <button
-                                                                            onClick={() => toggleTopic(topic.id)}
-                                                                            className={`flex items-center gap-2 px-4 py-2 rounded-lg font-bold text-xs transition-all duration-300 ${expandedTopics.has(topic.id)
-                                                                                ? 'bg-cyan-500 text-white shadow-lg shadow-cyan-500/30'
-                                                                                : 'bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-600'
+                                                                            {topic.status !== 'completed' && topic.status !== 'ready_for_test' && (
+                                                                                <motion.button
+                                                                                    whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}
+                                                                                    onClick={() => handleMarkAsDone(topic.id)}
+                                                                                    className="px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-500/20 transition border border-emerald-200/50 dark:border-emerald-500/20"
+                                                                                >
+                                                                                    <CheckCircle size={14} /> Mark Done
+                                                                                </motion.button>
+                                                                            )}
+
+                                                                            {(topic.status === 'completed' || topic.status === 'ready_for_test') && (
+                                                                                <motion.button
+                                                                                    whileHover={{ scale: 1.05 }} whileTap={{ scale: 0.97 }}
+                                                                                    onClick={() => { setSelectedTopic(null); setTestTopic(topic); }}
+                                                                                    className="px-4 py-2 rounded-xl text-xs font-bold flex items-center gap-2 bg-gradient-to-r from-violet-500 to-purple-500 text-white shadow-md shadow-violet-500/30 hover:shadow-lg transition border border-transparent"
+                                                                                >
+                                                                                    <Trophy size={14} /> Take Test
+                                                                                </motion.button>
+                                                                            )}
+                                                                        </div>
+
+                                                                        {topic.subtopics && topic.subtopics.length > 0 && (
+                                                                            <motion.button
+                                                                                whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}
+                                                                                onClick={() => toggleTopic(topic.id)}
+                                                                                className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all duration-300 ${
+                                                                                    isExpanded
+                                                                                        ? 'bg-gradient-to-r from-cyan-500 to-blue-500 text-white shadow-md shadow-cyan-500/30'
+                                                                                        : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700'
                                                                                 }`}
-                                                                        >
-                                                                            <span className="uppercase tracking-wider">
-                                                                                {expandedTopics.has(topic.id) ? 'Hide Topics' : `Show ${topic.subtopics.length} Topics`}
-                                                                            </span>
-                                                                            <ChevronRight
-                                                                                size={16}
-                                                                                className={`transition-transform duration-300 ${expandedTopics.has(topic.id) ? 'rotate-90' : 'rotate-0'}`}
-                                                                            />
-                                                                        </button>
-                                                                    )}
+                                                                            >
+                                                                                <Sparkles size={13} />
+                                                                                {isExpanded ? 'Hide Subtopics' : `${topic.subtopics.length} Subtopics`}
+                                                                                <ChevronRight
+                                                                                    size={14}
+                                                                                    className={`transition-transform duration-300 ${isExpanded ? 'rotate-90' : ''}`}
+                                                                                />
+                                                                            </motion.button>
+                                                                        )}
+                                                                    </div>
                                                                 </div>
+
+                                                                {/* ── Subtopics panel ── */}
+                                                                <AnimatePresence>
+                                                                    {isExpanded && topic.subtopics && topic.subtopics.length > 0 && (
+                                                                        <motion.div
+                                                                            initial={{ opacity: 0, height: 0 }}
+                                                                            animate={{ opacity: 1, height: 'auto' }}
+                                                                            exit={{ opacity: 0, height: 0 }}
+                                                                            transition={{ duration: 0.35, ease: 'easeInOut' }}
+                                                                            className="overflow-hidden"
+                                                                        >
+                                                                            <div
+                                                                                className="px-7 pb-7"
+                                                                                style={{
+                                                                                    background: 'linear-gradient(180deg, rgba(6,182,212,0.04) 0%, rgba(99,102,241,0.04) 100%)',
+                                                                                }}
+                                                                            >
+                                                                                <div className="h-px bg-gradient-to-r from-cyan-500/30 via-violet-500/20 to-transparent mb-6" />
+                                                                                <p className="text-[11px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500 mb-4 flex items-center gap-2">
+                                                                                    <Sparkles size={11} /> Subtopics
+                                                                                </p>
+                                                                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                                                                    {topic.subtopics.map((sub, sIdx) => {
+                                                                                        const isSubCompleted = sub.status === 'completed';
+                                                                                        return (
+                                                                                            <motion.div
+                                                                                                key={sub.id || `sub-${idx}-${sIdx}`}
+                                                                                                initial={{ opacity: 0, y: 10 }}
+                                                                                                animate={{ opacity: 1, y: 0 }}
+                                                                                                transition={{ delay: sIdx * 0.04 }}
+                                                                                                className={`group relative rounded-2xl p-4 border transition-all duration-200 ${
+                                                                                                    isSubCompleted
+                                                                                                        ? 'bg-emerald-50 dark:bg-emerald-900/20 border-emerald-300/50 dark:border-emerald-500/20'
+                                                                                                        : 'bg-white/70 dark:bg-slate-800/50 border-slate-200/60 dark:border-slate-700/40 hover:border-cyan-400/50 dark:hover:border-cyan-500/30 hover:shadow-md'
+                                                                                                }`}
+                                                                                            >
+                                                                                                <div className="flex items-start justify-between gap-3">
+                                                                                                    <div className="flex items-start gap-3 min-w-0">
+                                                                                                        <span className={`shrink-0 mt-0.5 w-6 h-6 rounded-lg flex items-center justify-center text-[10px] font-black ${
+                                                                                                            isSubCompleted
+                                                                                                                ? 'bg-emerald-500 text-white'
+                                                                                                                : 'bg-slate-100 dark:bg-slate-700 text-slate-500 dark:text-slate-400'
+                                                                                                        }`}>
+                                                                                                            {isSubCompleted ? '✓' : `${sIdx + 1}`}
+                                                                                                        </span>
+                                                                                                        <div className="min-w-0">
+                                                                                                            <h4 className={`text-sm font-bold leading-snug ${
+                                                                                                                isSubCompleted
+                                                                                                                    ? 'text-emerald-700 dark:text-emerald-400 line-through opacity-70'
+                                                                                                                    : 'text-slate-800 dark:text-slate-200 group-hover:text-cyan-700 dark:group-hover:text-cyan-400 transition-colors'
+                                                                                                            }`}>
+                                                                                                                {sub.title}
+                                                                                                            </h4>
+                                                                                                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 leading-snug line-clamp-2">
+                                                                                                                {sub.description}
+                                                                                                            </p>
+                                                                                                        </div>
+                                                                                                    </div>
+
+                                                                                                    {/* Sub actions */}
+                                                                                                    <div className="flex items-center gap-1.5 shrink-0">
+                                                                                                        <motion.button
+                                                                                                            whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+                                                                                                            onClick={() => setSelectedTopic({ ...sub, isSubtopic: true })}
+                                                                                                            className="w-7 h-7 rounded-lg flex items-center justify-center bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 hover:bg-blue-200 transition"
+                                                                                                            title="Resources"
+                                                                                                        >
+                                                                                                            <BookOpen size={12} />
+                                                                                                        </motion.button>
+
+                                                                                                        {!isSubCompleted ? (
+                                                                                                            <motion.button
+                                                                                                                whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+                                                                                                                onClick={() => handleMarkAsDone(sub.id)}
+                                                                                                                className="w-7 h-7 rounded-lg flex items-center justify-center bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-200 transition"
+                                                                                                                title="Mark Done"
+                                                                                                            >
+                                                                                                                <CheckCircle size={12} />
+                                                                                                            </motion.button>
+                                                                                                        ) : (
+                                                                                                            <motion.button
+                                                                                                                whileHover={{ scale: 1.1 }} whileTap={{ scale: 0.9 }}
+                                                                                                                onClick={() => { setSelectedTopic(null); setTestTopic({ ...sub, isSubtopic: true }); }}
+                                                                                                                className="w-7 h-7 rounded-lg flex items-center justify-center bg-violet-100 dark:bg-violet-900/30 text-violet-600 dark:text-violet-400 hover:bg-violet-200 transition"
+                                                                                                                title="Take Quiz"
+                                                                                                            >
+                                                                                                                <Zap size={12} />
+                                                                                                            </motion.button>
+                                                                                                        )}
+                                                                                                    </div>
+                                                                                                </div>
+                                                                                            </motion.div>
+                                                                                        );
+                                                                                    })}
+                                                                                </div>
+                                                                            </div>
+                                                                        </motion.div>
+                                                                    )}
+                                                                </AnimatePresence>
                                                             </div>
                                                         </div>
                                                     </motion.div>
-
-
-                                                    {/* Sub-Topics Tree - Collapsible */}
-                                                    <AnimatePresence>
-                                                        {(isExpanded) && topic.subtopics && topic.subtopics.length > 0 && (
-                                                            <motion.div
-                                                                initial={{ opacity: 0, height: 0 }}
-                                                                animate={{ opacity: 1, height: 'auto' }}
-                                                                exit={{ opacity: 0, height: 0 }}
-                                                                className="overflow-hidden"
-                                                            >
-                                                                <div className="relative ml-4 md:ml-36 space-y-4 border-l-2 border-slate-200 dark:border-slate-700 pl-8 pb-8 pt-2">
-                                                                    {topic.subtopics.map((sub, sIdx) => {
-                                                                        const isSubCompleted = sub.status === 'completed';
-                                                                        return (
-                                                                            <motion.div
-                                                                                key={sub.id || `sub-${idx}-${sIdx}`}
-                                                                                initial={{ opacity: 0, x: -20 }}
-                                                                                animate={{ opacity: 1, x: 0 }}
-                                                                                transition={{ delay: sIdx * 0.05 }}
-                                                                                className="relative group"
-                                                                            >
-                                                                                {/* Connector */}
-                                                                                <div className="absolute top-8 -left-[2.1rem] w-8 h-0.5 bg-slate-200 dark:border-slate-700 bg-slate-300 dark:bg-slate-700" />
-                                                                                <div className="absolute top-[1.85rem] -left-[2.35rem] w-2 h-2 rounded-full border-2 border-slate-300 dark:border-slate-600 bg-white dark:bg-slate-900" />
-
-                                                                                <div className={`bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-5 border border-slate-200 dark:border-slate-700/50 hover:border-cyan-400 dark:hover:border-cyan-500/50 transition-all duration-200 hover:shadow-md flex flex-col md:flex-row md:items-center justify-between gap-4 ${isSubCompleted ? 'border-l-4 border-l-green-500' : ''}`}>
-                                                                                    <div>
-                                                                                        <div className="flex items-center gap-3 mb-1">
-                                                                                            <span className="text-xs font-bold text-slate-400 dark:text-slate-500 bg-slate-200 dark:bg-slate-700 px-2 py-0.5 rounded-md">
-                                                                                                {idx + 1}.{sIdx + 1}
-                                                                                            </span>
-                                                                                            <h4 className="text-lg font-bold text-slate-800 dark:text-slate-200 group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">
-                                                                                                {sub.title}
-                                                                                            </h4>
-                                                                                        </div>
-                                                                                        <p className="text-sm text-slate-500 dark:text-slate-400 leading-snug max-w-2xl">
-                                                                                            {sub.description}
-                                                                                        </p>
-                                                                                    </div>
-
-                                                                                    {/* Sub-Topic Floating Actions */}
-                                                                                    <div className="flex items-center gap-2">
-                                                                                        <button
-                                                                                            onClick={() => setSelectedTopic({ ...sub, id: sub.id, isSubtopic: true })}
-                                                                                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-700 text-blue-500 text-xs font-bold border border-slate-200 dark:border-slate-600 hover:border-blue-300 hover:bg-blue-50 dark:hover:bg-blue-900/20 transition"
-                                                                                            title="Resources"
-                                                                                        >
-                                                                                            <BookOpen size={14} /> Learn
-                                                                                        </button>
-                                                                                        {!isSubCompleted && (
-                                                                                            <button
-                                                                                                onClick={() => handleMarkAsDone(sub.id)}
-                                                                                                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-700 text-emerald-500 text-xs font-bold border border-slate-200 dark:border-slate-600 hover:border-emerald-300 hover:bg-emerald-50 dark:hover:bg-emerald-900/20 transition"
-                                                                                                title="Mark Done"
-                                                                                            >
-                                                                                                <CheckCircle size={14} /> Done
-                                                                                            </button>
-                                                                                        )}
-                                                                                        {isSubCompleted && (
-                                                                                            <>
-                                                                                                <span className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold text-green-500">
-                                                                                                    <CheckCircle size={14} /> Done
-                                                                                                </span>
-                                                                                                <button
-                                                                                                    onClick={() => { setSelectedTopic(null); setTestTopic({ ...sub, id: sub.id, isSubtopic: true }); }}
-                                                                                                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white dark:bg-slate-700 text-purple-500 text-xs font-bold border border-slate-200 dark:border-slate-600 hover:border-purple-300 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition"
-                                                                                                    title="Take Quiz"
-                                                                                                >
-                                                                                                    <Zap size={14} /> Quiz
-                                                                                                </button>
-                                                                                            </>
-                                                                                        )}
-                                                                                    </div>
-                                                                                </div>
-                                                                            </motion.div>
-                                                                        );
-                                                                    })}
-                                                                </div>
-                                                            </motion.div>
-                                                        )}
-                                                    </AnimatePresence>
-                                                </div>
-                                            )
-                                        })}
+                                                );
+                                            })}
+                                    </div>
                                 </div>
-                            )
-                            }
-
+                            )}
                         </motion.div>
                     )}
                 </AnimatePresence>
-
                 {/* MODALS */}
                 <AnimatePresence>
                     {showGiveUpModal && (
@@ -1048,3 +1148,4 @@ const Roadmap = () => {
 };
 
 export default Roadmap;
+
