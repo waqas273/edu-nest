@@ -1443,91 +1443,94 @@ const ManagerPrograms = () => {
 
                                         <div>
                                             <h3 className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest mb-3">2. Preview Validated Scholarships ({schParsedData.length} unique rules)</h3>
-                                            
-                                            <div className="border border-slate-200 dark:border-white/[0.06] rounded-2xl overflow-hidden">
-                                                <table className="w-full text-left text-xs border-collapse">
-                                                    <thead>
-                                                        <tr className="bg-slate-100 dark:bg-white/[0.04] text-slate-400 uppercase text-[9px] font-black border-b border-slate-200 dark:border-white/[0.06]">
-                                                            <th className="p-4 w-16">Status</th>
-                                                            <th className="p-4">Title</th>
-                                                            <th className="p-4 w-28">Scope</th>
-                                                            <th className="p-4 w-28">Tag</th>
-                                                            <th className="p-4 w-28">Type</th>
-                                                            <th className="p-4">Tiers & Target Education Class Mapping</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody className="divide-y divide-slate-100 dark:divide-white/[0.04] text-slate-600 dark:text-slate-350">
-                                                        {schParsedData.map((row, rIdx) => {
-                                                            const isValid = row.title && (row.scope === 'global' || row.tag);
-                                                            return (
-                                                                <tr key={row.id || rIdx} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.01]">
-                                                                    <td className="p-4">
-                                                                        {isValid ? (
-                                                                            <span className="inline-flex p-1 rounded-lg bg-emerald-500/10 text-emerald-500"><Check size={12} strokeWidth={3} /></span>
-                                                                        ) : (
-                                                                            <span className="inline-flex p-1 rounded-lg bg-rose-500/10 text-rose-500" title="Missing Title or Tag"><ShieldAlert size={12} strokeWidth={3} /></span>
-                                                                        )}
-                                                                    </td>
-                                                                    <td className="p-4 font-bold text-slate-900 dark:text-white">{row.title}</td>
-                                                                    <td className="p-4">
-                                                                        <span className={cn("px-2 py-0.5 rounded text-[10px] font-bold uppercase", row.scope === 'global' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-yellow-500/10 text-yellow-500')}>
-                                                                            {row.scope}
-                                                                        </span>
-                                                                    </td>
-                                                                    <td className="p-4 font-mono">{row.tag || <span className="text-slate-400">-</span>}</td>
-                                                                    <td className="p-4 capitalize">{row.type}</td>
-                                                                    <td className="p-4">
-                                                                        <div className="space-y-2 min-w-[420px]">
-                                                                            {row.tiers.map((t, tIdx) => (
-                                                                                <div key={tIdx} className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-slate-50 dark:bg-white/[0.02] border border-slate-150 dark:border-white/[0.05]">
-                                                                                    {/* Left: compact status pills */}
-                                                                                    <div className="flex items-center gap-1.5 text-[10px] font-bold text-slate-700 dark:text-slate-350 shrink-0">
-                                                                                        {t.min ? (
-                                                                                            <span className="px-2 py-0.5 rounded-lg bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 font-extrabold tracking-wider">
-                                                                                                {t.min}% - {t.max || 100}%
-                                                                                            </span>
-                                                                                        ) : t.position ? (
-                                                                                            <span className="px-2 py-0.5 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 font-extrabold tracking-wider max-w-[100px] truncate" title={t.position}>
-                                                                                                {t.position}
-                                                                                            </span>
-                                                                                        ) : (
-                                                                                            <span className="px-2 py-0.5 rounded-lg bg-slate-200/60 dark:bg-white/[0.06] text-slate-500 dark:text-slate-400 font-extrabold tracking-wider max-w-[100px] truncate" title={t.condition}>
-                                                                                                {t.condition || 'Rule'}
-                                                                                            </span>
-                                                                                        )}
-                                                                                        <span className="text-slate-300 dark:text-slate-700">→</span>
-                                                                                        <span className="px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-extrabold tracking-wider">
-                                                                                            {t.grant}% Off
-                                                                                        </span>
-                                                                                    </div>
-                                                                                    
-                                                                                    {/* Right: dropdown */}
-                                                                                    <div className="flex items-center gap-2 shrink-0">
-                                                                                        <span className="text-[9px] text-slate-400 dark:text-slate-500 font-black uppercase tracking-wider">For:</span>
-                                                                                        <select
-                                                                                            value={t.criteriaTitle}
-                                                                                            onChange={(e) => {
-                                                                                                const updatedTiers = row.tiers.map((item, idx) => idx === tIdx ? { ...item, criteriaTitle: e.target.value } : item);
-                                                                                                const updated = schParsedData.map(s => s.title === row.title ? { ...s, criteriaTitle: updatedTiers[0].criteriaTitle, tiers: updatedTiers } : s);
-                                                                                                setSchParsedData(updated);
-                                                                                            }}
-                                                                                            className="px-2 py-1 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-[10px] font-bold text-slate-700 dark:text-slate-300 focus:outline-none cursor-pointer max-w-[240px] hover:border-slate-350 dark:hover:border-slate-600 transition"
-                                                                                        >
-                                                                                            {getFlatEducationOptions().map((opt, oIdx) => (
-                                                                                                <option key={oIdx} value={opt}>{opt}</option>
-                                                                                            ))}
-                                                                                        </select>
-                                                                                    </div>
-                                                                                </div>
-                                                                            ))}
+                                                                              <div className="space-y-4">
+                                                {schParsedData.map((row, rIdx) => {
+                                                    const isValid = row.title && (row.scope === 'global' || row.tag);
+                                                    return (
+                                                        <div key={row.id || rIdx} className="bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.06] rounded-2xl p-5 hover:bg-slate-100/50 dark:hover:bg-white/[0.03] transition-all">
+                                                            {/* Top Row: Basic Info */}
+                                                            <div className="flex flex-wrap items-center justify-between gap-4 pb-3.5 border-b border-slate-150 dark:border-white/[0.05] mb-4">
+                                                                <div className="flex items-center gap-3">
+                                                                    {isValid ? (
+                                                                        <span className="inline-flex p-1.5 rounded-xl bg-emerald-500/10 text-emerald-500 shrink-0"><Check size={14} strokeWidth={3} /></span>
+                                                                    ) : (
+                                                                        <span className="inline-flex p-1.5 rounded-xl bg-rose-500/10 text-rose-500 shrink-0" title="Missing Title or Tag"><ShieldAlert size={14} strokeWidth={3} /></span>
+                                                                    )}
+                                                                    <div>
+                                                                        <h4 className="font-extrabold text-slate-900 dark:text-white text-base leading-tight">{row.title || <span className="text-red-400 italic">[Required Title]</span>}</h4>
+                                                                        <div className="flex flex-wrap gap-1.5 mt-1.5">
+                                                                            <span className={cn("text-[9px] font-black uppercase tracking-wider px-2.5 py-0.5 rounded-lg border",
+                                                                                row.scope === 'global'
+                                                                                    ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-600 dark:text-emerald-400'
+                                                                                    : 'bg-yellow-500/10 border-yellow-500/20 text-yellow-600 dark:text-yellow-400'
+                                                                            )}>
+                                                                                {row.scope}
+                                                                            </span>
+                                                                            {row.tag && (
+                                                                                <span className="text-[9px] font-mono font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-lg bg-slate-100 dark:bg-white/[0.05] text-slate-500 dark:text-slate-400 border border-slate-250 dark:border-white/[0.06]">
+                                                                                    Tag: {row.tag}
+                                                                                </span>
+                                                                            )}
+                                                                            <span className="text-[9px] font-bold uppercase tracking-wider px-2.5 py-0.5 rounded-lg bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
+                                                                                Type: {row.type}
+                                                                            </span>
                                                                         </div>
-                                                                    </td>
-                                                                </tr>
-                                                            );
-                                                        })}
-                                                    </tbody>
-                                                </table>
-                                            </div>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+
+                                                            {/* Bottom Row: Tiers & Education Mapping */}
+                                                            <div>
+                                                                <div className="text-[10px] font-black text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3">Tiers & Target Education Class Mapping</div>
+                                                                <div className="grid grid-cols-1 gap-2.5">
+                                                                    {row.tiers.map((t, tIdx) => (
+                                                                        <div key={tIdx} className="flex flex-col md:flex-row md:items-center justify-between gap-3 p-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-150 dark:border-white/[0.05] shadow-sm">
+                                                                            {/* Left side: range & grant */}
+                                                                            <div className="flex items-center gap-2 text-xs font-bold text-slate-700 dark:text-slate-355">
+                                                                                {t.min ? (
+                                                                                    <span className="px-2 py-0.5 rounded-lg bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 font-extrabold">
+                                                                                        {t.min}% - {t.max || 100}% Marks
+                                                                                    </span>
+                                                                                ) : t.position ? (
+                                                                                    <span className="px-2 py-0.5 rounded-lg bg-purple-500/10 text-purple-600 dark:text-purple-400 font-extrabold max-w-[150px] truncate" title={t.position}>
+                                                                                        {t.position}
+                                                                                    </span>
+                                                                                ) : (
+                                                                                    <span className="px-2 py-0.5 rounded-lg bg-slate-100 dark:bg-white/[0.06] text-slate-500 dark:text-slate-400 font-extrabold max-w-[150px] truncate" title={t.condition}>
+                                                                                        {t.condition || 'Rule'}
+                                                                                    </span>
+                                                                                )}
+                                                                                <span className="text-slate-300 dark:text-slate-700">→</span>
+                                                                                <span className="px-2 py-0.5 rounded-lg bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-extrabold">
+                                                                                    {t.grant}% Waiver
+                                                                                </span>
+                                                                            </div>
+
+                                                                            {/* Right side: select */}
+                                                                            <div className="flex items-center gap-2 w-full md:w-auto shrink-0">
+                                                                                <span className="text-[9px] text-slate-400 dark:text-slate-505 font-black uppercase tracking-wider">For Class:</span>
+                                                                                <select
+                                                                                    value={t.criteriaTitle}
+                                                                                    onChange={(e) => {
+                                                                                        const updatedTiers = row.tiers.map((item, idx) => idx === tIdx ? { ...item, criteriaTitle: e.target.value } : item);
+                                                                                        const updated = schParsedData.map(s => s.title === row.title ? { ...s, criteriaTitle: updatedTiers[0].criteriaTitle, tiers: updatedTiers } : s);
+                                                                                        setSchParsedData(updated);
+                                                                                    }}
+                                                                                    className="w-full md:w-[320px] px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-xs font-semibold text-slate-750 dark:text-slate-300 focus:outline-none cursor-pointer hover:border-slate-350 transition"
+                                                                                >
+                                                                                    {getFlatEducationOptions().map((opt, oIdx) => (
+                                                                                        <option key={oIdx} value={opt}>{opt}</option>
+                                                                                    ))}
+                                                                                </select>
+                                                                            </div>
+                                                                        </div>
+                                                                    ))}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>        </div>
                                         </div>
                                     </div>
                                 )}
