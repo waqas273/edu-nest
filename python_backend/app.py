@@ -537,7 +537,30 @@ def generate_questions_via_ai(subject, count, exam_type):
             all_qs.append(random.choice(all_qs).copy())
         return all_qs
         
-    return None
+def is_valid_template_question(q):
+    if not q or not isinstance(q, dict):
+        return False
+    style = q.get("style_reference")
+    if not style or not isinstance(style, dict):
+        return False
+    question = style.get("question")
+    options = style.get("options")
+    answer = style.get("answer")
+    if not question or not options or not answer:
+        return False
+    if not isinstance(options, list) or len(options) != 4:
+        return False
+    
+    # Strip common prefix labels (e.g. A), B., etc.) to verify if there is actual content
+    import re
+    prefix_re = re.compile(r"^\s*\(?[A-D]\s*[\).\-]\s*")
+    cleaned_opts = [prefix_re.sub("", str(opt)).strip() for opt in options]
+    
+    # If any option has no content (length == 0 after stripping label), then it's a diagram question
+    if any(len(opt) == 0 for opt in cleaned_opts):
+        return False
+        
+    return True
 
 
 @app.route('/api/generate-rag-exam', methods=['POST'])
@@ -591,7 +614,7 @@ def generate_rag_exam():
         # Look for years that have valid questions for our target subject
         valid_years = []
         for yr, qs in exam_years.items():
-            year_subject_qs = [q for q in qs if q.get("subject", "").lower() == subject.lower()]
+            year_subject_qs = [q for q in qs if q.get("subject", "").lower() == subject.lower() and is_valid_template_question(q)]
             if year_subject_qs:
                 valid_years.append(yr)
 
@@ -604,8 +627,8 @@ def generate_rag_exam():
                 selected_year = random.choice(valid_years)
             print(f"[Sequence RAG API] Using sequence template from {exam_type.upper()} Year {selected_year}")
             full_year_qs = exam_years[selected_year]
-            # Filter and keep original question positions
-            subject_qs = [q for q in full_year_qs if q.get("subject", "").lower() == subject.lower()]
+            # Filter and keep original question positions, discarding diagram/empty ones
+            subject_qs = [q for q in full_year_qs if q.get("subject", "").lower() == subject.lower() and is_valid_template_question(q)]
         else:
             print(f"[Sequence RAG API] No template sequence found for {exam_type} - {subject}")
 
