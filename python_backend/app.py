@@ -360,9 +360,30 @@ def clean_and_enrich_questions(questions, subject):
                     cleaned_opts.append(str(opt))
             q["options"] = cleaned_opts
             
-        # Clean answer
-        if q.get("answer") and isinstance(q["answer"], str):
-            q["answer"] = prefix_re.sub("", q["answer"]).strip()
+        # Clean and resolve answer
+        ans = q.get("answer")
+        if ans and isinstance(ans, str):
+            ans_clean = ans.strip()
+            # If the answer is just a single letter like A, B, C, D (optionally inside brackets or followed by punctuation)
+            letter_match = re.match(r"^\s*\(?([A-D])\)?\s*[\).\-]?\s*$", ans_clean, re.IGNORECASE)
+            if letter_match and "options" in q and len(q["options"]) == 4:
+                letter = letter_match.group(1).upper()
+                idx = ord(letter) - ord('A')
+                q["answer"] = q["options"][idx]
+            else:
+                # Otherwise strip prefix and keep
+                q["answer"] = prefix_re.sub("", ans_clean).strip()
+                # Verify if it matches one of the options (case-insensitive alignment)
+                if "options" in q:
+                    matched = False
+                    for opt in q["options"]:
+                        if opt.lower() == q["answer"].lower():
+                            q["answer"] = opt # align casing
+                            matched = True
+                            break
+                    # Safe fallback: if it became empty or didn't match, set to first option as fallback
+                    if (not matched or q["answer"] == "") and len(q["options"]) == 4:
+                        q["answer"] = q["options"][0]
             
         # Enrich generic/fallback explanations
         explanation = q.get("explanation", "")
