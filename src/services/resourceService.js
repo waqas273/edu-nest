@@ -23,15 +23,16 @@ const FALLBACK_VIDEOS = [
 ];
 
 export const fetchVideos = async (topic, skill = '') => {
-    // 1. SMART QUERY: Strip "01. " numbers and strict 'tutorial'
-    const cleanTopic = topic.replace(/^\d+\.\s*/, '').replace(/[^a-zA-Z0-9\s]/g, '');
-    const searchQuery = `${skill} ${cleanTopic} complete tutorial`.trim();
+    // Clean topic: only strip leading numbering like "01. "
+    const cleanTopic = topic.replace(/^\d+\.\s*/, '').trim();
+    // Build a natural search query without forcing "complete tutorial"
+    const searchQuery = skill ? `${cleanTopic} ${skill}` : cleanTopic;
 
     if (YOUTUBE_API_KEY) {
         try {
             const encodedQuery = encodeURIComponent(searchQuery);
             const res = await fetch(
-                `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=8&q=${encodedQuery}&type=video&key=${YOUTUBE_API_KEY}`
+                `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=12&q=${encodedQuery}&type=video&videoCategoryId=27&relevanceLanguage=en&key=${YOUTUBE_API_KEY}`
             );
 
             if (!res.ok) {
@@ -41,23 +42,33 @@ export const fetchVideos = async (topic, skill = '') => {
 
             const data = await res.json();
 
-            // Allow loose matching: if keywords match title
-            const topicKeywords = cleanTopic.toLowerCase().split(/\s+/).filter(w => w.length > 3);
-
             if (data.items && data.items.length > 0) {
-                const apiVideos = data.items.map(item => ({
+                return data.items.map(item => ({
                     id: item.id.videoId,
                     title: item.snippet.title,
                     channel: item.snippet.channelTitle,
-                    thumbnail: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.medium.url,
+                    thumbnail: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.medium?.url || item.snippet.thumbnails.default?.url,
                     url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
                     description: item.snippet.description?.slice(0, 100) + '...'
                 }));
+            }
 
-                // Strict filter often returns 0 if title is creative. 
-                // We return ALL API results but prioritize matches if possible.
-                // If API returns things, they are arguably better than Static Fallback.
-                return apiVideos;
+            // If YouTube returned empty results, try again without category filter
+            const fallbackRes = await fetch(
+                `https://www.googleapis.com/youtube/v3/search?part=snippet&maxResults=12&q=${encodedQuery}&type=video&relevanceLanguage=en&key=${YOUTUBE_API_KEY}`
+            );
+            if (fallbackRes.ok) {
+                const fallbackData = await fallbackRes.json();
+                if (fallbackData.items && fallbackData.items.length > 0) {
+                    return fallbackData.items.map(item => ({
+                        id: item.id.videoId,
+                        title: item.snippet.title,
+                        channel: item.snippet.channelTitle,
+                        thumbnail: item.snippet.thumbnails.high?.url || item.snippet.thumbnails.medium?.url || item.snippet.thumbnails.default?.url,
+                        url: `https://www.youtube.com/watch?v=${item.id.videoId}`,
+                        description: item.snippet.description?.slice(0, 100) + '...'
+                    }));
+                }
             }
         } catch (e) {
             console.warn("YouTube API Error:", e.message);
