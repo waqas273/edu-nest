@@ -172,6 +172,13 @@ const ManagerPrograms = () => {
     const [csvHeaders, setCsvHeaders] = useState([]);
     const [csvRawLines, setCsvRawLines] = useState([]);
 
+    // CSV Import State (Scholarships)
+    const [isSchImportModalOpen, setIsSchImportModalOpen] = useState(false);
+    const [schParsedData, setSchParsedData] = useState([]);
+    const [schMappingColumns, setSchMappingColumns] = useState({});
+    const [schCsvHeaders, setSchCsvHeaders] = useState([]);
+    const [schCsvRawLines, setSchCsvRawLines] = useState([]);
+
     // Central Scholarship Directory (loaded from userProfile)
     const scholarshipDirectory = userProfile?.scholarshipDirectory || [];
     const [isScholarshipModalOpen, setIsScholarshipModalOpen] = useState(false);
@@ -491,6 +498,149 @@ const ManagerPrograms = () => {
         }
     };
 
+    // --- CSV IMPORT LOGIC (SCHOLARSHIPS) ---
+    const handleSchFileDrop = (e) => {
+        e.preventDefault();
+        const file = e.dataTransfer ? e.dataTransfer.files[0] : e.target.files[0];
+        if (!file || !file.name.endsWith('.csv')) {
+            alert("Please upload a valid CSV file!");
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const text = event.target.result;
+            const lines = parseCSV(text);
+            if (lines.length < 2) {
+                alert("The CSV file seems to be empty or missing headers.");
+                return;
+            }
+
+            const headers = lines[0].map(h => h.trim());
+            setSchCsvHeaders(headers);
+            setSchCsvRawLines(lines.slice(1));
+
+            // Auto mapping
+            const initialMap = {};
+            headers.forEach((header, index) => {
+                const hLower = header.toLowerCase();
+                if (hLower.includes('title') || hLower.includes('name')) {
+                    initialMap['title'] = index;
+                } else if (hLower.includes('scope')) {
+                    initialMap['scope'] = index;
+                } else if (hLower.includes('tag')) {
+                    initialMap['tag'] = index;
+                } else if (hLower.includes('type') || hLower.includes('category')) {
+                    initialMap['type'] = index;
+                } else if (hLower.includes('criteria') || hLower.includes('education')) {
+                    initialMap['criteriaTitle'] = index;
+                } else if (hLower.includes('min')) {
+                    initialMap['min'] = index;
+                } else if (hLower.includes('max')) {
+                    initialMap['max'] = index;
+                } else if (hLower.includes('pos')) {
+                    initialMap['position'] = index;
+                } else if (hLower.includes('cond')) {
+                    initialMap['condition'] = index;
+                } else if (hLower.includes('grant') || hLower.includes('waiver') || hLower.includes('discount')) {
+                    initialMap['grant'] = index;
+                }
+            });
+            setSchMappingColumns(initialMap);
+        };
+        reader.readAsText(file);
+    };
+
+    // Group parsed CSV rows by scholarship title/tag
+    useEffect(() => {
+        if (schCsvRawLines.length === 0) return;
+
+        const grouped = {};
+        schCsvRawLines.forEach((line) => {
+            const getVal = (field) => {
+                const colIdx = schMappingColumns[field];
+                return colIdx !== undefined ? (line[colIdx] || '').trim() : '';
+            };
+
+            const title = getVal('title');
+            if (!title) return;
+
+            const scope = getVal('scope').toLowerCase() === 'specific' ? 'specific' : 'global';
+            const tag = scope === 'specific' ? getVal('tag').toLowerCase().replace(/[^a-z0-9_-]/g, '') : '';
+            const type = getVal('type').toLowerCase() || 'merit';
+            const criteriaTitle = getVal('criteriaTitle') || 'Intermediate / Equivalent';
+
+            const tier = {
+                id: Math.random().toString(),
+                min: getVal('min'),
+                max: getVal('max'),
+                position: getVal('position'),
+                condition: getVal('condition'),
+                grant: getVal('grant') || '0'
+            };
+
+            const key = `${title}_${scope}_${tag}_${type}`;
+            if (!grouped[key]) {
+                grouped[key] = {
+                    title,
+                    scope,
+                    tag,
+                    type,
+                    criteriaTitle,
+                    tiers: []
+                };
+            }
+            grouped[key].tiers.push(tier);
+        });
+
+        setSchParsedData(Object.values(grouped));
+    }, [schCsvRawLines, schMappingColumns]);
+
+    const handleSchImportSubmit = async () => {
+        const invalidRows = schParsedData.filter(s => !s.title || (s.scope === 'specific' && !s.tag));
+        if (invalidRows.length > 0) {
+            alert(`Cannot import. ${invalidRows.length} scholarships have missing Titles or Tags.`);
+            return;
+        }
+
+        setSubmitting(true);
+        try {
+            const mergedDirectory = [...scholarshipDirectory];
+            
+            schParsedData.forEach((importedSch) => {
+                const existingIdx = mergedDirectory.findIndex(s => s.title === importedSch.title || (importedSch.tag && s.tag === importedSch.tag));
+                const newSch = {
+                    id: Math.random().toString(36).substring(7),
+                    title: importedSch.title,
+                    scope: importedSch.scope,
+                    tag: importedSch.tag,
+                    type: importedSch.type,
+                    criteriaTitle: importedSch.criteriaTitle,
+                    tiers: importedSch.tiers
+                };
+                if (existingIdx > -1) {
+                    mergedDirectory[existingIdx] = newSch;
+                } else {
+                    mergedDirectory.push(newSch);
+                }
+            });
+
+            await updateUserProfile(currentUser.uid, {
+                scholarshipDirectory: mergedDirectory
+            });
+
+            setIsSchImportModalOpen(false);
+            setSchCsvRawLines([]);
+            setSchParsedData([]);
+            alert("All scholarships directory rules imported and merged successfully!");
+        } catch (error) {
+            console.error("Failed to import scholarships directory:", error);
+            alert("Import failed.");
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
     const filteredPrograms = programs.filter(p =>
         (p.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
          p.degreeType?.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -638,16 +788,24 @@ const ManagerPrograms = () => {
                                 <h2 className="text-xl font-bold text-slate-800 dark:text-white">Scholarships Directory</h2>
                                 <p className="text-slate-500 dark:text-slate-455 text-xs">Register global policies (auto-linked) and specific ones (mapped via Excel or forms)</p>
                             </div>
-                            <button
-                                onClick={() => {
-                                    setEditingScholarshipId(null);
-                                    setScholarshipFormData({ title: '', scope: 'global', tag: '', type: 'merit', tiers: [] });
-                                    setIsScholarshipModalOpen(true);
-                                }}
-                                className="px-4 py-2.5 bg-gradient-to-r from-yellow-500 to-amber-600 text-white font-bold rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-yellow-500/20 flex items-center gap-1.5 hover:opacity-95"
-                            >
-                                <Plus size={14} /> Add Scholarship Rule
-                            </button>
+                            <div className="flex gap-2">
+                                <button
+                                    onClick={() => setIsSchImportModalOpen(true)}
+                                    className="px-4 py-2.5 border border-slate-300 dark:border-white/[0.08] hover:border-slate-400 dark:hover:border-white/20 bg-white dark:bg-white/[0.04] text-slate-800 dark:text-white rounded-xl text-xs font-bold uppercase tracking-wider transition flex items-center gap-1.5 shadow-sm"
+                                >
+                                    <UploadCloud size={14} /> Import CSV
+                                </button>
+                                <button
+                                    onClick={() => {
+                                        setEditingScholarshipId(null);
+                                        setScholarshipFormData({ title: '', scope: 'global', tag: '', type: 'merit', tiers: [] });
+                                        setIsScholarshipModalOpen(true);
+                                    }}
+                                    className="px-4 py-2.5 bg-gradient-to-r from-yellow-500 to-amber-600 text-white font-bold rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-yellow-500/20 flex items-center gap-1.5 hover:opacity-95"
+                                >
+                                    <Plus size={14} /> Add Scholarship Rule
+                                </button>
+                            </div>
                         </div>
 
                         {scholarshipDirectory.length === 0 ? (
@@ -1120,6 +1278,160 @@ const ManagerPrograms = () => {
                                         onClick={handleImportSubmit}
                                         disabled={csvRawLines.length === 0 || submitting}
                                         className="px-6 py-2.5 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-cyan-500/20 flex items-center gap-2"
+                                    >
+                                        {submitting ? <Loader2 className="animate-spin" size={14} /> : <CheckCircle size={14} />}
+                                        Start Import
+                                    </button>
+                                </div>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* ===== SCHOLARSHIPS IMPORT MODAL ===== */}
+            <AnimatePresence>
+                {isSchImportModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                        <motion.div
+                            initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 30 }}
+                            className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-5xl h-[90vh] flex flex-col overflow-hidden"
+                        >
+                            <div className="flex-shrink-0 px-8 py-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
+                                <div className="flex items-center gap-3">
+                                    <UploadCloud className="text-yellow-500" size={24} />
+                                    <h2 className="text-xl font-bold text-slate-900 dark:text-white">Import Scholarships Directory</h2>
+                                </div>
+                                <button onClick={() => { setIsSchImportModalOpen(false); setSchCsvRawLines([]); setSchParsedData([]); }} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white transition">
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                                {schCsvRawLines.length === 0 ? (
+                                    <div className="h-full flex flex-col items-center justify-center border-3 border-dashed border-slate-250 dark:border-white/[0.08] hover:border-yellow-500/55 rounded-3xl p-10 bg-slate-50/50 dark:bg-white/[0.01] transition-all cursor-pointer relative group">
+                                        <input
+                                            type="file" accept=".csv"
+                                            onChange={handleSchFileDrop}
+                                            className="absolute inset-0 opacity-0 cursor-pointer"
+                                        />
+                                        <div className="w-16 h-16 rounded-2xl bg-yellow-500/10 flex items-center justify-center text-yellow-500 mb-4 group-hover:scale-110 transition-transform">
+                                            <UploadCloud size={32} />
+                                        </div>
+                                        <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-1">Upload Scholarships CSV</h3>
+                                        <p className="text-xs text-slate-400 text-center max-w-xs leading-relaxed mb-4">Drag and drop your scholarships CSV here or click to browse.</p>
+                                        
+                                        <div className="p-4 bg-slate-100 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.05] rounded-xl text-left max-w-md w-full text-[10px] text-slate-500 dark:text-slate-400 leading-normal">
+                                            <div className="font-bold uppercase tracking-wider mb-2 text-slate-400">💡 Recommended CSV Columns:</div>
+                                            <code className="font-mono text-yellow-600 dark:text-yellow-400 font-bold">Title, Scope (global/specific), Tag, Type, Min, Max, Grant</code>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-6">
+                                        <div className="bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.06] p-5 rounded-2xl">
+                                            <h3 className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest mb-3">1. Confirm Column Mapping</h3>
+                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 text-xs">
+                                                {[
+                                                    { field: 'title', label: 'Scholarship Title *' },
+                                                    { field: 'scope', label: 'Scope (Global/Specific)' },
+                                                    { field: 'tag', label: 'Tag (if Specific)' },
+                                                    { field: 'type', label: 'Type' },
+                                                    { field: 'criteriaTitle', label: 'Criteria Title' },
+                                                    { field: 'min', label: 'Min Requirement' },
+                                                    { field: 'max', label: 'Max Requirement' },
+                                                    { field: 'grant', label: 'Grant % *' },
+                                                ].map((col) => (
+                                                    <div key={col.field} className="flex flex-col gap-1.5">
+                                                        <span className="font-bold text-slate-400">{col.label}</span>
+                                                        <select
+                                                            value={schMappingColumns[col.field] !== undefined ? schMappingColumns[col.field] : ''}
+                                                            onChange={(e) => setSchMappingColumns({ ...schMappingColumns, [col.field]: e.target.value === '' ? undefined : parseInt(e.target.value) })}
+                                                            className="px-3 py-2 border border-slate-250 dark:border-white/[0.08] bg-white dark:bg-slate-900 rounded-lg text-slate-800 dark:text-white font-medium focus:ring-2 focus:ring-cyan-500/20"
+                                                        >
+                                                            <option value="">[Ignore Column]</option>
+                                                            {schCsvHeaders.map((header, idx) => (
+                                                                <option key={idx} value={idx}>{header}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        <div>
+                                            <h3 className="text-xs font-black text-slate-700 dark:text-slate-300 uppercase tracking-widest mb-3">2. Preview Validated Scholarships ({schParsedData.length} unique rules)</h3>
+                                            
+                                            <div className="border border-slate-200 dark:border-white/[0.06] rounded-2xl overflow-hidden">
+                                                <table className="w-full text-left text-xs border-collapse">
+                                                    <thead>
+                                                        <tr className="bg-slate-100 dark:bg-white/[0.04] text-slate-400 uppercase text-[9px] font-black border-b border-slate-200 dark:border-white/[0.06]">
+                                                            <th className="p-4 w-16">Status</th>
+                                                            <th className="p-4">Title</th>
+                                                            <th className="p-4 w-28">Scope</th>
+                                                            <th className="p-4 w-28">Tag</th>
+                                                            <th className="p-4 w-28">Type</th>
+                                                            <th className="p-4">Tiers Mapped</th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody className="divide-y divide-slate-100 dark:divide-white/[0.04] text-slate-600 dark:text-slate-350">
+                                                        {schParsedData.map((row, rIdx) => {
+                                                            const isValid = row.title && (row.scope === 'global' || row.tag);
+                                                            return (
+                                                                <tr key={row.id || rIdx} className="hover:bg-slate-50/50 dark:hover:bg-white/[0.01]">
+                                                                    <td className="p-4">
+                                                                        {isValid ? (
+                                                                            <span className="inline-flex p-1 rounded-lg bg-emerald-500/10 text-emerald-500"><Check size={12} strokeWidth={3} /></span>
+                                                                        ) : (
+                                                                            <span className="inline-flex p-1 rounded-lg bg-rose-500/10 text-rose-500" title="Missing Title or Tag"><ShieldAlert size={12} strokeWidth={3} /></span>
+                                                                        )}
+                                                                    </td>
+                                                                    <td className="p-4 font-bold text-slate-900 dark:text-white">{row.title}</td>
+                                                                    <td className="p-4">
+                                                                        <span className={cn("px-2 py-0.5 rounded text-[10px] font-bold uppercase", row.scope === 'global' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-yellow-500/10 text-yellow-500')}>
+                                                                            {row.scope}
+                                                                        </span>
+                                                                    </td>
+                                                                    <td className="p-4 font-mono">{row.tag || <span className="text-slate-400">-</span>}</td>
+                                                                    <td className="p-4 capitalize">{row.type}</td>
+                                                                    <td className="p-4">
+                                                                        <div className="flex flex-wrap gap-1">
+                                                                            {row.tiers.map((t, tIdx) => (
+                                                                                <span key={tIdx} className="px-2 py-0.5 rounded bg-slate-100 dark:bg-white/[0.04] text-slate-500 dark:text-slate-400 text-[10px]">
+                                                                                    {t.min ? `${t.min}%-${t.max || 100}%` : t.position || t.condition || 'Rule'} → <b>{t.grant}%</b>
+                                                                                </span>
+                                                                            ))}
+                                                                        </div>
+                                                                    </td>
+                                                                </tr>
+                                                            );
+                                                        })}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            <div className="flex-shrink-0 px-8 py-5 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
+                                <button
+                                    onClick={() => { setSchCsvRawLines([]); setSchParsedData([]); }}
+                                    disabled={schCsvRawLines.length === 0}
+                                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 dark:bg-white/[0.04] dark:hover:bg-white/[0.08] border border-slate-250 dark:border-white/[0.08] text-slate-700 dark:text-slate-350 rounded-xl text-xs font-bold transition disabled:opacity-30"
+                                >
+                                    Reset File
+                                </button>
+                                <div className="flex gap-3">
+                                    <button
+                                        onClick={() => { setIsSchImportModalOpen(false); setSchCsvRawLines([]); setSchParsedData([]); }}
+                                        className="px-5 py-2.5 rounded-xl font-bold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white transition text-xs uppercase tracking-wider"
+                                    >
+                                        Cancel
+                                    </button>
+                                    <button
+                                        onClick={handleSchImportSubmit}
+                                        disabled={schCsvRawLines.length === 0 || submitting}
+                                        className="px-6 py-2.5 bg-gradient-to-r from-yellow-500 to-amber-600 text-white font-bold rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-yellow-500/20 flex items-center gap-2"
                                     >
                                         {submitting ? <Loader2 className="animate-spin" size={14} /> : <CheckCircle size={14} />}
                                         Start Import
