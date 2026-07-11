@@ -3,13 +3,44 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Plus, Trash2, Edit2, User, Users, GraduationCap, BookOpen,
     Mail, Linkedin, Instagram, Save, X, Search,
-    Briefcase, Sparkles, Building, Camera, Loader2, ImageIcon
+    Briefcase, Sparkles, Building, Camera, Loader2, ImageIcon, UploadCloud
 } from 'lucide-react';
 import { collection, addDoc, updateDoc, deleteDoc, doc, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
 import { uploadToCloudinary, validateImageFile } from '../../utils/cloudinaryUpload';
 import toast from 'react-hot-toast';
+
+// Robust CSV Parser supporting quotes, escapes, and linebreaks
+const parseCSV = (text) => {
+    const lines = [];
+    let row = [""];
+    let inQuotes = false;
+    for (let i = 0; i < text.length; i++) {
+        const c = text[i];
+        const next = text[i + 1];
+        if (c === '"') {
+            if (inQuotes && next === '"') {
+                row[row.length - 1] += '"';
+                i++;
+            } else {
+                inQuotes = !inQuotes;
+            }
+        } else if (c === ',' && !inQuotes) {
+            row.push("");
+        } else if ((c === '\r' || c === '\n') && !inQuotes) {
+            if (c === '\r' && next === '\n') i++;
+            lines.push(row);
+            row = [""];
+        } else {
+            row[row.length - 1] += c;
+        }
+    }
+    if (row.length > 1 || row[0] !== "") {
+        lines.push(row);
+    }
+    return lines;
+};
 
 const ManagerFaculty = () => {
     const { currentUser } = useAuth();
@@ -19,6 +50,14 @@ const ManagerFaculty = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [editMode, setEditMode] = useState(null);
     const [uploading, setUploading] = useState(false);
+
+    // CSV Import State
+    const [isImportModalOpen, setIsImportModalOpen] = useState(false);
+    const [csvHeaders, setCsvHeaders] = useState([]);
+    const [csvRawLines, setCsvRawLines] = useState([]);
+    const [mappingColumns, setMappingColumns] = useState({});
+    const [parsedData, setParsedData] = useState([]);
+    const [submitting, setSubmitting] = useState(false);
 
     // Initial Form State
     const initialFormState = {
@@ -157,6 +196,121 @@ const ManagerFaculty = () => {
         }));
     };
 
+    // --- CSV IMPORT LOGIC ---
+    const handleFileDrop = (e) => {
+        e.preventDefault();
+        const file = e.dataTransfer ? e.dataTransfer.files[0] : e.target.files[0];
+        if (!file || !file.name.endsWith('.csv')) {
+            toast.error("Please upload a valid CSV file!");
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const text = event.target.result;
+            const lines = parseCSV(text);
+            if (lines.length < 2) {
+                toast.error("The CSV file seems to be empty or missing headers.");
+                return;
+            }
+
+            const headers = lines[0].map(h => h.trim());
+            setCsvHeaders(headers);
+            setCsvRawLines(lines.slice(1));
+
+            // Auto mapping
+            const initialMap = {};
+            headers.forEach((header, index) => {
+                const hLower = header.toLowerCase();
+                if (hLower.includes('name') || hLower.includes('full')) initialMap['fullName'] = index;
+                else if (hLower.includes('designation') || hLower.includes('role')) initialMap['designation'] = index;
+                else if (hLower.includes('bio') || hLower.includes('about')) initialMap['bio'] = index;
+                else if (hLower.includes('email')) initialMap['email'] = index;
+                else if (hLower.includes('linkedin')) initialMap['linkedin'] = index;
+                else if (hLower.includes('instagram')) initialMap['instagram'] = index;
+                else if (hLower.includes('publication')) initialMap['publications'] = index;
+                else if (hLower.includes('education') || hLower.includes('degree')) initialMap['education'] = index;
+                else if (hLower.includes('expert') || hLower.includes('skill')) initialMap['expertise'] = index;
+                else if (hLower.includes('course') || hLower.includes('teach')) initialMap['courses'] = index;
+            });
+            setMappingColumns(initialMap);
+        };
+        reader.readAsText(file);
+    };
+
+    // Process mapped CSV lines to preview grid state
+    useEffect(() => {
+        if (csvRawLines.length === 0) return;
+
+        const processed = csvRawLines.map((line, idx) => {
+            const getVal = (field) => {
+                const colIdx = mappingColumns[field];
+                return colIdx !== undefined ? (line[colIdx] || '').trim() : '';
+            };
+
+            const parseArray = (str) => {
+                if (!str) return [];
+                return str.split(/[|;]/).map(item => item.trim()).filter(Boolean);
+            };
+
+            return {
+                id: `preview-${idx}`,
+                fullName: getVal('fullName') || 'Unnamed Faculty',
+                designation: getVal('designation') || 'Faculty',
+                bio: getVal('bio'),
+                email: getVal('email'),
+                linkedin: getVal('linkedin'),
+                instagram: getVal('instagram'),
+                publications: parseArray(getVal('publications')),
+                education: parseArray(getVal('education')),
+                expertise: parseArray(getVal('expertise')),
+                courses: parseArray(getVal('courses')),
+                profilePic: '', // Will be left blank for UI to show initials
+            };
+        });
+
+        setParsedData(processed);
+    }, [csvRawLines, mappingColumns]);
+
+    const handleBatchSubmit = async () => {
+        if (parsedData.length === 0) return;
+        setSubmitting(true);
+
+        try {
+            const batchPromises = parsedData.map(async (f) => {
+                const dataToSave = {
+                    fullName: f.fullName,
+                    designation: f.designation,
+                    bio: f.bio,
+                    profilePic: '',
+                    socials: {
+                        email: f.email,
+                        linkedin: f.linkedin,
+                        instagram: f.instagram
+                    },
+                    publications: f.publications,
+                    education: f.education,
+                    expertise: f.expertise,
+                    courses: f.courses,
+                    universityId: currentUser.uid,
+                    createdAt: new Date()
+                };
+                return addDoc(collection(db, 'faculty'), dataToSave);
+            });
+
+            await Promise.all(batchPromises);
+            setIsImportModalOpen(false);
+            setCsvRawLines([]);
+            setParsedData([]);
+            toast.success(`${parsedData.length} faculty members imported successfully!`);
+        } catch (error) {
+            console.error("Failed to import faculty batch:", error);
+            toast.error("Import failed.");
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
     const filteredFaculty = faculty.filter(f =>
         f.fullName.toLowerCase().includes(searchTerm.toLowerCase()) ||
         f.designation.toLowerCase().includes(searchTerm.toLowerCase())
@@ -172,12 +326,20 @@ const ManagerFaculty = () => {
                     </h1>
                     <p className="text-slate-500 dark:text-slate-400">Manage your university's academic staff and researchers</p>
                 </div>
-                <button
-                    onClick={() => handleOpenModal()}
-                    className="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-indigo-600/30 transition-all"
-                >
-                    <Plus size={20} /> Add Faculty Member
-                </button>
+                <div className="flex flex-col sm:flex-row gap-3">
+                    <button
+                        onClick={() => setIsImportModalOpen(true)}
+                        className="flex items-center justify-center gap-2 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 hover:border-indigo-500 hover:text-indigo-600 dark:hover:border-indigo-500 dark:hover:text-indigo-400 text-slate-700 dark:text-slate-300 px-6 py-3 rounded-xl font-bold transition-all"
+                    >
+                        <UploadCloud size={20} /> Import CSV
+                    </button>
+                    <button
+                        onClick={() => handleOpenModal()}
+                        className="flex items-center justify-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-bold shadow-lg shadow-indigo-600/30 transition-all"
+                    >
+                        <Plus size={20} /> Add Faculty Member
+                    </button>
+                </div>
             </header>
 
             {/* Search */}
@@ -570,6 +732,183 @@ const ManagerFaculty = () => {
                                     </button>
                                 </div>
                             </form>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* ===== CSV IMPORT MODAL ===== */}
+            <AnimatePresence>
+                {isImportModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 sm:p-6">
+                        <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
+                            exit={{ opacity: 0 }}
+                            className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+                            onClick={() => { setIsImportModalOpen(false); setCsvRawLines([]); setParsedData([]); }}
+                        />
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95, y: 20 }}
+                            animate={{ opacity: 1, scale: 1, y: 0 }}
+                            exit={{ opacity: 0, scale: 0.95, y: 20 }}
+                            className="relative w-full max-w-6xl bg-white dark:bg-slate-900 rounded-3xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh] border border-slate-200 dark:border-slate-800"
+                        >
+                            {/* Modal Header */}
+                            <div className="flex justify-between items-center p-6 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-xl bg-indigo-100 dark:bg-indigo-500/20 flex items-center justify-center text-indigo-600 dark:text-indigo-400">
+                                        <UploadCloud size={20} />
+                                    </div>
+                                    <div>
+                                        <h2 className="text-xl font-bold text-slate-900 dark:text-white">Import Faculty via CSV</h2>
+                                        <p className="text-sm text-slate-500 dark:text-slate-400">Upload and map your faculty data</p>
+                                    </div>
+                                </div>
+                                <button onClick={() => { setIsImportModalOpen(false); setCsvRawLines([]); setParsedData([]); }} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white transition bg-slate-100 dark:bg-slate-800 rounded-lg">
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto p-6 space-y-8">
+                                {csvRawLines.length === 0 ? (
+                                    <div className="flex flex-col items-center justify-center py-16 border-2 border-dashed border-indigo-200 dark:border-indigo-800/50 rounded-3xl bg-indigo-50 dark:bg-indigo-500/5 relative group transition-all hover:bg-indigo-100 dark:hover:bg-indigo-500/10 hover:border-indigo-300 dark:hover:border-indigo-700">
+                                        <input
+                                            type="file" accept=".csv"
+                                            onChange={handleFileDrop}
+                                            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
+                                        />
+                                        <div className="w-16 h-16 bg-white dark:bg-slate-800 shadow-sm rounded-full flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                                            <UploadCloud size={28} className="text-indigo-500" />
+                                        </div>
+                                        <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-1">Upload Faculty CSV</h3>
+                                        <p className="text-sm text-slate-500 text-center max-w-sm mb-4">Drag and drop your CSV file here, or click to browse files.</p>
+                                        <div className="flex gap-2">
+                                            <span className="px-3 py-1 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-md border border-slate-200 dark:border-slate-700 text-xs font-medium">.csv only</span>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-8">
+                                        {/* Column Mapping Section */}
+                                        <div className="bg-slate-50 dark:bg-slate-800/30 p-6 rounded-2xl border border-slate-200 dark:border-slate-800">
+                                            <h3 className="text-base font-bold text-slate-800 dark:text-white mb-4 flex items-center gap-2">
+                                                <div className="w-6 h-6 rounded-full bg-indigo-500 text-white flex items-center justify-center text-xs">1</div>
+                                                Map Columns
+                                            </h3>
+                                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+                                                {['fullName', 'designation', 'email', 'publications', 'expertise'].map((field) => (
+                                                    <div key={field} className="space-y-1">
+                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">{field}</label>
+                                                        <select
+                                                            value={mappingColumns[field] !== undefined ? mappingColumns[field] : ''}
+                                                            onChange={(e) => {
+                                                                const val = e.target.value === '' ? undefined : parseInt(e.target.value);
+                                                                setMappingColumns(prev => ({ ...prev, [field]: val }));
+                                                            }}
+                                                            className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
+                                                        >
+                                                            <option value="">-- Ignore --</option>
+                                                            {csvHeaders.map((header, idx) => (
+                                                                <option key={idx} value={idx}>{header}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4 mt-4">
+                                                {['bio', 'linkedin', 'instagram', 'education', 'courses'].map((field) => (
+                                                    <div key={field} className="space-y-1">
+                                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider">{field}</label>
+                                                        <select
+                                                            value={mappingColumns[field] !== undefined ? mappingColumns[field] : ''}
+                                                            onChange={(e) => {
+                                                                const val = e.target.value === '' ? undefined : parseInt(e.target.value);
+                                                                setMappingColumns(prev => ({ ...prev, [field]: val }));
+                                                            }}
+                                                            className="w-full bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-slate-800 dark:text-slate-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-indigo-500"
+                                                        >
+                                                            <option value="">-- Ignore --</option>
+                                                            {csvHeaders.map((header, idx) => (
+                                                                <option key={idx} value={idx}>{header}</option>
+                                                            ))}
+                                                        </select>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        </div>
+
+                                        {/* Preview Grid */}
+                                        <div>
+                                            <div className="flex justify-between items-center mb-4">
+                                                <h3 className="text-base font-bold text-slate-800 dark:text-white flex items-center gap-2">
+                                                    <div className="w-6 h-6 rounded-full bg-indigo-500 text-white flex items-center justify-center text-xs">2</div>
+                                                    Data Preview <span className="text-sm font-normal text-slate-500 bg-slate-100 dark:bg-slate-800 px-2 py-0.5 rounded-md">{parsedData.length} entries</span>
+                                                </h3>
+                                            </div>
+                                            
+                                            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                                                {parsedData.slice(0, 12).map((member, i) => (
+                                                    <div key={i} className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700/50 flex flex-col gap-3">
+                                                        <div className="flex gap-3">
+                                                            <div className="w-12 h-12 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 font-bold shrink-0">
+                                                                {member.fullName.charAt(0)}
+                                                            </div>
+                                                            <div>
+                                                                <div className="font-bold text-slate-900 dark:text-white text-sm line-clamp-1">{member.fullName}</div>
+                                                                <div className="text-xs text-indigo-600 dark:text-indigo-400 line-clamp-1">{member.designation}</div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="text-xs text-slate-500 dark:text-slate-400 line-clamp-2 italic">
+                                                            {member.bio || 'No bio provided'}
+                                                        </div>
+                                                        {(member.expertise.length > 0 || member.education.length > 0) && (
+                                                            <div className="flex flex-wrap gap-1 mt-auto pt-2">
+                                                                {member.expertise.slice(0, 2).map((tag, idx) => (
+                                                                    <span key={idx} className="px-2 py-0.5 bg-slate-200 dark:bg-slate-700 text-slate-600 dark:text-slate-300 rounded text-[10px] font-medium truncate max-w-[100px]">
+                                                                        #{tag}
+                                                                    </span>
+                                                                ))}
+                                                                {member.education.slice(0, 1).map((edu, idx) => (
+                                                                    <span key={idx} className="px-2 py-0.5 bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-300 rounded text-[10px] font-medium flex items-center gap-1 truncate max-w-[120px]">
+                                                                        <GraduationCap size={10} /> {edu}
+                                                                    </span>
+                                                                ))}
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                                {parsedData.length > 12 && (
+                                                    <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 border border-slate-200 dark:border-slate-700/50 flex items-center justify-center flex-col text-slate-500">
+                                                        <span className="text-xl font-bold">+{parsedData.length - 12}</span>
+                                                        <span className="text-xs">more entries</span>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {/* Modal Footer */}
+                            {csvRawLines.length > 0 && (
+                                <div className="p-6 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 flex justify-between items-center">
+                                    <button
+                                        onClick={() => { setCsvRawLines([]); setParsedData([]); }}
+                                        disabled={submitting}
+                                        className="px-6 py-2.5 text-sm font-bold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-slate-200 transition"
+                                    >
+                                        Reset File
+                                    </button>
+                                    <button
+                                        onClick={handleBatchSubmit}
+                                        disabled={parsedData.length === 0 || submitting}
+                                        className="px-8 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl shadow-lg shadow-indigo-600/30 transition-all flex items-center gap-2 disabled:opacity-50"
+                                    >
+                                        {submitting ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
+                                        {submitting ? 'Importing...' : `Import ${parsedData.length} Faculty`}
+                                    </button>
+                                </div>
+                            )}
                         </motion.div>
                     </div>
                 )}
