@@ -783,17 +783,39 @@ const ManagerFaculty = () => {
                                         </div>
                                         <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-1">Upload Faculty CSV</h3>
                                         <p className="text-sm text-slate-500 text-center max-w-sm mb-4">Drag and drop your CSV file here, or click to browse files.</p>
-                                        <div className="mt-6 flex flex-col items-center">
-                                            <div className="font-bold uppercase tracking-wider mb-2 text-indigo-400">💡 Recommended CSV Columns:</div>
-                                            <div className="flex flex-wrap justify-center gap-2 max-w-xl">
-                                                {['Full Name', 'Designation', 'Bio', 'Email', 'LinkedIn', 'Instagram', 'Publications', 'Education', 'Expertise', 'Courses'].map((header, idx) => (
-                                                    <span key={idx} className="px-2.5 py-1 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded border border-slate-200 dark:border-slate-700 text-[10px] font-bold shadow-sm">
+                                        {/* Premium Format Guide */}
+                                        <div className="mt-8 w-full max-w-2xl bg-white/60 dark:bg-slate-900/40 backdrop-blur-md border border-slate-200/50 dark:border-slate-700/50 rounded-2xl p-5 shadow-sm relative z-20">
+                                            <div className="flex items-center gap-2 mb-4 justify-center">
+                                                <Sparkles className="text-amber-500" size={16} />
+                                                <span className="text-xs font-black uppercase tracking-widest text-slate-700 dark:text-slate-300">Optimal CSV Structure</span>
+                                            </div>
+                                            
+                                            <div className="flex flex-wrap justify-center gap-2 max-w-xl mx-auto">
+                                                {/* Required */}
+                                                {['Full Name', 'Designation'].map((header) => (
+                                                    <div key={header} className="flex items-center gap-1.5 px-3 py-1.5 bg-indigo-50 dark:bg-indigo-500/10 border border-indigo-200 dark:border-indigo-500/20 text-indigo-700 dark:text-indigo-300 rounded-lg text-xs font-bold shadow-sm">
+                                                        <span className="w-1.5 h-1.5 rounded-full bg-indigo-500 animate-pulse"></span>
                                                         {header}
-                                                    </span>
+                                                    </div>
+                                                ))}
+                                                {/* Recommended/Optional */}
+                                                {['Email', 'Bio', 'Education', 'Expertise', 'Courses', 'Publications', 'LinkedIn', 'Instagram'].map((header) => (
+                                                    <div key={header} className="flex items-center gap-1.5 px-3 py-1.5 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 rounded-lg text-xs font-medium shadow-sm hover:border-slate-300 dark:hover:border-slate-600 transition-colors">
+                                                        {header}
+                                                    </div>
                                                 ))}
                                             </div>
-                                            <div className="mt-4 flex gap-2">
-                                                <span className="px-3 py-1 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-md border border-slate-200 dark:border-slate-700 text-xs font-medium">.csv only</span>
+
+                                            <div className="mt-5 pt-4 border-t border-slate-200/50 dark:border-slate-700/50 flex justify-center items-center gap-6 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="w-2 h-2 rounded-full bg-indigo-500"></span> Required Fields
+                                                </div>
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600"></span> Optional Fields
+                                                </div>
+                                                <div className="flex items-center gap-1.5">
+                                                    <span className="px-2 py-0.5 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded border border-slate-200 dark:border-slate-700 shadow-sm">.CSV ONLY</span>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
