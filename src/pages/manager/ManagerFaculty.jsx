@@ -783,8 +783,18 @@ const ManagerFaculty = () => {
                                         </div>
                                         <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-1">Upload Faculty CSV</h3>
                                         <p className="text-sm text-slate-500 text-center max-w-sm mb-4">Drag and drop your CSV file here, or click to browse files.</p>
-                                        <div className="flex gap-2">
-                                            <span className="px-3 py-1 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-md border border-slate-200 dark:border-slate-700 text-xs font-medium">.csv only</span>
+                                        <div className="mt-6 flex flex-col items-center">
+                                            <div className="font-bold uppercase tracking-wider mb-2 text-indigo-400">💡 Recommended CSV Columns:</div>
+                                            <div className="flex flex-wrap justify-center gap-2 max-w-xl">
+                                                {['Full Name', 'Designation', 'Bio', 'Email', 'LinkedIn', 'Instagram', 'Publications', 'Education', 'Expertise', 'Courses'].map((header, idx) => (
+                                                    <span key={idx} className="px-2.5 py-1 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded border border-slate-200 dark:border-slate-700 text-[10px] font-bold shadow-sm">
+                                                        {header}
+                                                    </span>
+                                                ))}
+                                            </div>
+                                            <div className="mt-4 flex gap-2">
+                                                <span className="px-3 py-1 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-md border border-slate-200 dark:border-slate-700 text-xs font-medium">.csv only</span>
+                                            </div>
                                         </div>
                                     </div>
                                 ) : (
