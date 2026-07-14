@@ -775,6 +775,7 @@ const ManagerTransport = () => {
                             </form>
                         </motion.div>
                     </div>
+                )}
             </AnimatePresence>
 
             {/* ===== CSV IMPORT MODAL ===== */}
