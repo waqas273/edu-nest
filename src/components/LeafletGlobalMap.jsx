@@ -8,6 +8,18 @@ const TILE_LIGHT = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x
 const TILE_DARK = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
 const ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
 
+// Function to calculate distance in km using Haversine formula
+const calculateDistance = (lat1, lon1, lat2, lon2) => {
+    const R = 6371; // Earth's radius in km
+    const dLat = (lat2 - lat1) * Math.PI / 180;
+    const dLon = (lon2 - lon1) * Math.PI / 180;
+    const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+              Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+              Math.sin(dLon/2) * Math.sin(dLon/2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+    return R * c;
+};
+
 const LeafletGlobalMap = ({ universities, studentCoords }) => {
     const mapContainerRef = useRef(null);
     const mapInstanceRef = useRef(null);
@@ -45,7 +57,7 @@ const LeafletGlobalMap = ({ universities, studentCoords }) => {
         // Initialize Map
         const map = L.map(mapContainerRef.current, {
             zoomControl: false,
-            attributionControl: false,
+            attributionControl: false, // Removed attribution watermark
             minZoom: 3,
         }).setView(studentCoords ? [studentCoords.lat, studentCoords.lng] : defaultCenter, studentCoords ? 10 : defaultZoom);
 
@@ -53,11 +65,9 @@ const LeafletGlobalMap = ({ universities, studentCoords }) => {
 
         // Add Premium UI Controllers
         L.control.zoom({ position: 'topright' }).addTo(map);
-        L.control.attribution({ position: 'bottomright', prefix: '' }).addTo(map);
 
         // Add Active Layer
         const tileLayer = L.tileLayer(getTileUrl(), {
-            attribution: ATTRIBUTION,
             maxZoom: 19,
         }).addTo(map);
         tileLayerRef.current = tileLayer;
@@ -100,18 +110,30 @@ const LeafletGlobalMap = ({ universities, studentCoords }) => {
                 bounds.extend([lat, lng]);
 
                 const profilePic = uni.profilePic || uni.photoURL || 'https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=150&q=80';
-                const isRecommended = uni._isRecommended ? 'is-recommended' : '';
+                
+                // Calculate distance if student location is available
+                let distanceHtml = '';
+                if (studentCoords && studentCoords.lat && studentCoords.lng) {
+                    const dist = calculateDistance(studentCoords.lat, studentCoords.lng, lat, lng);
+                    distanceHtml = `<div class="text-[9px] font-bold text-cyan-600 dark:text-cyan-400 bg-cyan-50 dark:bg-cyan-500/20 px-1.5 py-0.5 rounded shadow-sm inline-block mt-0.5 border border-cyan-100 dark:border-cyan-500/30">${dist.toFixed(1)} km away</div>`;
+                }
                 
                 const customIcon = L.divIcon({
                     html: `
-                        <div class="custom-uni-marker-inner" title="${uni.universityName}">
-                            <img src="${profilePic}" crossorigin="anonymous" alt="${uni.universityName}" />
+                        <div class="flex items-center gap-2 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.12)] p-1 pr-4 border border-slate-200 dark:border-slate-700 transition-all hover:scale-105 hover:border-cyan-500 hover:shadow-[0_10px_40px_rgba(6,182,212,0.3)] group cursor-pointer w-max">
+                            <div class="w-10 h-10 rounded-full overflow-hidden bg-white border border-slate-100 shrink-0 flex items-center justify-center p-0.5 shadow-inner">
+                                <img src="${profilePic}" crossorigin="anonymous" alt="${uni.universityName}" class="w-full h-full object-contain rounded-full" />
+                            </div>
+                            <div class="flex flex-col py-1 justify-center">
+                                <span class="text-[11px] font-black text-slate-800 dark:text-white leading-tight max-w-[120px] truncate group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">${uni.universityName}</span>
+                                ${distanceHtml}
+                            </div>
                         </div>
                     `,
-                    className: `custom-uni-marker ${isRecommended}`,
-                    iconSize: [40, 40],
-                    iconAnchor: [20, 20],
-                    popupAnchor: [0, -20]
+                    className: 'custom-uni-marker-empty',
+                    iconSize: [48, 48], // Enough space to anchor at the circle
+                    iconAnchor: [24, 24], // Center anchor on the image part (first 48px roughly)
+                    popupAnchor: [60, -20]
                 });
 
                 const marker = L.marker([lat, lng], { icon: customIcon }).addTo(markerGroup);
@@ -119,10 +141,10 @@ const LeafletGlobalMap = ({ universities, studentCoords }) => {
                 // Add Popup
                 const popupContent = `
                     <div class="custom-leaflet-glass-popup text-slate-800 dark:text-white p-2 font-sans" style="min-width: 200px;">
-                        <img src="${profilePic}" crossorigin="anonymous" style="width: 100%; height: 100px; object-fit: cover; border-radius: 12px; margin-bottom: 12px;" />
+                        <img src="${profilePic}" crossorigin="anonymous" style="width: 100%; height: 100px; object-contain; background: white; border-radius: 12px; margin-bottom: 12px; border: 1px solid #f1f5f9;" />
                         <h4 class="font-bold text-lg leading-tight mb-1">${uni.universityName}</h4>
                         <p class="text-xs text-slate-500 dark:text-slate-400 mb-3 line-clamp-2">${uni.location || 'Location Not Specified'}</p>
-                        <button onclick="window.location.href='/university/${uni.id}'" class="w-full bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-2 rounded-xl text-xs transition-colors">
+                        <button onclick="window.location.href='/university/${uni.id}'" class="w-full bg-cyan-500 hover:bg-cyan-600 text-white font-bold py-2 rounded-xl text-xs transition-colors shadow-lg shadow-cyan-500/20">
                             View Profile
                         </button>
                     </div>
