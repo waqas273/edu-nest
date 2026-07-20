@@ -164,11 +164,14 @@ const LeafletGlobalMap = ({ universities, studentCoords }) => {
         }
 
         // Fit bounds if we have valid coordinates and the user just loaded the page
-        // Wait a tiny bit for the map container to be fully sized
-        if (hasValidBounds) {
+        // Use invalidateSize to fix Leaflet size issues inside Framer Motion animations
+        if (hasValidBounds && bounds.isValid()) {
             setTimeout(() => {
-                map.fitBounds(bounds, { padding: [50, 50], maxZoom: 12 });
-            }, 100);
+                if (mapInstanceRef.current) {
+                    mapInstanceRef.current.invalidateSize();
+                    mapInstanceRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 12, animate: false });
+                }
+            }, 300);
         }
 
     }, [universities, studentCoords]);
