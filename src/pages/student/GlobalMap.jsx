@@ -18,20 +18,24 @@ const GlobalMap = () => {
 
     // Fetch browser GPS dynamically in real-time when student lands on the page
     useEffect(() => {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    setStudentCoords({
-                        lat: position.coords.latitude,
-                        lng: position.coords.longitude
-                    });
-                },
-                (error) => {
-                    console.log("Student GPS access denied/failed. Map will center generally.", error);
-                },
-                { enableHighAccuracy: true }
-            );
-        }
+        if (!navigator.geolocation) return;
+
+        const watchId = navigator.geolocation.watchPosition(
+            (position) => {
+                setStudentCoords({
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude
+                });
+            },
+            (error) => {
+                console.log("Student GPS access denied/failed. Please allow Location access in browser settings.", error);
+            },
+            { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
+        );
+
+        return () => {
+            navigator.geolocation.clearWatch(watchId);
+        };
     }, []);
 
     useEffect(() => {
