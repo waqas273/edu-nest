@@ -220,7 +220,7 @@ const LeafletGlobalMap = ({ universities, studentCoords }) => {
             <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none z-[400]" />
             
             {/* Info Badge */}
-            <div className="absolute top-4 left-4 z-[400] pointer-events-none">
+            <div className="absolute top-4 left-4 z-[1000] pointer-events-none">
                 <div className="bg-white/90 dark:bg-black/60 backdrop-blur-md px-4 py-2 rounded-2xl shadow-lg border border-slate-200/50 dark:border-white/10 flex items-center gap-3">
                     <div className="flex items-center gap-1.5 text-xs font-bold text-slate-700 dark:text-white">
                         <Map size={14} className="text-cyan-500" />
@@ -242,7 +242,7 @@ const LeafletGlobalMap = ({ universities, studentCoords }) => {
 
             {/* Top 7 Nearest List */}
             {studentCoords && nearestUniversities.length > 0 && (
-                <div className="absolute top-4 right-4 z-[400] pointer-events-auto">
+                <div className="absolute top-4 right-4 z-[1000] pointer-events-auto">
                     <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 w-64 overflow-hidden flex flex-col max-h-[300px]">
                         <div className="px-4 py-2.5 bg-slate-100/80 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
                             <span className="text-xs font-black text-slate-700 dark:text-white uppercase tracking-wider">Nearest to You</span>
@@ -273,7 +273,7 @@ const LeafletGlobalMap = ({ universities, studentCoords }) => {
                             mapInstanceRef.current.setView([studentCoords.lat, studentCoords.lng], 12);
                         }
                     }}
-                    className="absolute bottom-6 right-6 z-[400] w-12 h-12 bg-white dark:bg-slate-800 rounded-2xl shadow-xl flex items-center justify-center text-slate-700 dark:text-white hover:text-cyan-500 hover:scale-105 transition-all border border-slate-200 dark:border-slate-700 pointer-events-auto"
+                    className="absolute bottom-6 right-6 z-[1000] w-12 h-12 bg-white dark:bg-slate-800 rounded-2xl shadow-xl flex items-center justify-center text-slate-700 dark:text-white hover:text-cyan-500 hover:scale-105 transition-all border border-slate-200 dark:border-slate-700 pointer-events-auto"
                     title="Recenter to my location"
                 >
                     <Navigation2 size={20} className="text-blue-500" />
