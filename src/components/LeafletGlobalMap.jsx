@@ -177,7 +177,7 @@ const LeafletGlobalMap = ({ universities, studentCoords }) => {
     }, [universities, studentCoords]);
 
     return (
-        <div className="w-full h-full relative rounded-3xl overflow-hidden border border-slate-200 dark:border-white/10 shadow-2xl group">
+        <div className="absolute inset-0 rounded-3xl overflow-hidden border border-slate-200 dark:border-white/10 shadow-2xl group">
             {/* Overlay Gradient for premium feel */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent pointer-events-none z-[400]" />
             
