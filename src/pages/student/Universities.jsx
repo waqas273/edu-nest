@@ -14,6 +14,7 @@ import {
     getUniversityScore,
     RECOMMENDATION_THRESHOLD
 } from '../../utils/recommendationEngine';
+import LeafletGlobalMap from '../../components/LeafletGlobalMap';
 
 const Universities = () => {
     const navigate = useNavigate();
@@ -335,6 +336,19 @@ const Universities = () => {
                         </div>
                     </motion.div>
                 </header>
+
+                {/* ── Global Interactive Map ── */}
+                <motion.section 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.3 }}
+                    className="w-full h-[500px] md:h-[600px] mb-16"
+                >
+                    <LeafletGlobalMap 
+                        universities={universities} 
+                        studentCoords={studentCoords} 
+                    />
+                </motion.section>
 
                 {loading ? (
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
