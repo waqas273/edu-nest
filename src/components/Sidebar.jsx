@@ -4,7 +4,7 @@ import { NavLink, useNavigate } from 'react-router-dom';
 import {
     LayoutDashboard, Map, MessageSquare, Users, User, LogOut,
     Settings, Shield, BookOpen, ClipboardCheck, Moon, Sun,
-    Home, Search, PenTool, Star, Lock, Sparkles, Award, GraduationCap
+    Home, Search, PenTool, Star, Lock, Sparkles, Award, GraduationCap, Globe
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
@@ -188,6 +188,7 @@ const Sidebar = ({ isMobileOpen, setIsMobileOpen }) => {
             { icon: Map,             label: 'Roadmaps',           path: '/student/roadmap' },
             { icon: GraduationCap,   label: 'Programs',           path: '/student/programs' },
             { icon: Search,          label: 'Find University',     path: '/student/find-university' },
+            { icon: Globe,           label: 'Global Map',          path: '/student/map' },
             { icon: ClipboardCheck,  label: 'Interest Assessment', path: '/student/interest' },
             { icon: PenTool,         label: 'Entry Test',         path: '/student/entry-test' },
             { icon: MessageSquare,   label: 'Messages',           path: '/messages' },

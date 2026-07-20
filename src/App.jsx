@@ -29,6 +29,7 @@ import GlobalToaster from './components/common/GlobalToaster';
 
 import DashboardWrapper from './pages/DashboardWrapper';
 import Universities from './pages/student/Universities';
+import GlobalMap from './pages/student/GlobalMap';
 import UniversityDetails from './pages/student/UniversityDetails';
 
 import Roadmap from './pages/student/Roadmap';
@@ -132,6 +133,7 @@ function App() {
                       <Route path="roadmap" element={<Roadmap />} />
                       <Route path="roadmap/:skill" element={<Roadmap />} />
                       <Route path="find-university" element={<Universities />} />
+                      <Route path="map" element={<GlobalMap />} />
 
                       <Route path="messages" element={<ChatPage />} />
                       <Route path="messages/:chatId" element={<ChatPage />} />
