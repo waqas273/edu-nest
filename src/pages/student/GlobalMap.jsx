@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useStudentState } from '../../context/StudentStateContext';
 import { motion } from 'framer-motion';
-import { Map, Sparkles, Loader2 } from 'lucide-react';
+import { Map, Sparkles, Loader2, MapPin } from 'lucide-react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase';
 import LeafletGlobalMap from '../../components/LeafletGlobalMap';
@@ -15,10 +15,14 @@ const GlobalMap = () => {
     const universities = universitiesCache || [];
     const [loading, setLoading] = useState(true);
     const [studentCoords, setStudentCoords] = useState(null);
+    const [gpsStatus, setGpsStatus] = useState('pending');
 
     // Fetch browser GPS dynamically in real-time when student lands on the page
     useEffect(() => {
-        if (!navigator.geolocation) return;
+        if (!navigator.geolocation) {
+            setGpsStatus('denied');
+            return;
+        }
 
         const watchId = navigator.geolocation.watchPosition(
             (position) => {
@@ -26,9 +30,11 @@ const GlobalMap = () => {
                     lat: position.coords.latitude,
                     lng: position.coords.longitude
                 });
+                setGpsStatus('granted');
             },
             (error) => {
                 console.log("Student GPS access denied/failed. Please allow Location access in browser settings.", error);
+                setGpsStatus('denied');
             },
             { enableHighAccuracy: true, maximumAge: 0, timeout: 5000 }
         );
@@ -93,6 +99,18 @@ const GlobalMap = () => {
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-cyan-500/10 dark:bg-cyan-500/5 rounded-full blur-[100px] pointer-events-none" />
 
             <div className="max-w-7xl mx-auto w-full space-y-8 flex-1 flex flex-col">
+                {/* ── GPS Warning Banner ── */}
+                {gpsStatus === 'denied' && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="w-full bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 p-3 rounded-2xl flex items-center justify-center gap-2 mb-4 animate-pulse shadow-sm"
+                    >
+                        <MapPin size={16} />
+                        <span className="text-sm font-semibold">Location access is turned off. Please allow location access to see nearest universities and accurate distances.</span>
+                    </motion.div>
+                )}
+
                 {/* ── Header ── */}
                 <header className="relative pt-6 pb-2 text-center space-y-4">
                     <motion.div

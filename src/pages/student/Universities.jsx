@@ -31,23 +31,29 @@ const Universities = () => {
     const universities = universitiesCache || [];
     const [loading, setLoading] = useState(true);
     const [studentCoords, setStudentCoords] = useState(null);
+    const [gpsStatus, setGpsStatus] = useState('pending');
 
     // Fetch browser GPS dynamically in real-time when student lands on the page
     useEffect(() => {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (position) => {
-                    setStudentCoords({
-                        lat: position.coords.latitude,
-                        lng: position.coords.longitude
-                    });
-                },
-                (error) => {
-                    console.log("Student GPS access denied/failed. Falling back to city text match.", error);
-                },
-                { enableHighAccuracy: true }
-            );
+        if (!navigator.geolocation) {
+            setGpsStatus('denied');
+            return;
         }
+
+        navigator.geolocation.getCurrentPosition(
+            (position) => {
+                setStudentCoords({
+                    lat: position.coords.latitude,
+                    lng: position.coords.longitude
+                });
+                setGpsStatus('granted');
+            },
+            (error) => {
+                console.log("Student GPS access denied/failed. Falling back to city text match.", error);
+                setGpsStatus('denied');
+            },
+            { enableHighAccuracy: true }
+        );
     }, []);
 
     useEffect(() => {
@@ -267,6 +273,18 @@ const Universities = () => {
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-[#050505] transition-colors duration-300 p-6 lg:p-10 overflow-x-hidden">
             <div className="max-w-7xl mx-auto space-y-16">
+
+                {/* ── GPS Warning Banner ── */}
+                {gpsStatus === 'denied' && (
+                    <motion.div
+                        initial={{ opacity: 0, y: -20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="w-full bg-red-500/10 border border-red-500/30 text-red-600 dark:text-red-400 p-3 rounded-2xl flex items-center justify-center gap-2 mb-4 animate-pulse shadow-sm"
+                    >
+                        <MapPin size={16} />
+                        <span className="text-sm font-semibold">Location access is turned off. Please allow location access for better university recommendations.</span>
+                    </motion.div>
+                )}
 
                 {/* ── Header ── */}
                 <header className="relative py-16 flex flex-col items-center text-center space-y-10">

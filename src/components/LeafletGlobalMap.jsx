@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback, useMemo } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import { useNavigate } from 'react-router-dom';
@@ -198,6 +198,22 @@ const LeafletGlobalMap = ({ universities, studentCoords }) => {
 
     }, [universities, studentCoords]);
 
+    // Compute top 7 nearest universities
+    const nearestUniversities = useMemo(() => {
+        if (!studentCoords || !universities) return [];
+        
+        const withDistance = universities.map(uni => {
+            const lat = parseFloat(uni.latitude);
+            const lng = parseFloat(uni.longitude);
+            if (isNaN(lat) || isNaN(lng)) return null;
+            
+            const distance = calculateDistance(studentCoords.lat, studentCoords.lng, lat, lng);
+            return { ...uni, distance };
+        }).filter(Boolean);
+
+        return withDistance.sort((a, b) => a.distance - b.distance).slice(0, 7);
+    }, [universities, studentCoords]);
+
     return (
         <div className="absolute inset-0 rounded-3xl overflow-hidden border border-slate-200 dark:border-white/10 shadow-2xl group">
             {/* Overlay Gradient for premium feel */}
@@ -223,6 +239,31 @@ const LeafletGlobalMap = ({ universities, studentCoords }) => {
                     </div>
                 </div>
             </div>
+
+            {/* Top 7 Nearest List */}
+            {studentCoords && nearestUniversities.length > 0 && (
+                <div className="absolute top-4 right-4 z-[400] pointer-events-auto">
+                    <div className="bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-2xl shadow-xl border border-slate-200 dark:border-slate-700 w-64 overflow-hidden flex flex-col max-h-[300px]">
+                        <div className="px-4 py-2.5 bg-slate-100/80 dark:bg-slate-800/80 border-b border-slate-200 dark:border-slate-700 flex items-center justify-between">
+                            <span className="text-xs font-black text-slate-700 dark:text-white uppercase tracking-wider">Nearest to You</span>
+                            <span className="bg-gradient-to-r from-cyan-500 to-blue-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold shadow-sm">Top 7</span>
+                        </div>
+                        <div className="overflow-y-auto custom-scrollbar flex-1 p-2 space-y-1">
+                            {nearestUniversities.map((uni) => (
+                                <div key={uni.id} onClick={() => mapInstanceRef.current?.setView([parseFloat(uni.latitude), parseFloat(uni.longitude)], 14)} className="flex items-center gap-2 p-1.5 rounded-xl hover:bg-slate-100 dark:hover:bg-slate-800/50 cursor-pointer transition-colors group">
+                                    <div className="w-8 h-8 rounded-full bg-white border border-slate-200 dark:border-slate-600 overflow-hidden shrink-0 flex items-center justify-center shadow-sm">
+                                        <img src={uni.profilePic || uni.photoURL || 'https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=150&q=80'} crossOrigin="anonymous" alt="" className="w-full h-full object-contain" />
+                                    </div>
+                                    <div className="flex flex-col flex-1 min-w-0 justify-center">
+                                        <span className="text-[11px] font-bold text-slate-800 dark:text-white truncate group-hover:text-cyan-600 dark:group-hover:text-cyan-400 transition-colors">{uni.universityName}</span>
+                                        <span className="text-[9px] text-cyan-600 dark:text-cyan-400 font-semibold">{uni.distance.toFixed(1)} km away</span>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             {/* Recenter Button */}
             {studentCoords && (
