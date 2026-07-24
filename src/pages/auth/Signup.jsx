@@ -13,9 +13,9 @@ import { motion } from 'framer-motion';
 import { clsx } from 'clsx';
 
 // EmailJS Config
-const EMAILJS_SERVICE_ID = 'service_dzmanwf';
-const OTP_TEMPLATE_ID = 'template_a9wwo09';
-const EMAILJS_PUBLIC_KEY = 'iEulg0kduLfrsPIKg';
+const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_dzmanwf';
+const OTP_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_OTP_TEMPLATE_ID || 'template_a9wwo09';
+const EMAILJS_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'iEulg0kduLfrsPIKg';
 
 const Signup = () => {
     const [loading, setLoading] = useState(false);

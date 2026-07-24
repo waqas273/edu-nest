@@ -1,9 +1,9 @@
 import emailjs from '@emailjs/browser';
 
-// 1. Apni IDs yahan Confirm karein
-const SERVICE_ID = 'service_dzmanwf'; // Aapka Service ID
-const TEMPLATE_ID = 'template_jog9fkk'; // Yahan wo ID dalein jo Template save krne k baad mili
-const PUBLIC_KEY = 'iEulg0kduLfrsPIKg'; // Aapki Public Key
+// 1. EmailJS Configuration
+const SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_dzmanwf';
+const TEMPLATE_ID = import.meta.env.VITE_EMAILJS_TEMPLATE_ID || 'template_jog9fkk';
+const PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'iEulg0kduLfrsPIKg';
 
 export const sendApplicationStatusEmail = async ({ to_name, to_email, status, reason }) => {
     try {

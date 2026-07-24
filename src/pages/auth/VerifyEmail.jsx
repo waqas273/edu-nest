@@ -16,10 +16,10 @@ import logo from '../../assets/EduNest.png';
 import toast from 'react-hot-toast';
 
 // --- CONFIGURATION ---
-const EMAILJS_SERVICE_ID = 'service_dzmanwf';
-const OTP_TEMPLATE_ID = 'template_a9wwo09';
+const EMAILJS_SERVICE_ID = import.meta.env.VITE_EMAILJS_SERVICE_ID || 'service_dzmanwf';
+const OTP_TEMPLATE_ID = import.meta.env.VITE_EMAILJS_OTP_TEMPLATE_ID || 'template_a9wwo09';
 const WELCOME_TEMPLATE_ID = 'template_welcome'; // Placeholder for Welcome Email
-const EMAILJS_PUBLIC_KEY = 'iEulg0kduLfrsPIKg';
+const EMAILJS_PUBLIC_KEY = import.meta.env.VITE_EMAILJS_PUBLIC_KEY || 'iEulg0kduLfrsPIKg';
 
 // --- SHARED PIN INPUT ---
 const PinInput = ({ length = 6, onComplete, value }) => {
