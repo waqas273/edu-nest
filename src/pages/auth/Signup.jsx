@@ -71,8 +71,11 @@ const Signup = () => {
             await emailjs.send(EMAILJS_SERVICE_ID, OTP_TEMPLATE_ID, templateParams, EMAILJS_PUBLIC_KEY);
             return code;
         } catch (error) {
-            console.error('EmailJS Error:', error);
-            throw new Error('Failed to dispatch verification code.');
+            console.error('EmailJS Error Details:', error);
+            if (error?.status === 412 || error?.text?.includes('412')) {
+                throw new Error('EmailJS Service Error (412): Please check EmailJS Domain Whitelist or Re-connect Gmail Service.');
+            }
+            throw new Error('Failed to dispatch verification code. Please check EmailJS service.');
         }
     };
 
