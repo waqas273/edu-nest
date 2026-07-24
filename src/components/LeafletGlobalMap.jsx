@@ -75,6 +75,7 @@ const LeafletGlobalMap = ({ universities, studentCoords }) => {
         markerGroupRef.current = L.layerGroup().addTo(map);
 
         return () => {
+            mapInstanceRef.current = null;
             map.remove();
         };
         // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -160,13 +161,18 @@ const LeafletGlobalMap = ({ universities, studentCoords }) => {
 
         // Draw Student Location
         if (studentCoords) {
-            const lat = studentCoords.lat;
-            const lng = studentCoords.lng;
-            hasValidBounds = true;
-            bounds.extend([lat, lng]);
+            const lat = parseFloat(studentCoords.lat);
+            const lng = parseFloat(studentCoords.lng);
+            if (!isNaN(lat) && !isNaN(lng)) {
+                bounds.extend([lat, lng]);
+                hasValidBounds = true;
+            }
 
             const studentIcon = L.divIcon({
-                html: `<div class="custom-student-marker-inner"></div>`,
+                html: `
+                    <div class="custom-student-marker-inner" title="Your Current Location">
+                    </div>
+                `,
                 className: 'custom-student-marker',
                 iconSize: [16, 16],
                 iconAnchor: [8, 8],
@@ -188,12 +194,13 @@ const LeafletGlobalMap = ({ universities, studentCoords }) => {
         // Fit bounds if we have valid coordinates and the user just loaded the page
         // Use invalidateSize to fix Leaflet size issues inside Framer Motion animations
         if (hasValidBounds && bounds.isValid()) {
-            setTimeout(() => {
-                if (mapInstanceRef.current) {
+            const timer = setTimeout(() => {
+                if (mapInstanceRef.current && mapInstanceRef.current._container) {
                     mapInstanceRef.current.invalidateSize();
                     mapInstanceRef.current.fitBounds(bounds, { padding: [50, 50], maxZoom: 12, animate: false });
                 }
             }, 300);
+            return () => clearTimeout(timer);
         }
 
     }, [universities, studentCoords]);
