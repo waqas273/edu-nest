@@ -431,11 +431,12 @@ export default function StudentPrograms() {
 
     // ── Recommendation Engine ──────────────────────────────────────────────────
     const recommendedPrograms = useMemo(() => {
-        if (!userProfile?.interest || !userProfile?.city) return [];
+        if (!userProfile?.interest) return [];
+        const studentCity = userProfile?.city || '';
         return programs
             .map(p => {
                 const { score, isInterestMatch, isLocalMatch } = getProgramScore(p, userProfile, studentCoords);
-                const isSameCity = isLocationMatch(p.uniData?.location, userProfile?.city) || isLocalMatch;
+                const isSameCity = (studentCity && isLocationMatch(p.uniData?.location, studentCity)) || isLocalMatch;
                 return { ...p, _score: score, _isInterestMatch: isInterestMatch, _isLocalMatch: isLocalMatch, _isSameCity: isSameCity };
             })
             .filter(p => p._isInterestMatch && (p._isSameCity || p._score >= RECOMMENDATION_THRESHOLD))

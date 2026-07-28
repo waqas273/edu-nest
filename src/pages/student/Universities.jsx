@@ -109,14 +109,15 @@ const Universities = () => {
 
     // ── Scored & filtered universities ──────────────────────────────────────────
     const { recommended, allScored } = useMemo(() => {
-        const hasProfile = userProfile?.interest && userProfile?.city;
+        const hasProfile = Boolean(userProfile?.interest);
+        const studentCity = userProfile?.city || '';
 
         const scored = universities.map(uni => {
             const { score, interestScore, locationScore, ratingScore, matchingCount } =
                 getUniversityScore(uni, userProfile, studentCoords);
 
             // Determine same city match explicitly (either text string match or locationScore 30)
-            const isSameCity = isLocationMatch(uni.location, userProfile?.city) || locationScore === 30;
+            const isSameCity = (studentCity && isLocationMatch(uni.location, studentCity)) || locationScore === 30;
 
             return {
                 ...uni,
@@ -126,22 +127,24 @@ const Universities = () => {
                 _ratingScore: ratingScore,
                 _matchingCount: matchingCount,
                 _isSameCity: isSameCity,
-                _isRecommended: hasProfile && (isSameCity || score >= RECOMMENDATION_THRESHOLD),
+                _isRecommended: (hasProfile || isSameCity) && (isSameCity || score >= RECOMMENDATION_THRESHOLD),
             };
         });
 
-        // Sort recommended: Same City (_isSameCity === true) ALWAYS first, then by total score descending
-        const recs = scored
+        // Sort allScored: Same City (_isSameCity === true) ALWAYS first, then by total score descending
+        const sortedAllScored = [...scored].sort((a, b) => {
+            const aSameCity = a._isSameCity ? 1 : 0;
+            const bSameCity = b._isSameCity ? 1 : 0;
+            if (bSameCity !== aSameCity) return bSameCity - aSameCity;
+            return b._score - a._score;
+        });
+
+        // Filter recommended top 6
+        const recs = sortedAllScored
             .filter(u => u._isRecommended)
-            .sort((a, b) => {
-                const aSameCity = a._isSameCity ? 1 : 0;
-                const bSameCity = b._isSameCity ? 1 : 0;
-                if (bSameCity !== aSameCity) return bSameCity - aSameCity;
-                return b._score - a._score;
-            })
             .slice(0, 6);
 
-        return { recommended: recs, allScored: scored };
+        return { recommended: recs, allScored: sortedAllScored };
     }, [universities, userProfile, studentCoords]);
 
     // ── Search + rating filter applied to ALL universities ───────────────────
