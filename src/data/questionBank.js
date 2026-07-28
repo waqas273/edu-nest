@@ -23,18 +23,6 @@ export const QUESTION_BANK = {
         { id: "math9", text: "Would you like to model real-world problems using math formulas?", diff: 3 },
         { id: "math10", text: "Can you see yourself as a financial analyst or data scientist?", diff: 3 },
     ],
-    "Physics": [
-        { id: "phy1", text: "Are you curious about how things move and work?", diff: 1 },
-        { id: "phy2", text: "Do you wonder why the sky is blue or how gravity works?", diff: 1 },
-        { id: "phy3", text: "Do you enjoy building things like model cars or bridges?", diff: 1 },
-        { id: "phy4", text: "Are you interested in electricity, magnets, or circuits?", diff: 2 },
-        { id: "phy5", text: "Would you like to understand the laws of the universe?", diff: 2 },
-        { id: "phy6", text: "Do you enjoy learning about space, stars, and black holes?", diff: 2 },
-        { id: "phy7", text: "Does the idea of designing engines or robots excite you?", diff: 2 },
-        { id: "phy8", text: "Would you enjoy studying quantum mechanics or relativity?", diff: 3 },
-        { id: "phy9", text: "Can you imagine calculating the trajectory of a rocket?", diff: 3 },
-        { id: "phy10", text: "Are you interested in renewable energy sources like solar or wind?", diff: 3 },
-    ],
     "Biology": [
         { id: "bio1", text: "Do you love animals and plants?", diff: 1 },
         { id: "bio2", text: "Are you curious about how the human body works?", diff: 1 },
@@ -82,5 +70,17 @@ export const QUESTION_BANK = {
         { id: "art8", text: "Do you enjoy using software like Photoshop, Canva, or Illustrator?", diff: 3 },
         { id: "art9", text: "Can you see yourself as a UX/UI designer for apps?", diff: 3 },
         { id: "art10", text: "Would you like to direct a film or create an animation?", diff: 3 },
+    ],
+    "Physics": [
+        { id: "phy1", text: "Are you curious about how things move and work?", diff: 1 },
+        { id: "phy2", text: "Do you wonder why the sky is blue or how gravity works?", diff: 1 },
+        { id: "phy3", text: "Do you enjoy building things like model cars or bridges?", diff: 1 },
+        { id: "phy4", text: "Are you interested in electricity, magnets, or circuits?", diff: 2 },
+        { id: "phy5", text: "Would you like to understand the laws of the universe?", diff: 2 },
+        { id: "phy6", text: "Do you enjoy learning about space, stars, and black holes?", diff: 2 },
+        { id: "phy7", text: "Does the idea of designing engines or robots excite you?", diff: 2 },
+        { id: "phy8", text: "Would you enjoy studying quantum mechanics or relativity?", diff: 3 },
+        { id: "phy9", text: "Can you imagine calculating the trajectory of a rocket?", diff: 3 },
+        { id: "phy10", text: "Are you interested in renewable energy sources like solar or wind?", diff: 3 },
     ]
 };

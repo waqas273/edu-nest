@@ -127,9 +127,26 @@ const InterestFinder = () => {
             return 0.0;
         });
 
+        let probabilities;
         try {
             const res = await axios.post(`${FLASK_API_URL}/predict-step`, { vector });
-            const { probabilities } = res.data;
+            probabilities = res.data.probabilities;
+        } catch (error) {
+            console.warn('[InterestFinder] Backend ML API unreachable, using client-side weighted model fallback:', error);
+            // Fallback prediction when Flask API is offline
+            probabilities = {};
+            let sum = 0;
+            CATEGORY_ORDER.forEach((cat, idx) => {
+                const val = vector[idx] || 0.05;
+                probabilities[cat] = val;
+                sum += val;
+            });
+            CATEGORY_ORDER.forEach(cat => {
+                probabilities[cat] = parseFloat((probabilities[cat] / (sum || 1)).toFixed(3));
+            });
+        }
+
+        try {
             setCurrentProbabilities(probabilities);
 
             const totalAsked    = newHistory.length;
@@ -152,14 +169,6 @@ const InterestFinder = () => {
                 }
             }
 
-            // ─────────────────────────────────────────────────────────────────
-            // CRITICAL FIX: Track phase in a LOCAL variable.
-            //
-            // React's setState is asynchronous — after calling setPhase(2),
-            // the `phase` variable from the closure still holds the OLD value.
-            // By updating `currentPhase` locally we get instant, synchronous
-            // phase awareness within this single invocation.
-            // ─────────────────────────────────────────────────────────────────
             let currentPhase = phase;
             const askedIds   = newHistory.map(h => h.id);
 
@@ -194,7 +203,6 @@ const InterestFinder = () => {
                     setPreviousTopCategory(topCat);
                     const q = getNextQ(topCat);
                     if (q) { setCurrentQuestion(q); return; }
-                    // Fall through to Phase 2 logic if topCat already exhausted
                 }
 
                 // Continue asking one question per remaining category
@@ -216,7 +224,6 @@ const InterestFinder = () => {
                     setPreviousTopCategory(topCat);
                     const q = getNextQ(topCat);
                     if (q) { setCurrentQuestion(q); return; }
-                    // If topCat exhausted, fall through to Phase 2 block below
                 }
             }
 
@@ -233,40 +240,25 @@ const InterestFinder = () => {
                 // Reached Phase 2 question cap
                 if (totalAsked >= 18) {
                     if (topProb < 0.55) {
-                        // Worst case: user answered ambiguously throughout
                         console.log('[Phase 2] Low confidence at cap → exploration required');
                         setIsExplorationRequired(true);
                         finishProcess(null, probabilities, topProb);
                         return;
                     }
-                    // Switch to Phase 3 — update LOCAL var immediately
-                    console.log('[Phase] 2 → 3 (max Qs reached)');
                     currentPhase = 3;
                     setPhase(3);
-                    // Fall through to Phase 3 block below (do NOT run Phase 2 question logic)
                 } else if (totalAsked >= 10 && topProb < 0.40) {
-                    // WORST CASE FIX: after 10 Qs, if confidence is extremely low (all-Maybe scenario),
-                    // switch to Phase 3 early rather than endlessly drilling one low-confidence category.
-                    console.log(`[Phase] 2 → 3 (very low conf ${topProb.toFixed(2)} at Q${totalAsked})`);
                     currentPhase = 3;
                     setPhase(3);
                 } else if (totalAsked >= 12 && topProb >= 0.40 && topProb < 0.95) {
-                    // Stuck confidence → early Phase 3
-                    console.log(`[Phase] 2 → 3 (plateau at Q${totalAsked})`);
                     currentPhase = 3;
                     setPhase(3);
-                    // Fall through to Phase 3 block below
                 }
 
-                // Only run Phase 2 question selection if STILL in Phase 2
                 if (currentPhase === 2) {
                     let targetCat = topCat;
 
-                    if (value === 3) {
-                        // YES → keep drilling in the current category
-                        targetCat = currentQuestion.category;
-                        setLastRejectedCategory(null);
-                    } else if (value === 1) {
+                    if (value === 1) {
                         // NO → switch to highest-probability alternative
                         const alt = sortedClasses.find(([cls]) =>
                             cls !== currentQuestion.category && cls !== lastRejectedCategory
@@ -274,6 +266,12 @@ const InterestFinder = () => {
                         targetCat = alt || topCat;
                         setLastRejectedCategory(currentQuestion.category);
                         console.log(`[Phase 2] Switch → ${targetCat}`);
+                    } else if (value === 3) {
+                        // YES → drill into top predicted category
+                        targetCat = (topStats && topStats.count > 0 && currentQuestion.category === topCat)
+                            ? currentQuestion.category
+                            : topCat;
+                        setLastRejectedCategory(null);
                     } else {
                         // MAYBE → follow model, but stabilise if gap is narrow
                         if (previousTopCategory && topCat !== previousTopCategory) {
@@ -289,7 +287,6 @@ const InterestFinder = () => {
                     // Try preferred category
                     const q = getNextQ(targetCat);
                     if (q) {
-                        // DEDUP guard: never show the same question twice
                         if (q.id === currentQuestion?.id) {
                             console.log('[Phase 2] Dedup: same question would repeat, trying fallback');
                             const fallback = getAnyQ([targetCat]);
