@@ -353,13 +353,36 @@ export default function StudentPrograms() {
 
         const fetchAll = async () => {
             try {
-                // Fetch ALL universities (no status filter — so all programs show correctly)
-                const uniSnap = await getDocs(query(
-                    collection(db, 'users'),
-                    where('role', '==', 'university_manager')
-                ));
+                // Fetch ALL universities & reviews in parallel for accurate rating scoring
+                const [uniSnap, reviewsSnap] = await Promise.all([
+                    getDocs(query(collection(db, 'users'), where('role', '==', 'university_manager'))),
+                    getDocs(collection(db, 'reviews'))
+                ]);
+
+                const reviewsByUni = {};
+                reviewsSnap.docs.forEach(d => {
+                    const r = d.data();
+                    if (r.universityId) {
+                        if (!reviewsByUni[r.universityId]) reviewsByUni[r.universityId] = [];
+                        reviewsByUni[r.universityId].push(r);
+                    }
+                });
+
                 const unis = {};
-                uniSnap.docs.forEach(d => { unis[d.id] = d.data(); });
+                uniSnap.docs.forEach(d => {
+                    const uData = d.data();
+                    const uReviews = reviewsByUni[d.id] || [];
+                    const avgRating = uReviews.length > 0
+                        ? (uReviews.reduce((sum, r) => sum + (r.rating || 0), 0) / uReviews.length).toFixed(1)
+                        : null;
+
+                    unis[d.id] = {
+                        ...uData,
+                        id: d.id,
+                        calculatedRating: avgRating,
+                        reviewCount: uReviews.length
+                    };
+                });
 
                 // Fetch ALL programs from degrees collection
                 const degSnap = await getDocs(collection(db, 'degrees'));
@@ -414,7 +437,12 @@ export default function StudentPrograms() {
                 return { ...p, _score: score, _isInterestMatch: isInterestMatch, _isLocalMatch: isLocalMatch };
             })
             .filter(p => p._isInterestMatch && p._score >= RECOMMENDATION_THRESHOLD)
-            .sort((a, b) => b._score - a._score)
+            .sort((a, b) => {
+                const aLocal = a._isLocalMatch ? 1 : 0;
+                const bLocal = b._isLocalMatch ? 1 : 0;
+                if (bLocal !== aLocal) return bLocal - aLocal;
+                return b._score - a._score;
+            })
             .slice(0, 8);
     }, [programs, userProfile, studentCoords]);
 

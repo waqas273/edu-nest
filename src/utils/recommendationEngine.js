@@ -60,7 +60,21 @@ export const getHaversineDistance = (lat1, lon1, lat2, lon2) => {
 // ─── Core Interest Match Function ─────────────────────────────────────────────
 export const getInterestMatchType = (programTitle, studentInterest) => {
     if (!studentInterest || !programTitle) return 'none';
-    const keywords = INTEREST_KEYWORDS[studentInterest];
+    
+    // Direct key lookup
+    let keywords = INTEREST_KEYWORDS[studentInterest];
+
+    // Fallback: If exact key not in dictionary, attempt fuzzy match against dictionary keys
+    if (!keywords) {
+        const interestLower = studentInterest.toLowerCase();
+        for (const [catKey, catKeywords] of Object.entries(INTEREST_KEYWORDS)) {
+            if (interestLower.includes(catKey.toLowerCase()) || catKey.toLowerCase().includes(interestLower)) {
+                keywords = catKeywords;
+                break;
+            }
+        }
+    }
+
     if (!keywords) return 'none';
     const titleLower = programTitle.toLowerCase();
     return keywords.some((kw) => titleLower.includes(kw)) ? 'direct' : 'none';
@@ -75,11 +89,15 @@ export const isLocationMatch = (uniLocation, studentCity) => {
 
 // Helper: Calculate exact Proximity score using distance
 const getProximityScore = (uniLat, uniLng, uniLocation, studentCity, studentCoords = null) => {
+    // Safely parse coordinates to float numbers whether stored as numbers or string representations in DB
+    const latNum = typeof uniLat === 'number' ? uniLat : parseFloat(uniLat);
+    const lngNum = typeof uniLng === 'number' ? uniLng : parseFloat(uniLng);
+
     // If student live GPS coordinates are retrieved from browser dynamically, calculate physical distance in KM!
     if (studentCoords && typeof studentCoords.lat === 'number' && typeof studentCoords.lng === 'number' &&
-        typeof uniLat === 'number' && typeof uniLng === 'number') {
+        !isNaN(latNum) && !isNaN(lngNum)) {
         
-        const distance = getHaversineDistance(studentCoords.lat, studentCoords.lng, uniLat, uniLng);
+        const distance = getHaversineDistance(studentCoords.lat, studentCoords.lng, latNum, lngNum);
         
         if (distance <= 15) return 30;  // 0-15 km: 30 Points (Nearest / Same area)
         if (distance <= 50) return 20;  // 15-50 km: 20 Points (Close)

@@ -124,10 +124,15 @@ const Universities = () => {
             };
         });
 
-        // Sort recommended first by score descending
+        // Sort recommended: Same City (_locationScore === 30) first, then by total score descending
         const recs = scored
             .filter(u => u._isRecommended)
-            .sort((a, b) => b._score - a._score)
+            .sort((a, b) => {
+                const aSameCity = a._locationScore === 30 ? 1 : 0;
+                const bSameCity = b._locationScore === 30 ? 1 : 0;
+                if (bSameCity !== aSameCity) return bSameCity - aSameCity;
+                return b._score - a._score;
+            })
             .slice(0, 6);
 
         return { recommended: recs, allScored: scored };
