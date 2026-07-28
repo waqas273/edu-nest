@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Search, MapPin, Star, ArrowRight,
     GraduationCap, Building2, Loader2,
-    SearchX, Sparkles, SlidersHorizontal, Brain, Navigation
+    SearchX, Sparkles, SlidersHorizontal, Brain, Navigation, Award
 } from 'lucide-react';
 import { collection, query, where, getDocs } from 'firebase/firestore';
 import { db } from '../../firebase';
@@ -111,28 +111,41 @@ const Universities = () => {
         const studentCity = userProfile?.city || '';
 
         const scored = universities.map(uni => {
-            const { score, locationScore, matchingCount } =
+            const { score, locationScore, matchingCount, distanceKm } =
                 getUniversityScore(uni, userProfile, studentCoords);
 
-            const isSameCity = (studentCity && isLocationMatch(uni.location, studentCity)) || locationScore === 30;
+            const isSameCity = (studentCity && isLocationMatch(uni.location, studentCity)) || locationScore >= 27;
 
             return {
                 ...uni,
                 _score: score,
+                _locationScore: locationScore,
                 _matchingCount: matchingCount,
+                _distanceKm: distanceKm,
                 _isSameCity: isSameCity,
             };
         });
 
-        return [...scored].sort((a, b) => {
+        // Multi-tier Sorting:
+        // 1. Same City Priority (_isSameCity === true)
+        // 2. Distance in KM (_distanceKm ascending - nearest first)
+        // 3. Recommendation Score (_score descending)
+        // 4. Rating (calculatedRating descending)
+        const sorted = [...scored].sort((a, b) => {
             const aSameCity = a._isSameCity ? 1 : 0;
             const bSameCity = b._isSameCity ? 1 : 0;
             if (bSameCity !== aSameCity) return bSameCity - aSameCity;
+
+            if (typeof a._distanceKm === 'number' && typeof b._distanceKm === 'number' && a._distanceKm !== b._distanceKm) {
+                return a._distanceKm - b._distanceKm;
+            }
 
             if (b._score !== a._score) return b._score - a._score;
 
             return (parseFloat(b.calculatedRating) || 0) - (parseFloat(a.calculatedRating) || 0);
         });
+
+        return sorted.map((uni, idx) => ({ ...uni, _rank: idx + 1 }));
     }, [universities, userProfile, studentCoords]);
 
     const filteredUnis = useMemo(() => {
@@ -186,6 +199,31 @@ const Universities = () => {
                     className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
+
+                {/* Rank Badge */}
+                {uni._rank && (
+                    <div className={`absolute top-3 left-3 flex items-center gap-1.5 text-[10px] font-black uppercase tracking-wider px-2.5 py-1.5 rounded-full shadow-lg backdrop-blur-md ${
+                        uni._rank === 1
+                            ? 'bg-gradient-to-r from-amber-400 to-yellow-500 text-slate-900 shadow-amber-500/30'
+                            : 'bg-slate-900/80 text-white border border-white/10'
+                    }`}>
+                        <Award size={11} className={uni._rank === 1 ? 'text-slate-900' : 'text-cyan-400'} />
+                        Rank #{uni._rank} {uni._rank === 1 ? '· Top Match' : ''}
+                    </div>
+                )}
+
+                {/* Location / Kilometers Distance Badge */}
+                {typeof uni._distanceKm === 'number' ? (
+                    <div className="absolute bottom-3 left-3 flex items-center gap-1 bg-emerald-500/90 text-white text-[9px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full shadow">
+                        <Navigation size={9} /> {uni._distanceKm} km away
+                    </div>
+                ) : uni._isSameCity ? (
+                    <div className="absolute bottom-3 left-3 flex items-center gap-1 bg-emerald-500/90 text-white text-[9px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full shadow">
+                        <Navigation size={9} /> In Your City
+                    </div>
+                ) : null}
+
+                {/* Rating Badge */}
                 {uni.calculatedRating && (
                     <div className="absolute top-3 right-3 bg-white/90 dark:bg-black/60 backdrop-blur-xl px-3 py-1.5 rounded-xl flex items-center space-x-1.5 border border-slate-200 dark:border-white/10">
                         <Star size={14} className="text-yellow-500 fill-yellow-500" />
