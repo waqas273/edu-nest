@@ -13,7 +13,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
     getProgramScore,
-    RECOMMENDATION_THRESHOLD
+    RECOMMENDATION_THRESHOLD,
+    isLocationMatch
 } from '../../utils/recommendationEngine';
 
 const DEGREE_TYPES = ['All', 'BS', 'MS', 'Other'];
@@ -434,12 +435,13 @@ export default function StudentPrograms() {
         return programs
             .map(p => {
                 const { score, isInterestMatch, isLocalMatch } = getProgramScore(p, userProfile, studentCoords);
-                return { ...p, _score: score, _isInterestMatch: isInterestMatch, _isLocalMatch: isLocalMatch };
+                const isSameCity = isLocationMatch(p.uniData?.location, userProfile?.city) || isLocalMatch;
+                return { ...p, _score: score, _isInterestMatch: isInterestMatch, _isLocalMatch: isLocalMatch, _isSameCity: isSameCity };
             })
-            .filter(p => p._isInterestMatch && p._score >= RECOMMENDATION_THRESHOLD)
+            .filter(p => p._isInterestMatch && (p._isSameCity || p._score >= RECOMMENDATION_THRESHOLD))
             .sort((a, b) => {
-                const aLocal = a._isLocalMatch ? 1 : 0;
-                const bLocal = b._isLocalMatch ? 1 : 0;
+                const aLocal = a._isSameCity ? 1 : 0;
+                const bLocal = b._isSameCity ? 1 : 0;
                 if (bLocal !== aLocal) return bLocal - aLocal;
                 return b._score - a._score;
             })

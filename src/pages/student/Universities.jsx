@@ -12,7 +12,8 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import {
     getUniversityScore,
-    RECOMMENDATION_THRESHOLD
+    RECOMMENDATION_THRESHOLD,
+    isLocationMatch
 } from '../../utils/recommendationEngine';
 
 const Universities = () => {
@@ -113,6 +114,10 @@ const Universities = () => {
         const scored = universities.map(uni => {
             const { score, interestScore, locationScore, ratingScore, matchingCount } =
                 getUniversityScore(uni, userProfile, studentCoords);
+
+            // Determine same city match explicitly (either text string match or locationScore 30)
+            const isSameCity = isLocationMatch(uni.location, userProfile?.city) || locationScore === 30;
+
             return {
                 ...uni,
                 _score: score,
@@ -120,16 +125,17 @@ const Universities = () => {
                 _locationScore: locationScore,
                 _ratingScore: ratingScore,
                 _matchingCount: matchingCount,
-                _isRecommended: hasProfile && score >= RECOMMENDATION_THRESHOLD,
+                _isSameCity: isSameCity,
+                _isRecommended: hasProfile && (isSameCity || score >= RECOMMENDATION_THRESHOLD),
             };
         });
 
-        // Sort recommended: Same City (_locationScore === 30) first, then by total score descending
+        // Sort recommended: Same City (_isSameCity === true) ALWAYS first, then by total score descending
         const recs = scored
             .filter(u => u._isRecommended)
             .sort((a, b) => {
-                const aSameCity = a._locationScore === 30 ? 1 : 0;
-                const bSameCity = b._locationScore === 30 ? 1 : 0;
+                const aSameCity = a._isSameCity ? 1 : 0;
+                const bSameCity = b._isSameCity ? 1 : 0;
                 if (bSameCity !== aSameCity) return bSameCity - aSameCity;
                 return b._score - a._score;
             })
@@ -211,7 +217,7 @@ const Universities = () => {
                 )}
 
                 {/* Location Match Badge */}
-                {showScoreBadge && uni._locationScore === 30 && (
+                {showScoreBadge && uni._isSameCity && (
                     <div className="absolute bottom-3 left-3 flex items-center gap-1 bg-emerald-500/90 text-white text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-full shadow">
                         <Navigation size={8} /> In Your City
                     </div>
