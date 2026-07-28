@@ -3,8 +3,9 @@ import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from
 import {
     BookOpen, Plus, Trash2, X, Loader2, ArrowRight, GraduationCap,
     Clock, DollarSign, Search, Sparkles, Pencil, Layers,
-    CheckCircle, Award, Calendar, Users, UploadCloud, Info, Check, ShieldAlert
+    CheckCircle, Award, Calendar, Users, UploadCloud, Info, Check, ShieldAlert, Download
 } from 'lucide-react';
+import { downloadSampleCSV } from '../../utils/csvSampleDownloader';
 import {
     collection, query, where, onSnapshot,
     addDoc, deleteDoc, doc, serverTimestamp, updateDoc
@@ -1241,7 +1242,15 @@ const ManagerPrograms = () => {
                                         {/* Quick Sample notice */}
                                         <div className="p-4 bg-slate-100 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.05] rounded-xl text-left max-w-md w-full text-[10px] text-slate-500 dark:text-slate-400 leading-normal">
                                             <div className="font-bold uppercase tracking-wider mb-2 text-slate-400">💡 Recommended CSV Format Headers:</div>
-                                            <code className="font-mono text-cyan-600 dark:text-cyan-400 font-bold">Title, Level, Duration, Semesters, Fee, Description, Scholarships</code>
+                                            <code className="font-mono text-cyan-600 dark:text-cyan-400 font-bold block mb-3">Title, Level, Duration, Semesters, Fee, Description, Scholarships</code>
+                                            <button
+                                                type="button"
+                                                onClick={(e) => { e.stopPropagation(); downloadSampleCSV('programs'); }}
+                                                className="w-full py-2 px-3 bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30 font-bold rounded-lg text-xs transition flex items-center justify-center gap-2 z-20 relative cursor-pointer"
+                                            >
+                                                <Download size={14} />
+                                                Download Sample CSV Template
+                                            </button>
                                         </div>
                                     </div>
                                 ) : (
@@ -1406,7 +1415,15 @@ const ManagerPrograms = () => {
                                         
                                         <div className="p-4 bg-slate-100 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.05] rounded-xl text-left max-w-md w-full text-[10px] text-slate-500 dark:text-slate-400 leading-normal">
                                             <div className="font-bold uppercase tracking-wider mb-2 text-slate-400">💡 Recommended CSV Columns:</div>
-                                            <code className="font-mono text-yellow-600 dark:text-yellow-400 font-bold">Title, Scope (global/specific), Tag, Type, Min, Max, Grant</code>
+                                            <code className="font-mono text-yellow-600 dark:text-yellow-400 font-bold block mb-3">Title, Scope (global/specific), Tag, Type, Min, Max, Grant</code>
+                                            <button
+                                                type="button"
+                                                onClick={(e) => { e.stopPropagation(); downloadSampleCSV('scholarships'); }}
+                                                className="w-full py-2 px-3 bg-yellow-500/10 hover:bg-yellow-500/20 text-yellow-600 dark:text-yellow-400 border border-yellow-500/30 font-bold rounded-lg text-xs transition flex items-center justify-center gap-2 z-20 relative cursor-pointer"
+                                            >
+                                                <Download size={14} />
+                                                Download Sample CSV Template
+                                            </button>
                                         </div>
                                     </div>
                                 ) : (

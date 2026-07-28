@@ -3,8 +3,9 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
     Plus, Trash2, Edit2, User, Users, GraduationCap, BookOpen,
     Mail, Linkedin, Instagram, Save, X, Search,
-    Briefcase, Sparkles, Building, Camera, Loader2, ImageIcon, UploadCloud
+    Briefcase, Sparkles, Building, Camera, Loader2, ImageIcon, UploadCloud, Download
 } from 'lucide-react';
+import { downloadSampleCSV } from '../../utils/csvSampleDownloader';
 import { collection, addDoc, updateDoc, deleteDoc, doc, query, where, onSnapshot } from 'firebase/firestore';
 import { db } from '../../firebase';
 import { useAuth } from '../../context/AuthContext';
@@ -806,16 +807,23 @@ const ManagerFaculty = () => {
                                                 ))}
                                             </div>
 
-                                            <div className="mt-5 pt-4 border-t border-slate-200/50 dark:border-slate-700/50 flex justify-center items-center gap-6 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
-                                                <div className="flex items-center gap-1.5">
-                                                    <span className="w-2 h-2 rounded-full bg-indigo-500"></span> Required Fields
+                                            <div className="mt-5 pt-4 border-t border-slate-200/50 dark:border-slate-700/50 flex flex-col sm:flex-row justify-center items-center gap-4 text-[10px] font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">
+                                                <div className="flex items-center gap-4">
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="w-2 h-2 rounded-full bg-indigo-500"></span> Required Fields
+                                                    </div>
+                                                    <div className="flex items-center gap-1.5">
+                                                        <span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600"></span> Optional Fields
+                                                    </div>
                                                 </div>
-                                                <div className="flex items-center gap-1.5">
-                                                    <span className="w-2 h-2 rounded-full bg-slate-300 dark:bg-slate-600"></span> Optional Fields
-                                                </div>
-                                                <div className="flex items-center gap-1.5">
-                                                    <span className="px-2 py-0.5 bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded border border-slate-200 dark:border-slate-700 shadow-sm">.CSV ONLY</span>
-                                                </div>
+                                                <button
+                                                    type="button"
+                                                    onClick={(e) => { e.stopPropagation(); downloadSampleCSV('faculty'); }}
+                                                    className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white font-bold rounded-xl text-xs transition shadow-md shadow-indigo-500/20 flex items-center gap-2 cursor-pointer z-30"
+                                                >
+                                                    <Download size={14} />
+                                                    Download Sample CSV Template
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
