@@ -635,12 +635,8 @@ export default function StudentPrograms() {
                                         <div className="h-1 w-full bg-gradient-to-r from-cyan-500 via-blue-500 to-purple-500" />
 
                                         <div className="p-4">
-                                            {/* Match Score Badge */}
-                                            <div className="flex items-center justify-between mb-3">
-                                                <div className="flex items-center gap-1.5 bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-[10px] font-black uppercase tracking-wider px-2.5 py-1 rounded-full shadow shadow-cyan-500/30">
-                                                    <Sparkles size={9} />
-                                                    {prog._score}% Match
-                                                </div>
+                                            {/* Match Header */}
+                                            <div className="flex items-center justify-end mb-3">
                                                 {prog._isLocalMatch && (
                                                     <div className="flex items-center gap-1 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 text-[9px] font-black uppercase px-2 py-1 rounded-full border border-emerald-500/20">
                                                         <Navigation size={8} />

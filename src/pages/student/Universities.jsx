@@ -211,14 +211,6 @@ const Universities = () => {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/20 to-transparent" />
 
-                {/* Recommendation Badge */}
-                {showScoreBadge && uni._isRecommended && (
-                    <div className="absolute top-3 left-3 flex items-center gap-1.5 bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-[10px] font-black uppercase tracking-wider px-2.5 py-1.5 rounded-full shadow-lg shadow-cyan-500/30">
-                        <Sparkles size={10} />
-                        {uni._score}% Match
-                    </div>
-                )}
-
                 {/* Location Match Badge */}
                 {showScoreBadge && uni._isSameCity && (
                     <div className="absolute bottom-3 left-3 flex items-center gap-1 bg-emerald-500/90 text-white text-[9px] font-black uppercase tracking-wider px-2 py-1 rounded-full shadow">
