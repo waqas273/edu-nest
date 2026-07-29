@@ -26,6 +26,14 @@ BSCS Academic Excellence Grant,specific,computer science,Merit-Based,3.8,4.0,75%
 Sports Talent Scholarship,global,,Talent-Based,0,0,100%`;
             break;
 
+        case 'admission_policies':
+            filename = 'edu_nest_admission_policies_sample.csv';
+            content = `Policy_Title,Scope,Tag,Min_Inter_Pct,Min_Matric_Pct,Allowed_Streams,Require_Entry_Test,Entry_Tests,Allowed_Domicile,Max_Age_Limit,Min_Bachelor_CGPA,Required_Documents,Custom_Rules
+Standard Engineering Policy,global,,60,50,"Pre-Engineering, ICS",Yes,"NTS NAT-IE:50|FAST Entry Test:50","Open Merit (All Pakistan)",24,0,"Matric Marksheet, FSc Marksheet, CNIC, Test Scorecard","Math Requirement:Must have studied Math in FSc|Attempt Limit:Pass in 1st attempt"
+Medical Admission Policy,specific,medical,70,60,"Pre-Medical",Yes,"MDCAT:55","Punjab Only",24,0,"Matric Marksheet, FSc Marksheet, MDCAT Card, Domicile","Science Subjects:Biology Physics Chemistry mandatory"
+Business & Management Policy,specific,business,50,50,"Pre-Engineering, ICS, Pre-Medical, Commerce, Arts",No,"None:0","Open Merit (All Pakistan)",26,0,"Matric Marksheet, FSc Marksheet, CNIC","Open Stream:All intermediate streams eligible"`;
+            break;
+
         case 'faculty':
             filename = 'edu_nest_faculty_sample.csv';
             content = `Full Name,Designation,Email,Bio,Education,Expertise,Publications,LinkedIn,Instagram

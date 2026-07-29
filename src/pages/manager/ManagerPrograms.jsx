@@ -986,6 +986,124 @@ const ManagerPrograms = () => {
         }
     };
 
+    // CSV Import Modal for Admission Policies Directory
+    const [isPolicyImportModalOpen, setIsPolicyImportModalOpen] = useState(false);
+    const [polCsvRawLines, setPolCsvRawLines] = useState([]);
+    const [polParsedData, setPolParsedData] = useState([]);
+
+    const handlePolicyFileDrop = (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        const reader = new FileReader();
+        reader.onload = (event) => {
+            const text = event.target.result;
+            const lines = text.split(/\r\n|\n/).filter(l => l.trim().length > 0);
+            if (lines.length <= 1) {
+                alert("CSV file appears to be empty.");
+                return;
+            }
+
+            const parseCSVLine = (str) => {
+                const arr = [];
+                let quote = false;
+                let col = '';
+                for (let c of str) {
+                    if (c === '"') quote = !quote;
+                    else if (c === ',' && !quote) {
+                        arr.push(col.trim());
+                        col = '';
+                    } else col += c;
+                }
+                arr.push(col.trim());
+                return arr;
+            };
+
+            const dataLines = lines.slice(1).map(parseCSVLine);
+            setPolCsvRawLines(dataLines);
+
+            const parsed = dataLines.map((line, idx) => {
+                const getVal = (i) => (line[i] || '').replace(/^"|"$/g, '').trim();
+                
+                const polTitle = getVal(0) || 'Admission Policy';
+                const scope = (getVal(1) || 'global').toLowerCase();
+                const tag = (getVal(2) || '').toLowerCase().replace(/[^a-z0-9_-]/g, '');
+                const minInter = parseFloat(getVal(3)) || 60;
+                const minMatric = parseFloat(getVal(4)) || 50;
+                
+                const streamsStr = getVal(5);
+                const allowedStreams = streamsStr ? streamsStr.split(',').map(s => s.trim()) : ["Pre-Engineering", "ICS"];
+
+                const reqTestStr = (getVal(6) || 'yes').toLowerCase();
+                const requireEntryTest = reqTestStr === 'yes' || reqTestStr === 'true' || reqTestStr === '1';
+
+                const rawEntryTests = getVal(7);
+                const entryTests = rawEntryTests
+                    ? rawEntryTests.split('|').map(t => {
+                        const [tName, tScore] = t.split(':');
+                        return { testName: (tName || 'NTS NAT').trim(), minScore: parseFloat(tScore) || 50 };
+                    })
+                    : [{ testName: 'NTS NAT-IE', minScore: 50 }];
+
+                const allowedDomicile = getVal(8) || 'Open Merit (All Pakistan)';
+                const maxAgeLimit = parseInt(getVal(9)) || 0;
+                const minBachelorCgpa = parseFloat(getVal(10)) || 0;
+
+                const docsStr = getVal(11);
+                const requiredDocuments = docsStr ? docsStr.split(',').map(d => d.trim()) : ["Matric Marksheet", "FSc Marksheet", "CNIC"];
+
+                const rulesStr = getVal(12);
+                const customRules = rulesStr
+                    ? rulesStr.split('|').map(r => {
+                        const [rLabel, rVal] = r.split(':');
+                        return { label: (rLabel || 'Rule').trim(), value: (rVal || '').trim() };
+                    })
+                    : [];
+
+                return {
+                    id: Math.random().toString(36).substring(7),
+                    policyTitle: polTitle,
+                    scope,
+                    tag: scope === 'global' ? '' : tag,
+                    minInterPercentage: minInter,
+                    minMatricPercentage: minMatric,
+                    allowedInterStreams,
+                    requireEntryTest,
+                    entryTests,
+                    allowedDomicile,
+                    maxAgeLimit,
+                    minBachelorCgpa,
+                    requiredDocuments,
+                    customRules
+                };
+            });
+
+            setPolParsedData(parsed);
+        };
+        reader.readAsText(file);
+    };
+
+    const handleBatchImportAdmissionPolicies = async () => {
+        if (polParsedData.length === 0) return;
+        setSubmitting(true);
+        try {
+            const mergedDirectory = [...admissionPoliciesDirectory, ...polParsedData];
+            await updateUserProfile(currentUser.uid, {
+                admissionPoliciesDirectory: mergedDirectory
+            });
+
+            setIsPolicyImportModalOpen(false);
+            setPolCsvRawLines([]);
+            setPolParsedData([]);
+            alert("✨ All admission policies imported and merged successfully into Admission Policies Directory!");
+        } catch (error) {
+            console.error("Failed to import admission policies:", error);
+            alert("Import failed.");
+        } finally {
+            setSubmitting(false);
+        }
+    };
+
     const filteredPrograms = programs.filter(p =>
         (p.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
          p.degreeType?.toLowerCase().includes(searchTerm.toLowerCase()))
@@ -1048,13 +1166,29 @@ const ManagerPrograms = () => {
                             </button>
                         </div>
 
-                        {/* Import Button (Only shown in programs directory) */}
+                        {/* Import Button */}
                         {activeView === 'programs' && (
                             <button
                                 onClick={() => setIsImportModalOpen(true)}
                                 className="px-5 py-3 border border-slate-300 dark:border-white/[0.08] hover:border-slate-400 dark:hover:border-white/20 bg-white dark:bg-white/[0.04] text-slate-800 dark:text-white rounded-xl text-xs font-bold uppercase tracking-wider transition flex items-center gap-1.5 shadow-sm"
                             >
                                 <UploadCloud size={14} /> Import Programs
+                            </button>
+                        )}
+                        {activeView === 'scholarships' && (
+                            <button
+                                onClick={() => setIsSchImportModalOpen(true)}
+                                className="px-5 py-3 border border-yellow-500/30 hover:border-yellow-500/50 bg-yellow-500/10 text-yellow-600 dark:text-yellow-400 rounded-xl text-xs font-bold uppercase tracking-wider transition flex items-center gap-1.5 shadow-sm"
+                            >
+                                <UploadCloud size={14} /> Import Scholarships Directory
+                            </button>
+                        )}
+                        {activeView === 'admission_policies' && (
+                            <button
+                                onClick={() => setIsPolicyImportModalOpen(true)}
+                                className="px-5 py-3 border border-purple-500/30 hover:border-purple-500/50 bg-purple-500/10 text-purple-600 dark:text-purple-300 rounded-xl text-xs font-bold uppercase tracking-wider transition flex items-center gap-1.5 shadow-sm"
+                            >
+                                <UploadCloud size={14} /> Import Admission Policies
                             </button>
                         )}
                     </div>
@@ -2351,6 +2485,96 @@ const ManagerPrograms = () => {
                                     </div>
                                 </div>
                             </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
+            {/* ===== ADMISSION POLICIES DIRECTORY CSV IMPORT MODAL ===== */}
+            <AnimatePresence>
+                {isPolicyImportModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+                        <motion.div
+                            initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 30 }}
+                            className="bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl w-full max-w-5xl h-[85vh] flex flex-col overflow-hidden"
+                        >
+                            <div className="flex-shrink-0 px-8 py-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
+                                <div className="flex items-center gap-3">
+                                    <UploadCloud className="text-purple-500" size={24} />
+                                    <h2 className="text-xl font-bold text-slate-900 dark:text-white">Import Admission Policies Directory</h2>
+                                </div>
+                                <button onClick={() => { setIsPolicyImportModalOpen(false); setPolCsvRawLines([]); setPolParsedData([]); }} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white transition">
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+                                {polCsvRawLines.length === 0 ? (
+                                    <div className="h-full flex flex-col items-center justify-center border-3 border-dashed border-slate-250 dark:border-white/[0.08] hover:border-purple-500/55 rounded-3xl p-10 bg-slate-50/50 dark:bg-white/[0.01] transition-all cursor-pointer relative group">
+                                        <input
+                                            type="file" accept=".csv"
+                                            onChange={handlePolicyFileDrop}
+                                            className="absolute inset-0 opacity-0 cursor-pointer"
+                                        />
+                                        <div className="w-16 h-16 rounded-2xl bg-purple-500/10 flex items-center justify-center text-purple-500 mb-4 group-hover:scale-110 transition-transform">
+                                            <UploadCloud size={32} />
+                                        </div>
+                                        <h3 className="text-lg font-bold text-slate-800 dark:text-white mb-1">Upload Admission Policies CSV</h3>
+                                        <p className="text-xs text-slate-400 text-center max-w-xs leading-relaxed mb-4">Drag and drop your policies CSV sheet here or click to browse files.</p>
+                                        
+                                        <div className="p-4 bg-slate-100 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.05] rounded-xl text-left max-w-md w-full text-[10px] text-slate-500 dark:text-slate-400 leading-normal">
+                                            <div className="font-bold uppercase tracking-wider mb-2 text-slate-400">💡 Recommended CSV Headers:</div>
+                                            <code className="font-mono text-purple-600 dark:text-purple-400 font-bold block mb-3">Policy_Title, Scope, Tag, Min_Inter_Pct, Min_Matric_Pct, Allowed_Streams, Require_Entry_Test, Entry_Tests, Allowed_Domicile, Custom_Rules</code>
+                                            <button
+                                                type="button"
+                                                onClick={(e) => { e.stopPropagation(); downloadSampleCSV('admission_policies'); }}
+                                                className="w-full py-2 px-3 bg-purple-500/10 hover:bg-purple-500/20 text-purple-600 dark:text-purple-300 border border-purple-500/30 font-bold rounded-lg text-xs transition flex items-center justify-center gap-2 z-20 relative cursor-pointer"
+                                            >
+                                                <Download size={14} />
+                                                Download Sample Policies CSV Template
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <div className="space-y-6">
+                                        <div className="flex justify-between items-center">
+                                            <h3 className="text-sm font-bold text-slate-800 dark:text-white">Previewing {polParsedData.length} Policy Rules Ready to Merge</h3>
+                                            <button
+                                                onClick={() => { setPolCsvRawLines([]); setPolParsedData([]); }}
+                                                className="text-xs text-purple-500 font-bold hover:underline"
+                                            >
+                                                Upload Different CSV File
+                                            </button>
+                                        </div>
+
+                                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                            {polParsedData.map((pol, idx) => (
+                                                <div key={idx} className="p-4 bg-slate-50 dark:bg-slate-800/40 rounded-xl border border-slate-200 dark:border-slate-700 space-y-1.5 text-xs">
+                                                    <div className="flex justify-between items-center font-bold">
+                                                        <span className="text-slate-900 dark:text-white">{pol.policyTitle}</span>
+                                                        <span className="px-2 py-0.5 rounded-full bg-purple-500/10 text-purple-500 text-[10px] font-black uppercase">{pol.scope} {pol.tag && `(${pol.tag})`}</span>
+                                                    </div>
+                                                    <div className="text-slate-500">Min FSc: {pol.minInterPercentage}% | Min Matric: {pol.minMatricPercentage}%</div>
+                                                    <div className="text-slate-500">Entry Tests: {pol.entryTests.map(t => t.testName).join(', ')}</div>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                            </div>
+
+                            {polParsedData.length > 0 && (
+                                <div className="flex-shrink-0 px-8 py-5 border-t border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
+                                    <span className="text-xs text-slate-400 font-medium">{polParsedData.length} admission policy rules parsed</span>
+                                    <div className="flex gap-3">
+                                        <button type="button" onClick={() => { setIsPolicyImportModalOpen(false); setPolCsvRawLines([]); setPolParsedData([]); }} className="px-5 py-2.5 rounded-xl font-bold text-slate-500 hover:text-slate-700 text-xs uppercase tracking-wider">Cancel</button>
+                                        <button type="button" onClick={handleBatchImportAdmissionPolicies} disabled={submitting} className="px-6 py-2.5 bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-bold rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-purple-500/20 flex items-center gap-2">
+                                            {submitting ? <Loader2 className="animate-spin" size={14} /> : <CheckCircle size={14} />}
+                                            Merge & Import {polParsedData.length} Policies
+                                        </button>
+                                    </div>
+                                </div>
+                            )}
                         </motion.div>
                     </div>
                 )}
