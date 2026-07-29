@@ -430,6 +430,13 @@ const ManagerPrograms = () => {
         }
     };
 
+    // Auto-calculates final merged scholarships: Merges Globals + selected Specific Scholarship Tags
+    const getMergedScholarships = (selectedTags = []) => {
+        const globals = scholarshipDirectory.filter(s => s.scope === 'global');
+        const selectedSpecifics = scholarshipDirectory.filter(s => s.scope === 'specific' && selectedTags.includes(s.tag));
+        return [...globals, ...selectedSpecifics];
+    };
+
     // Auto-calculates final admission eligibility requirements: Merges Globals + selected Specific Policies
     const getMergedAdmissionRequirements = (selectedTags = []) => {
         const globals = admissionPoliciesDirectory.filter(p => p.scope === 'global');
