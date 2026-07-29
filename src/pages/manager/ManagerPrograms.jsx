@@ -2006,7 +2006,7 @@ const ManagerPrograms = () => {
                                         {/* Quick Sample notice */}
                                         <div className="p-4 bg-slate-100 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.05] rounded-xl text-left max-w-md w-full text-[10px] text-slate-500 dark:text-slate-400 leading-normal">
                                             <div className="font-bold uppercase tracking-wider mb-2 text-slate-400">💡 Recommended CSV Format Headers:</div>
-                                            <code className="font-mono text-cyan-600 dark:text-cyan-400 font-bold block mb-3">Title, Level, Duration, Semesters, Fee, Description, Scholarships</code>
+                                            <code className="font-mono text-cyan-600 dark:text-cyan-400 font-bold block mb-3">Title, Degree Type, Duration, Total Semesters, Estimated Fee, Description, Scholarship Tags, Admission Policy Tags</code>
                                             <button
                                                 type="button"
                                                 onClick={(e) => { e.stopPropagation(); downloadSampleCSV('programs'); }}
