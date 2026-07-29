@@ -167,6 +167,10 @@ const ManagerFaculty = () => {
                 });
                 toast.success("New faculty member added!");
             }
+            setFormData({ fullName: '', designation: '', email: '', bio: '', education: '', expertise: '', publications: '', profilePic: '', socialLinks: { linkedin: '', instagram: '' } });
+            setPreviewUrl(null);
+            setSelectedFile(null);
+            setEditMode(null);
             setIsModalOpen(false);
         } catch (error) {
             console.error("Error saving faculty:", error);

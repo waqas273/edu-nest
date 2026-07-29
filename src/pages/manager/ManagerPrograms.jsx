@@ -498,8 +498,7 @@ const ManagerPrograms = () => {
 
     const handleCloseModal = () => {
         setIsModalOpen(false);
-        setFormData(initialFormData);
-        setEditingId(null);
+        // Form draft is preserved in state so manager doesn't lose typed text if closed accidentally
     };
 
     const handleAiExtract = async () => {
@@ -587,7 +586,9 @@ const ManagerPrograms = () => {
                 });
             }
 
-            handleCloseModal();
+            setFormData(initialFormData);
+            setEditingId(null);
+            setIsModalOpen(false);
         } catch (error) {
             console.error("Error saving program:", error);
             alert("Failed to save program.");
@@ -2406,6 +2407,80 @@ const ManagerPrograms = () => {
                                             <p className="p-5 bg-slate-50 dark:bg-white/[0.01] rounded-2xl border border-slate-150 dark:border-white/[0.05] leading-relaxed text-slate-600 dark:text-slate-300 text-xs font-semibold whitespace-pre-wrap">
                                                 {selectedProgram.description}
                                             </p>
+                                        </div>
+
+                                        {/* Admission Policy & Criteria Details */}
+                                        <div className="space-y-4">
+                                            <div className="flex items-center gap-2 mb-1">
+                                                <ShieldCheck size={18} className="text-purple-500" />
+                                                <h3 className="text-sm font-black text-slate-800 dark:text-white uppercase tracking-wider">Admission Eligibility & Policy Criteria</h3>
+                                            </div>
+
+                                            <div className="grid grid-cols-2 gap-3 text-xs">
+                                                <div className="p-3 bg-purple-500/10 border border-purple-500/20 rounded-xl">
+                                                    <span className="text-[10px] text-purple-600 dark:text-purple-300 font-bold block uppercase tracking-wider">Min Intermediate %</span>
+                                                    <span className="text-sm font-black text-slate-900 dark:text-white">{selectedProgram.minInterPercentage || 60}%</span>
+                                                </div>
+                                                <div className="p-3 bg-purple-500/10 border border-purple-500/20 rounded-xl">
+                                                    <span className="text-[10px] text-purple-600 dark:text-purple-300 font-bold block uppercase tracking-wider">Min Matric %</span>
+                                                    <span className="text-sm font-black text-slate-900 dark:text-white">{selectedProgram.minMatricPercentage || 50}%</span>
+                                                </div>
+                                                {selectedProgram.allowedDomicile && (
+                                                    <div className="col-span-2 p-3 bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.06] rounded-xl flex justify-between items-center">
+                                                        <span className="text-slate-400 font-medium">Allowed Domicile:</span>
+                                                        <span className="font-bold text-slate-800 dark:text-white">{selectedProgram.allowedDomicile}</span>
+                                                    </div>
+                                                )}
+                                                {Array.isArray(selectedProgram.entryTests) && selectedProgram.entryTests.length > 0 && (
+                                                    <div className="col-span-2 p-3 bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.06] rounded-xl space-y-1.5">
+                                                        <span className="text-slate-400 font-medium block">Accepted Entry Tests:</span>
+                                                        <div className="flex flex-wrap gap-1.5">
+                                                            {selectedProgram.entryTests.map((t, tIdx) => (
+                                                                <span key={tIdx} className="px-2.5 py-1 bg-cyan-500/10 text-cyan-600 dark:text-cyan-300 border border-cyan-500/20 rounded-lg text-xs font-bold">
+                                                                    {t.testName} (Min {t.minScore}%)
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                {Array.isArray(selectedProgram.customRules) && selectedProgram.customRules.length > 0 && (
+                                                    <div className="col-span-2 p-3 bg-purple-500/10 border border-purple-500/20 rounded-xl space-y-1.5">
+                                                        <span className="text-purple-600 dark:text-purple-300 font-bold block">⚡ Custom Degree Criteria & Rules:</span>
+                                                        <div className="space-y-1">
+                                                            {selectedProgram.customRules.map((cr, cIdx) => (
+                                                                <div key={cIdx} className="flex justify-between items-center text-xs">
+                                                                    <span className="font-bold text-purple-700 dark:text-purple-300">{cr.label}:</span>
+                                                                    <span className="text-slate-700 dark:text-slate-200">{cr.value}</span>
+                                                                </div>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                {selectedProgram.allowedInterStreams && selectedProgram.allowedInterStreams.length > 0 && (
+                                                    <div className="col-span-2 p-3 bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.06] rounded-xl space-y-1">
+                                                        <span className="text-slate-400 font-medium block">Allowed Intermediate Streams:</span>
+                                                        <div className="flex flex-wrap gap-1">
+                                                            {(Array.isArray(selectedProgram.allowedInterStreams) ? selectedProgram.allowedInterStreams : [selectedProgram.allowedInterStreams]).map((st, sIdx) => (
+                                                                <span key={sIdx} className="px-2 py-0.5 bg-slate-200 dark:bg-white/10 text-slate-800 dark:text-slate-200 rounded font-bold text-[11px]">
+                                                                    {st}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                                {selectedProgram.requiredDocuments && selectedProgram.requiredDocuments.length > 0 && (
+                                                    <div className="col-span-2 p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-xl space-y-1.5">
+                                                        <span className="text-emerald-600 dark:text-emerald-400 font-bold block">📋 Required Documents Checklist:</span>
+                                                        <div className="flex flex-wrap gap-1.5">
+                                                            {(Array.isArray(selectedProgram.requiredDocuments) ? selectedProgram.requiredDocuments : [selectedProgram.requiredDocuments]).map((docItem, dIdx) => (
+                                                                <span key={dIdx} className="px-2.5 py-1 bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-bold text-[11px] rounded-lg">
+                                                                    ✓ {docItem}
+                                                                </span>
+                                                            ))}
+                                                        </div>
+                                                    </div>
+                                                )}
+                                            </div>
                                         </div>
 
                                         <div>

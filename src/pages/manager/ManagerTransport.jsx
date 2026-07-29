@@ -200,6 +200,8 @@ const ManagerTransport = () => {
                 });
                 toast.success("New transport added!");
             }
+            setFormData({ vehicleNumber: '', vehicleModel: '', capacity: '', routeName: '', routeStart: '', routeEnd: '', departureTime: '', arrivalTime: '', driverName: '', driverPhone: '', managerPhone: '', stops: [''] });
+            setEditMode(null);
             setIsModalOpen(false);
         } catch (error) {
             console.error("Error saving transport:", error);
