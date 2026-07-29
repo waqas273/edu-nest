@@ -322,45 +322,45 @@ const ManagerPrograms = () => {
         return () => unsubscribe();
     }, [currentUser]);
 
-    // Helper handlers for dynamic arrays in Program Form Modal
-    const addEntryTestItem = () => {
-        setFormData(prev => ({
+    // Helper handlers for dynamic arrays in Admission Policy Form Modal
+    const addPolicyEntryTest = () => {
+        setPolicyFormData(prev => ({
             ...prev,
             entryTests: [...(prev.entryTests || []), { testName: 'NTS NAT / FAST Test', minScore: 50 }]
         }));
     };
 
-    const removeEntryTestItem = (idx) => {
-        setFormData(prev => ({
+    const removePolicyEntryTest = (idx) => {
+        setPolicyFormData(prev => ({
             ...prev,
             entryTests: (prev.entryTests || []).filter((_, i) => i !== idx)
         }));
     };
 
-    const updateEntryTestItem = (idx, field, val) => {
-        setFormData(prev => {
+    const updatePolicyEntryTest = (idx, field, val) => {
+        setPolicyFormData(prev => {
             const updated = [...(prev.entryTests || [])];
             updated[idx] = { ...updated[idx], [field]: val };
             return { ...prev, entryTests: updated };
         });
     };
 
-    const addCustomRuleItem = () => {
-        setFormData(prev => ({
+    const addPolicyCustomRule = () => {
+        setPolicyFormData(prev => ({
             ...prev,
             customRules: [...(prev.customRules || []), { label: 'Criteria Rule', value: 'Details...' }]
         }));
     };
 
-    const removeCustomRuleItem = (idx) => {
-        setFormData(prev => ({
+    const removePolicyCustomRule = (idx) => {
+        setPolicyFormData(prev => ({
             ...prev,
             customRules: (prev.customRules || []).filter((_, i) => i !== idx)
         }));
     };
 
-    const updateCustomRuleItem = (idx, field, val) => {
-        setFormData(prev => {
+    const updatePolicyCustomRule = (idx, field, val) => {
+        setPolicyFormData(prev => {
             const updated = [...(prev.customRules || [])];
             updated[idx] = { ...updated[idx], [field]: val };
             return { ...prev, customRules: updated };
@@ -430,40 +430,69 @@ const ManagerPrograms = () => {
         }
     };
 
+    // Auto-calculates final admission eligibility requirements: Merges Globals + selected Specific Policies
+    const getMergedAdmissionRequirements = (selectedTags = []) => {
+        const globals = admissionPoliciesDirectory.filter(p => p.scope === 'global');
+        const selectedSpecifics = admissionPoliciesDirectory.filter(p => p.scope === 'specific' && selectedTags.includes(p.tag));
+        const allMatching = [...globals, ...selectedSpecifics];
+
+        if (allMatching.length === 0) {
+            return {
+                minInterPercentage: 60,
+                minMatricPercentage: 50,
+                allowedInterStreams: ["Pre-Engineering", "ICS"],
+                requireEntryTest: true,
+                entryTests: [{ testName: 'NTS NAT-IE / FAST Entry Test', minScore: 50 }],
+                allowedDomicile: 'Open Merit (All Pakistan)',
+                maxAgeLimit: 0,
+                minBachelorCgpa: 0,
+                requiredDocuments: ["Matric Marksheet", "FSc / Inter Marksheet", "CNIC / B-Form", "Test Scorecard"],
+                customRules: [],
+                extraRequirements: ''
+            };
+        }
+
+        let minInter = 0;
+        let minMatric = 0;
+        let entryTests = [];
+        let customRules = [];
+        let requiredDocs = new Set();
+        let streams = new Set();
+        let domicile = 'Open Merit (All Pakistan)';
+
+        allMatching.forEach(pol => {
+            if (parseFloat(pol.minInterPercentage) > minInter) minInter = parseFloat(pol.minInterPercentage);
+            if (parseFloat(pol.minMatricPercentage) > minMatric) minMatric = parseFloat(pol.minMatricPercentage);
+            if (pol.allowedDomicile) domicile = pol.allowedDomicile;
+            
+            if (Array.isArray(pol.entryTests)) {
+                pol.entryTests.forEach(t => {
+                    if (!entryTests.some(et => et.testName === t.testName)) entryTests.push(t);
+                });
+            }
+            if (Array.isArray(pol.customRules)) {
+                pol.customRules.forEach(r => {
+                    if (!customRules.some(cr => cr.label === r.label)) customRules.push(r);
+                });
+            }
+            if (Array.isArray(pol.requiredDocuments)) {
+                pol.requiredDocuments.forEach(d => requiredDocs.add(d));
+            }
+            if (Array.isArray(pol.allowedInterStreams)) {
+                pol.allowedInterStreams.forEach(s => streams.add(s));
+            }
+        });
+
+        return {
+            minInterPercentage: minInter || 60,
+            minMatricPercentage: minMatric || 50,
+            allowedInterStreams: Array.from(streams).length > 0 ? Array.from(streams) : ["Pre-Engineering", "ICS"],
+            requireEntryTest: entryTests.length > 0,
+            entryTests: entryTests.length > 0 ? entryTests : [{ testName: 'NTS NAT-IE', minScore: 50 }],
     const handleCloseModal = () => {
         setIsModalOpen(false);
         setFormData(initialFormData);
         setEditingId(null);
-    };
-
-    // Auto-calculates final scholarships list: Merges Globals + selected Program-Specific scholarships
-    const getMergedScholarships = (selectedTags) => {
-        const globals = scholarshipDirectory.filter(s => s.scope === 'global');
-        const selectedSpecifics = scholarshipDirectory.filter(s => s.scope === 'specific' && selectedTags.includes(s.tag));
-        
-        // Flatten into the structure required by existing screens
-        const flatList = [];
-        const process = (list) => {
-            list.forEach(sch => {
-                sch.tiers?.forEach(tier => {
-                    flatList.push({
-                        id: tier.id || Math.random().toString(),
-                        scholarshipTitle: sch.title || '',
-                        type: sch.type || 'merit',
-                        criteriaTitle: sch.criteriaTitle || 'FSc / Intermediate',
-                        minPercentage: sch.type === 'merit' ? tier.min : '',
-                        maxPercentage: sch.type === 'merit' ? tier.max : '',
-                        position: sch.type === 'position' ? tier.position : '',
-                        condition: (sch.type === 'kinship' || sch.type === 'need') ? tier.condition : '',
-                        grantPercentage: tier.grant
-                    });
-                });
-            });
-        };
-
-        process(globals);
-        process(selectedSpecifics);
-        return flatList;
     };
 
     const handleAiExtract = async () => {
@@ -474,13 +503,13 @@ const ManagerPrograms = () => {
         try {
             setIsExtractingAi(true);
             const result = await extractAdmissionRequirementsWithGroq(aiProspectusText);
-            setFormData(prev => ({
+            setPolicyFormData(prev => ({
                 ...prev,
                 minInterPercentage: result.minInterPercentage,
                 minMatricPercentage: result.minMatricPercentage,
                 allowedInterStreams: result.allowedInterStreams,
                 requireEntryTest: result.requireEntryTest,
-                entryTests: result.entryTests || [{ testName: result.entryTestName || 'NTS NAT', minScore: result.minTestScore || 50 }],
+                entryTests: result.entryTests || [{ testName: 'NTS NAT', minScore: 50 }],
                 allowedDomicile: result.allowedDomicile,
                 maxAgeLimit: result.maxAgeLimit,
                 minBachelorCgpa: result.minBachelorCgpa,
@@ -488,7 +517,7 @@ const ManagerPrograms = () => {
                 customRules: result.customRules || [],
                 extraRequirements: result.extraRequirements
             }));
-            alert("✨ Comprehensive admission requirements successfully extracted using Groq AI!");
+            alert("✨ Comprehensive admission policy extracted using Groq AI and loaded into Policy Form!");
         } catch (err) {
             alert("AI Extraction error: " + (err.message || "Failed to extract requirements."));
         } finally {
@@ -506,8 +535,11 @@ const ManagerPrograms = () => {
         setSubmitting(true);
 
         try {
-            // Automatically merge the global + selected specific scholarships into this program document
+            // Automatically merge the global + selected specific scholarships
             const finalScholarships = getMergedScholarships(formData.scholarships);
+
+            // Automatically merge the global + selected specific admission policies
+            const finalRequirements = getMergedAdmissionRequirements(formData.admissionPolicies);
 
             const programData = {
                 title: formData.title,
@@ -516,23 +548,24 @@ const ManagerPrograms = () => {
                 totalSemesters: formData.totalSemesters,
                 estimatedFee: formData.estimatedFee,
                 description: formData.description,
-                scholarshipTags: formData.scholarships, // Save the tags for editing
-                scholarships: finalScholarships, // Save flat list for students view
-                minInterPercentage: parseFloat(formData.minInterPercentage) || 60,
-                minMatricPercentage: parseFloat(formData.minMatricPercentage) || 50,
-                allowedInterStreams: Array.isArray(formData.allowedInterStreams) ? formData.allowedInterStreams : ["Pre-Engineering", "ICS"],
-                requireEntryTest: Boolean(formData.requireEntryTest),
-                entryTests: Array.isArray(formData.entryTests) && formData.entryTests.length > 0
-                    ? formData.entryTests
-                    : [{ testName: formData.entryTestName || 'NTS NAT / University Test', minScore: parseFloat(formData.minTestScore) || 50 }],
-                entryTestName: formData.entryTests?.[0]?.testName || formData.entryTestName || 'NTS NAT / University Test',
-                minTestScore: parseFloat(formData.entryTests?.[0]?.minScore || formData.minTestScore) || 50,
-                allowedDomicile: formData.allowedDomicile || 'Open Merit (All Pakistan)',
-                maxAgeLimit: parseInt(formData.maxAgeLimit) || 0,
-                minBachelorCgpa: parseFloat(formData.minBachelorCgpa) || 0,
-                requiredDocuments: Array.isArray(formData.requiredDocuments) ? formData.requiredDocuments : ["Matric Marksheet", "FSc / Inter Marksheet", "CNIC / B-Form", "Test Scorecard"],
-                customRules: Array.isArray(formData.customRules) ? formData.customRules : [],
-                extraRequirements: formData.extraRequirements || '',
+                scholarshipTags: formData.scholarships,
+                scholarships: finalScholarships,
+                admissionPolicyTags: formData.admissionPolicies,
+                
+                // Merged requirements for student eligibility checking
+                minInterPercentage: finalRequirements.minInterPercentage,
+                minMatricPercentage: finalRequirements.minMatricPercentage,
+                allowedInterStreams: finalRequirements.allowedInterStreams,
+                requireEntryTest: finalRequirements.requireEntryTest,
+                entryTests: finalRequirements.entryTests,
+                entryTestName: finalRequirements.entryTests?.[0]?.testName || 'NTS NAT / University Test',
+                minTestScore: finalRequirements.entryTests?.[0]?.minScore || 50,
+                allowedDomicile: finalRequirements.allowedDomicile,
+                maxAgeLimit: finalRequirements.maxAgeLimit || 0,
+                minBachelorCgpa: finalRequirements.minBachelorCgpa || 0,
+                requiredDocuments: finalRequirements.requiredDocuments,
+                customRules: finalRequirements.customRules,
+                extraRequirements: finalRequirements.extraRequirements,
                 universityId: currentUser.uid,
                 universityName: userProfile?.universityName || 'Unknown University',
                 updatedAt: serverTimestamp()
@@ -565,22 +598,8 @@ const ManagerPrograms = () => {
             totalSemesters: program.totalSemesters || '',
             estimatedFee: program.estimatedFee || '',
             description: program.description || '',
-            scholarships: program.scholarshipTags || [], // Load selected tags
-            minInterPercentage: program.minInterPercentage ?? 60,
-            minMatricPercentage: program.minMatricPercentage ?? 50,
-            allowedInterStreams: Array.isArray(program.allowedInterStreams) ? program.allowedInterStreams : ["Pre-Engineering", "ICS"],
-            requireEntryTest: program.requireEntryTest !== false,
-            entryTests: Array.isArray(program.entryTests) && program.entryTests.length > 0
-                ? program.entryTests
-                : [{ testName: program.entryTestName || 'NTS NAT / University Test', minScore: program.minTestScore ?? 50 }],
-            entryTestName: program.entryTestName || 'NTS NAT / University Test',
-            minTestScore: program.minTestScore ?? 50,
-            allowedDomicile: program.allowedDomicile || 'Open Merit (All Pakistan)',
-            maxAgeLimit: program.maxAgeLimit ?? 0,
-            minBachelorCgpa: program.minBachelorCgpa ?? 0,
-            requiredDocuments: Array.isArray(program.requiredDocuments) ? program.requiredDocuments : ["Matric Marksheet", "FSc / Inter Marksheet", "CNIC / B-Form", "Test Scorecard"],
-            customRules: Array.isArray(program.customRules) ? program.customRules : [],
-            extraRequirements: program.extraRequirements || ''
+            scholarships: program.scholarshipTags || [],
+            admissionPolicies: program.admissionPolicyTags || []
         });
         setIsModalOpen(true);
     };
@@ -1398,235 +1417,60 @@ const ManagerPrograms = () => {
 
                                     {/* Dynamic Admission Requirements & Groq AI Section */}
                                     <div className="pt-5 border-t border-slate-100 dark:border-slate-800 space-y-4">
-                                        <div className="flex items-center justify-between">
-                                            <div className="flex items-center gap-2">
-                                                <Award size={18} className="text-cyan-500" />
-                                                <h3 className="text-sm font-bold text-slate-800 dark:text-white">Admission Eligibility Requirements</h3>
-                                            </div>
+                                    {/* Mapped Admission Policies Selection list */}
+                                    <div className="pt-5 border-t border-slate-100 dark:border-slate-800">
+                                        <div className="flex items-center gap-2 mb-3">
+                                            <Award size={16} className="text-purple-500" />
+                                            <h3 className="text-sm font-bold text-slate-800 dark:text-white">Applicable Admission Eligibility Policies</h3>
                                         </div>
+                                        
+                                        {/* Informative notice for globals */}
+                                        {admissionPoliciesDirectory.filter(p => p.scope === 'global').length > 0 && (
+                                            <div className="p-3 bg-purple-500/5 border border-purple-500/10 rounded-xl text-xs text-purple-600 dark:text-purple-400 mb-4 flex items-center gap-2 font-medium">
+                                                <Info size={14} />
+                                                <span>
+                                                    {admissionPoliciesDirectory.filter(p => p.scope === 'global').map(p => `"${p.policyTitle}"`).join(', ')} (Global Policy) will be automatically linked to this program.
+                                                </span>
+                                            </div>
+                                        )}
 
-                                        {/* Groq AI Prospectus Auto-Fill Card */}
-                                        <div className="p-4 rounded-2xl bg-gradient-to-r from-cyan-500/10 via-purple-500/10 to-blue-500/10 border border-cyan-500/20 space-y-3">
-                                            <div className="flex items-center justify-between">
-                                                <div className="flex items-center gap-2 text-xs font-bold text-cyan-600 dark:text-cyan-400">
-                                                    <Wand2 size={14} /> Auto-Fill Requirements with Groq AI (LLaMA-3)
-                                                </div>
-                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-500">Groq Powered</span>
-                                            </div>
-                                            <textarea
-                                                rows={2}
-                                                value={aiProspectusText}
-                                                onChange={(e) => setAiProspectusText(e.target.value)}
-                                                placeholder="Paste prospectus text here (e.g. 'Min 60% FSc Pre-Eng or ICS with Math. NTS NAT test score min 50%. Punjab Domicile only')..."
-                                                className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white placeholder-slate-400 resize-none focus:outline-none focus:border-cyan-500"
-                                            />
-                                            <button
-                                                type="button"
-                                                disabled={isExtractingAi}
-                                                onClick={handleAiExtract}
-                                                className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-1.5 hover:opacity-95 disabled:opacity-50"
-                                            >
-                                                {isExtractingAi ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />}
-                                                {isExtractingAi ? "Extracting with Groq..." : "✨ Auto-Fill Fields with AI"}
-                                            </button>
-                                        </div>
-
-                                        {/* Numeric & Text Baseline Inputs */}
-                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
-                                            <div>
-                                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Min Intermediate %</label>
-                                                <input
-                                                    type="number"
-                                                    min="0" max="100"
-                                                    value={formData.minInterPercentage}
-                                                    onChange={(e) => setFormData({ ...formData, minInterPercentage: e.target.value })}
-                                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-white/[0.02] border border-slate-250 dark:border-white/[0.08] rounded-xl text-slate-900 dark:text-white font-semibold"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Min Matriculation %</label>
-                                                <input
-                                                    type="number"
-                                                    min="0" max="100"
-                                                    value={formData.minMatricPercentage}
-                                                    onChange={(e) => setFormData({ ...formData, minMatricPercentage: e.target.value })}
-                                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-white/[0.02] border border-slate-250 dark:border-white/[0.08] rounded-xl text-slate-900 dark:text-white font-semibold"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Allowed Domicile Restriction</label>
-                                                <select
-                                                    value={formData.allowedDomicile}
-                                                    onChange={(e) => setFormData({ ...formData, allowedDomicile: e.target.value })}
-                                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-white/[0.02] border border-slate-250 dark:border-white/[0.08] rounded-xl text-slate-900 dark:text-white font-semibold"
-                                                >
-                                                    <option value="Open Merit (All Pakistan)">Open Merit (All Pakistan)</option>
-                                                    <option value="Punjab Only">Punjab Domicile Only</option>
-                                                    <option value="Sindh Only">Sindh Domicile Only</option>
-                                                    <option value="KPK Only">KPK Domicile Only</option>
-                                                    <option value="Balochistan Only">Balochistan Domicile Only</option>
-                                                    <option value="Islamabad Capital Territory">Islamabad CT Only</option>
-                                                </select>
-                                            </div>
-                                            <div>
-                                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Max Age Limit (Years)</label>
-                                                <input
-                                                    type="number"
-                                                    min="0" max="60"
-                                                    value={formData.maxAgeLimit}
-                                                    onChange={(e) => setFormData({ ...formData, maxAgeLimit: e.target.value })}
-                                                    placeholder="0 = No Age Limit"
-                                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-white/[0.02] border border-slate-250 dark:border-white/[0.08] rounded-xl text-slate-900 dark:text-white font-semibold"
-                                                />
-                                            </div>
-                                            <div>
-                                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Min Bachelor CGPA (for MS/PhD)</label>
-                                                <input
-                                                    type="number"
-                                                    step="0.1" min="0" max="4.0"
-                                                    value={formData.minBachelorCgpa}
-                                                    onChange={(e) => setFormData({ ...formData, minBachelorCgpa: e.target.value })}
-                                                    placeholder="e.g. 2.5 (0 for Undergrad)"
-                                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-white/[0.02] border border-slate-250 dark:border-white/[0.08] rounded-xl text-slate-900 dark:text-white font-semibold"
-                                                />
-                                            </div>
-                                            {/* Dynamic Entry Tests Array Builder */}
-                                            <div className="sm:col-span-2 p-4 bg-slate-100/80 dark:bg-white/[0.02] border border-slate-200 dark:border-slate-800 rounded-2xl space-y-3">
-                                                <div className="flex items-center justify-between">
-                                                    <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-800 dark:text-white">
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={formData.requireEntryTest}
-                                                            onChange={(e) => setFormData({ ...formData, requireEntryTest: e.target.checked })}
-                                                            className="w-4 h-4 accent-cyan-500 rounded cursor-pointer"
-                                                        />
-                                                        Require Entry Test?
-                                                    </label>
-                                                    {formData.requireEntryTest && (
+                                        {admissionPoliciesDirectory.filter(p => p.scope === 'specific').length === 0 ? (
+                                            <p className="text-slate-400 text-xs">No program-specific policy templates created in Admission Policies Directory tab yet.</p>
+                                        ) : (
+                                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                                                {admissionPoliciesDirectory.filter(p => p.scope === 'specific').map((pol) => {
+                                                    const isChecked = formData.admissionPolicies?.includes(pol.tag);
+                                                    return (
                                                         <button
                                                             type="button"
-                                                            onClick={addEntryTestItem}
-                                                            className="px-2.5 py-1 bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30 rounded-lg text-[11px] font-bold hover:bg-cyan-500/30 transition flex items-center gap-1"
+                                                            key={pol.id}
+                                                            onClick={() => {
+                                                                const updated = isChecked
+                                                                    ? (formData.admissionPolicies || []).filter(t => t !== pol.tag)
+                                                                    : [...(formData.admissionPolicies || []), pol.tag];
+                                                                setFormData({ ...formData, admissionPolicies: updated });
+                                                            }}
+                                                            className={cn("p-3.5 rounded-xl border text-left flex items-center gap-3 transition-all text-xs font-semibold",
+                                                                isChecked
+                                                                    ? "border-purple-500 bg-purple-500/5 text-purple-600 dark:text-purple-400"
+                                                                    : "border-slate-200 dark:border-white/[0.06] bg-slate-50 dark:bg-white/[0.01] hover:border-slate-300"
+                                                            )}
                                                         >
-                                                            <Plus size={12} /> Add Entry Test
+                                                            <div className={cn("w-4 h-4 rounded-md border flex items-center justify-center shrink-0",
+                                                                isChecked ? "bg-purple-500 border-purple-500 text-white" : "border-slate-350 dark:border-slate-600"
+                                                            )}>
+                                                                {isChecked && <Check size={10} strokeWidth={4} />}
+                                                            </div>
+                                                            <div className="min-w-0">
+                                                                <div className="truncate font-bold text-slate-800 dark:text-slate-200">{pol.policyTitle}</div>
+                                                                <div className="text-[10px] text-slate-400 opacity-80 mt-0.5">Tag: {pol.tag} (FSc Min: {pol.minInterPercentage}%)</div>
+                                                            </div>
                                                         </button>
-                                                    )}
-                                                </div>
-
-                                                {formData.requireEntryTest && (
-                                                    <div className="space-y-2">
-                                                        {formData.entryTests?.map((t, tIdx) => (
-                                                            <div key={tIdx} className="flex items-center gap-2 p-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
-                                                                <input
-                                                                    type="text"
-                                                                    value={t.testName}
-                                                                    onChange={(e) => updateEntryTestItem(tIdx, 'testName', e.target.value)}
-                                                                    placeholder="Entry Test Name (e.g. NTS NAT-IE)"
-                                                                    className="flex-1 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-white font-semibold"
-                                                                />
-                                                                <div className="flex items-center gap-1">
-                                                                    <span className="text-[10px] text-slate-400 font-medium">Min %:</span>
-                                                                    <input
-                                                                        type="number"
-                                                                        min="0" max="100"
-                                                                        value={t.minScore}
-                                                                        onChange={(e) => updateEntryTestItem(tIdx, 'minScore', parseFloat(e.target.value) || 0)}
-                                                                        className="w-16 px-2 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-white font-semibold text-center"
-                                                                    />
-                                                                </div>
-                                                                {formData.entryTests.length > 1 && (
-                                                                    <button
-                                                                        type="button"
-                                                                        onClick={() => removeEntryTestItem(tIdx)}
-                                                                        className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition"
-                                                                    >
-                                                                        <Trash2 size={13} />
-                                                                    </button>
-                                                                )}
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
+                                                    );
+                                                })}
                                             </div>
-
-                                            <div className="sm:col-span-2">
-                                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Allowed Intermediate Streams (Comma Separated)</label>
-                                                <input
-                                                    type="text"
-                                                    value={Array.isArray(formData.allowedInterStreams) ? formData.allowedInterStreams.join(', ') : formData.allowedInterStreams}
-                                                    onChange={(e) => setFormData({ ...formData, allowedInterStreams: e.target.value.split(',').map(s => s.trim()) })}
-                                                    placeholder="e.g. Pre-Engineering, ICS, Pre-Medical, A-Levels, DAE"
-                                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-white/[0.02] border border-slate-250 dark:border-white/[0.08] rounded-xl text-slate-900 dark:text-white font-semibold"
-                                                />
-                                            </div>
-                                            <div className="sm:col-span-2">
-                                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Required Documents Checklist (Comma Separated)</label>
-                                                <input
-                                                    type="text"
-                                                    value={Array.isArray(formData.requiredDocuments) ? formData.requiredDocuments.join(', ') : formData.requiredDocuments}
-                                                    onChange={(e) => setFormData({ ...formData, requiredDocuments: e.target.value.split(',').map(d => d.trim()) })}
-                                                    placeholder="e.g. Matric Marksheet, FSc Marksheet, CNIC / B-Form, Test Scorecard, Domicile"
-                                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-white/[0.02] border border-slate-250 dark:border-white/[0.08] rounded-xl text-slate-900 dark:text-white font-semibold"
-                                                />
-                                            </div>
-
-                                            {/* Dynamic Custom Rules Array Builder */}
-                                            <div className="sm:col-span-2 p-4 bg-purple-500/5 border border-purple-500/10 rounded-2xl space-y-3">
-                                                <div className="flex items-center justify-between">
-                                                    <span className="text-xs font-bold text-purple-600 dark:text-purple-400">Custom Dynamic Criteria & Rules</span>
-                                                    <button
-                                                        type="button"
-                                                        onClick={addCustomRuleItem}
-                                                        className="px-2.5 py-1 bg-purple-500/20 text-purple-600 dark:text-purple-300 border border-purple-500/30 rounded-lg text-[11px] font-bold hover:bg-purple-500/30 transition flex items-center gap-1"
-                                                    >
-                                                        <Plus size={12} /> Add Custom Rule
-                                                    </button>
-                                                </div>
-
-                                                {formData.customRules?.length === 0 ? (
-                                                    <p className="text-[11px] text-slate-400 italic">No custom rules added. Click "+ Add Custom Rule" for degree-specific conditions.</p>
-                                                ) : (
-                                                    <div className="space-y-2">
-                                                        {formData.customRules?.map((r, rIdx) => (
-                                                            <div key={rIdx} className="flex items-center gap-2 p-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
-                                                                <input
-                                                                    type="text"
-                                                                    value={r.label}
-                                                                    onChange={(e) => updateCustomRuleItem(rIdx, 'label', e.target.value)}
-                                                                    placeholder="Rule Label (e.g. Work Experience)"
-                                                                    className="w-1/3 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-white font-bold"
-                                                                />
-                                                                <input
-                                                                    type="text"
-                                                                    value={r.value}
-                                                                    onChange={(e) => updateCustomRuleItem(rIdx, 'value', e.target.value)}
-                                                                    placeholder="Rule Value (e.g. Min 2 years corporate experience)"
-                                                                    className="flex-1 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-white"
-                                                                />
-                                                                <button
-                                                                    type="button"
-                                                                    onClick={() => removeCustomRuleItem(rIdx)}
-                                                                    className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition"
-                                                                >
-                                                                    <Trash2 size={13} />
-                                                                </button>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-
-                                            <div className="sm:col-span-2">
-                                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Extra Requirements & Specific Rules</label>
-                                                <textarea
-                                                    rows={2}
-                                                    value={formData.extraRequirements}
-                                                    onChange={(e) => setFormData({ ...formData, extraRequirements: e.target.value })}
-                                                    placeholder="e.g., Must have studied FSc Pre-Engineering or ICS with Math. Domicile of Punjab required."
-                                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-white/[0.02] border border-slate-250 dark:border-white/[0.08] rounded-xl text-slate-900 dark:text-white font-semibold resize-none"
-                                                />
-                                            </div>
-                                        </div>
+                                        )}
+                                    </div>
                                     </div>
 
                                     {/* Mapped Scholarships Selection list */}
@@ -1854,6 +1698,32 @@ const ManagerPrograms = () => {
                                         )}
                                     </div>
 
+                                    {/* Groq AI Prospectus Auto-Fill Card */}
+                                    <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-500/10 via-indigo-500/10 to-blue-500/10 border border-purple-500/20 space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2 text-xs font-bold text-purple-600 dark:text-purple-300">
+                                                <Wand2 size={14} /> Auto-Fill Policy with Groq AI (LLaMA-3)
+                                            </div>
+                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-500/20 text-purple-400">Groq Powered</span>
+                                        </div>
+                                        <textarea
+                                            rows={2}
+                                            value={aiProspectusText}
+                                            onChange={(e) => setAiProspectusText(e.target.value)}
+                                            placeholder="Paste prospectus text here to extract policies automatically..."
+                                            className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white placeholder-slate-400 resize-none focus:outline-none focus:border-purple-500"
+                                        />
+                                        <button
+                                            type="button"
+                                            disabled={isExtractingAi}
+                                            onClick={handleAiExtract}
+                                            className="px-4 py-2 bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-1.5 hover:opacity-95 disabled:opacity-50"
+                                        >
+                                            {isExtractingAi ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />}
+                                            {isExtractingAi ? "Extracting Policy..." : "✨ Auto-Fill Policy with AI"}
+                                        </button>
+                                    </div>
+
                                     <div className="grid grid-cols-2 gap-4 text-xs">
                                         <div>
                                             <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Min Intermediate %</label>
@@ -1863,6 +1733,126 @@ const ManagerPrograms = () => {
                                             <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Min Matric %</label>
                                             <input type="number" min="0" max="100" value={policyFormData.minMatricPercentage} onChange={e => setPolicyFormData({ ...policyFormData, minMatricPercentage: e.target.value })} className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-bold" />
                                         </div>
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Allowed Domicile</label>
+                                            <select
+                                                value={policyFormData.allowedDomicile}
+                                                onChange={(e) => setPolicyFormData({ ...policyFormData, allowedDomicile: e.target.value })}
+                                                className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-bold"
+                                            >
+                                                <option value="Open Merit (All Pakistan)">Open Merit (All Pakistan)</option>
+                                                <option value="Punjab Only">Punjab Domicile Only</option>
+                                                <option value="Sindh Only">Sindh Domicile Only</option>
+                                                <option value="KPK Only">KPK Domicile Only</option>
+                                                <option value="Balochistan Only">Balochistan Domicile Only</option>
+                                                <option value="Islamabad Capital Territory">Islamabad CT Only</option>
+                                            </select>
+                                        </div>
+                                    </div>
+
+                                    {/* Dynamic Entry Tests Array Builder */}
+                                    <div className="p-4 bg-slate-100/80 dark:bg-white/[0.02] border border-slate-200 dark:border-slate-800 rounded-2xl space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-800 dark:text-white">
+                                                <input
+                                                    type="checkbox"
+                                                    checked={policyFormData.requireEntryTest}
+                                                    onChange={(e) => setPolicyFormData({ ...policyFormData, requireEntryTest: e.target.checked })}
+                                                    className="w-4 h-4 accent-purple-500 rounded cursor-pointer"
+                                                />
+                                                Require Entry Test?
+                                            </label>
+                                            {policyFormData.requireEntryTest && (
+                                                <button
+                                                    type="button"
+                                                    onClick={addPolicyEntryTest}
+                                                    className="px-2.5 py-1 bg-purple-500/20 text-purple-600 dark:text-purple-300 border border-purple-500/30 rounded-lg text-[11px] font-bold hover:bg-purple-500/30 transition flex items-center gap-1"
+                                                >
+                                                    <Plus size={12} /> Add Entry Test
+                                                </button>
+                                            )}
+                                        </div>
+
+                                        {policyFormData.requireEntryTest && (
+                                            <div className="space-y-2">
+                                                {policyFormData.entryTests?.map((t, tIdx) => (
+                                                    <div key={tIdx} className="flex items-center gap-2 p-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+                                                        <input
+                                                            type="text"
+                                                            value={t.testName}
+                                                            onChange={(e) => updatePolicyEntryTest(tIdx, 'testName', e.target.value)}
+                                                            placeholder="Entry Test Name (e.g. NTS NAT-IE)"
+                                                            className="flex-1 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-white font-semibold"
+                                                        />
+                                                        <div className="flex items-center gap-1">
+                                                            <span className="text-[10px] text-slate-400 font-medium">Min %:</span>
+                                                            <input
+                                                                type="number"
+                                                                min="0" max="100"
+                                                                value={t.minScore}
+                                                                onChange={(e) => updatePolicyEntryTest(tIdx, 'minScore', parseFloat(e.target.value) || 0)}
+                                                                className="w-16 px-2 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-white font-semibold text-center"
+                                                            />
+                                                        </div>
+                                                        {policyFormData.entryTests.length > 1 && (
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => removePolicyEntryTest(tIdx)}
+                                                                className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition"
+                                                            >
+                                                                <Trash2 size={13} />
+                                                            </button>
+                                                        )}
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    {/* Dynamic Custom Rules Array Builder */}
+                                    <div className="p-4 bg-purple-500/5 border border-purple-500/10 rounded-2xl space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-xs font-bold text-purple-600 dark:text-purple-400">Custom Dynamic Criteria & Rules</span>
+                                            <button
+                                                type="button"
+                                                onClick={addPolicyCustomRule}
+                                                className="px-2.5 py-1 bg-purple-500/20 text-purple-600 dark:text-purple-300 border border-purple-500/30 rounded-lg text-[11px] font-bold hover:bg-purple-500/30 transition flex items-center gap-1"
+                                            >
+                                                <Plus size={12} /> Add Custom Rule
+                                            </button>
+                                        </div>
+
+                                        {policyFormData.customRules?.length === 0 ? (
+                                            <p className="text-[11px] text-slate-400 italic">No custom rules added. Click "+ Add Custom Rule" for degree-specific conditions.</p>
+                                        ) : (
+                                            <div className="space-y-2">
+                                                {policyFormData.customRules?.map((r, rIdx) => (
+                                                    <div key={rIdx} className="flex items-center gap-2 p-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+                                                        <input
+                                                            type="text"
+                                                            value={r.label}
+                                                            onChange={(e) => updatePolicyCustomRule(rIdx, 'label', e.target.value)}
+                                                            placeholder="Rule Label (e.g. Work Experience)"
+                                                            className="w-1/3 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-white font-bold"
+                                                        />
+                                                        <input
+                                                            type="text"
+                                                            value={r.value}
+                                                            onChange={(e) => updatePolicyCustomRule(rIdx, 'value', e.target.value)}
+                                                            placeholder="Rule Value (e.g. Min 2 years corporate experience)"
+                                                            className="flex-1 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-white"
+                                                        />
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => removePolicyCustomRule(rIdx)}
+                                                            className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition"
+                                                        >
+                                                            <Trash2 size={13} />
+                                                        </button>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
                                     </div>
                                 </form>
                             </div>
