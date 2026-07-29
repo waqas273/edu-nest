@@ -489,6 +489,13 @@ const ManagerPrograms = () => {
             allowedInterStreams: Array.from(streams).length > 0 ? Array.from(streams) : ["Pre-Engineering", "ICS"],
             requireEntryTest: entryTests.length > 0,
             entryTests: entryTests.length > 0 ? entryTests : [{ testName: 'NTS NAT-IE', minScore: 50 }],
+            allowedDomicile: domicile,
+            requiredDocuments: Array.from(requiredDocs).length > 0 ? Array.from(requiredDocs) : ["Matric Marksheet", "FSc Marksheet", "CNIC"],
+            customRules,
+            extraRequirements: allMatching.map(p => p.policyTitle).join(', ')
+        };
+    };
+
     const handleCloseModal = () => {
         setIsModalOpen(false);
         setFormData(initialFormData);
