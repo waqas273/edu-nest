@@ -3,7 +3,7 @@ import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from
 import {
     BookOpen, Plus, Trash2, X, Loader2, ArrowRight, GraduationCap,
     Clock, DollarSign, Search, Sparkles, Pencil, Layers,
-    CheckCircle, Award, Calendar, Users, UploadCloud, Info, Check, ShieldAlert, Download, Wand2
+    CheckCircle, Award, Calendar, Users, UploadCloud, Info, Check, ShieldAlert, ShieldCheck, Download, Wand2
 } from 'lucide-react';
 import { downloadSampleCSV } from '../../utils/csvSampleDownloader';
 import { extractAdmissionRequirementsWithGroq } from '../../utils/groqService';
