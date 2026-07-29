@@ -991,12 +991,12 @@ const ManagerPrograms = () => {
     const [polCsvRawLines, setPolCsvRawLines] = useState([]);
     const [polParsedData, setPolParsedData] = useState([]);
 
-    const handlePolicyFileDrop = (e) => {
+    const handlePolicyFileDrop = async (e) => {
         const file = e.target.files[0];
         if (!file) return;
 
         const reader = new FileReader();
-        reader.onload = (event) => {
+        reader.onload = async (event) => {
             const text = event.target.result;
             const lines = text.split(/\r\n|\n/).filter(l => l.trim().length > 0);
             if (lines.length <= 1) {
@@ -1022,63 +1022,53 @@ const ManagerPrograms = () => {
             const dataLines = lines.slice(1).map(parseCSVLine);
             setPolCsvRawLines(dataLines);
 
-            const parsed = dataLines.map((line, idx) => {
-                const getVal = (i) => (line[i] || '').replace(/^"|"$/g, '').trim();
-                
-                const polTitle = getVal(0) || 'Admission Policy';
-                const scope = (getVal(1) || 'global').toLowerCase();
-                const tag = (getVal(2) || '').toLowerCase().replace(/[^a-z0-9_-]/g, '');
-                const minInter = parseFloat(getVal(3)) || 60;
-                const minMatric = parseFloat(getVal(4)) || 50;
-                
-                const streamsStr = getVal(5);
-                const allowedStreams = streamsStr ? streamsStr.split(',').map(s => s.trim()) : ["Pre-Engineering", "ICS"];
+            setIsExtractingAi(true);
+            const parsedList = [];
 
-                const reqTestStr = (getVal(6) || 'yes').toLowerCase();
-                const requireEntryTest = reqTestStr === 'yes' || reqTestStr === 'true' || reqTestStr === '1';
+            try {
+                for (let idx = 0; idx < dataLines.length; idx++) {
+                    const line = dataLines[idx];
+                    const getVal = (i) => (line[i] || '').replace(/^"|"$/g, '').trim();
 
-                const rawEntryTests = getVal(7);
-                const entryTests = rawEntryTests
-                    ? rawEntryTests.split('|').map(t => {
-                        const [tName, tScore] = t.split(':');
-                        return { testName: (tName || 'NTS NAT').trim(), minScore: parseFloat(tScore) || 50 };
-                    })
-                    : [{ testName: 'NTS NAT-IE', minScore: 50 }];
+                    const polTitle = getVal(0) || 'Admission Policy';
+                    const scope = (getVal(1) || 'global').toLowerCase();
+                    const tag = (getVal(2) || '').toLowerCase().replace(/[^a-z0-9_-]/g, '');
+                    const promptText = getVal(3);
 
-                const allowedDomicile = getVal(8) || 'Open Merit (All Pakistan)';
-                const maxAgeLimit = parseInt(getVal(9)) || 0;
-                const minBachelorCgpa = parseFloat(getVal(10)) || 0;
+                    let extracted = {};
+                    if (promptText && promptText.length > 5) {
+                        // Use Groq AI LLaMA-3 to extract rich structured data from the prompt text
+                        try {
+                            extracted = await extractAdmissionRequirementsWithGroq(promptText);
+                        } catch (err) {
+                            console.warn(`Groq extraction fallback for row ${idx + 1}:`, err);
+                        }
+                    }
 
-                const docsStr = getVal(11);
-                const requiredDocuments = docsStr ? docsStr.split(',').map(d => d.trim()) : ["Matric Marksheet", "FSc Marksheet", "CNIC"];
-
-                const rulesStr = getVal(12);
-                const customRules = rulesStr
-                    ? rulesStr.split('|').map(r => {
-                        const [rLabel, rVal] = r.split(':');
-                        return { label: (rLabel || 'Rule').trim(), value: (rVal || '').trim() };
-                    })
-                    : [];
-
-                return {
-                    id: Math.random().toString(36).substring(7),
-                    policyTitle: polTitle,
-                    scope,
-                    tag: scope === 'global' ? '' : tag,
-                    minInterPercentage: minInter,
-                    minMatricPercentage: minMatric,
-                    allowedInterStreams,
-                    requireEntryTest,
-                    entryTests,
-                    allowedDomicile,
-                    maxAgeLimit,
-                    minBachelorCgpa,
-                    requiredDocuments,
-                    customRules
-                };
-            });
-
-            setPolParsedData(parsed);
+                    parsedList.push({
+                        id: Math.random().toString(36).substring(7),
+                        policyTitle: polTitle,
+                        scope,
+                        tag: scope === 'global' ? '' : tag,
+                        minInterPercentage: extracted.minInterPercentage ?? parseFloat(getVal(3)) || 60,
+                        minMatricPercentage: extracted.minMatricPercentage ?? parseFloat(getVal(4)) || 50,
+                        allowedInterStreams: extracted.allowedInterStreams || ["Pre-Engineering", "ICS"],
+                        requireEntryTest: extracted.requireEntryTest ?? true,
+                        entryTests: extracted.entryTests || [{ testName: 'NTS NAT-IE', minScore: 50 }],
+                        allowedDomicile: extracted.allowedDomicile || 'Open Merit (All Pakistan)',
+                        maxAgeLimit: extracted.maxAgeLimit || 0,
+                        minBachelorCgpa: extracted.minBachelorCgpa || 0,
+                        requiredDocuments: extracted.requiredDocuments || ["Matric Marksheet", "FSc Marksheet", "CNIC"],
+                        customRules: extracted.customRules || [],
+                        extraRequirements: extracted.extraRequirements || promptText
+                    });
+                }
+                setPolParsedData(parsedList);
+            } catch (err) {
+                console.error("Policy CSV processing error:", err);
+                alert("Error processing CSV file.");
+            } finally {
+                setIsExtractingAi(false);
         };
         reader.readAsText(file);
     };

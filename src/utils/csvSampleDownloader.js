@@ -28,10 +28,10 @@ Sports Talent Scholarship,global,,Talent-Based,0,0,100%`;
 
         case 'admission_policies':
             filename = 'edu_nest_admission_policies_sample.csv';
-            content = `Policy_Title,Scope,Tag,Min_Inter_Pct,Min_Matric_Pct,Allowed_Streams,Require_Entry_Test,Entry_Tests,Allowed_Domicile,Max_Age_Limit,Min_Bachelor_CGPA,Required_Documents,Custom_Rules
-Standard Engineering Policy,global,,60,50,"Pre-Engineering, ICS",Yes,"NTS NAT-IE:50|FAST Entry Test:50","Open Merit (All Pakistan)",24,0,"Matric Marksheet, FSc Marksheet, CNIC, Test Scorecard","Math Requirement:Must have studied Math in FSc|Attempt Limit:Pass in 1st attempt"
-Medical Admission Policy,specific,medical,70,60,"Pre-Medical",Yes,"MDCAT:55","Punjab Only",24,0,"Matric Marksheet, FSc Marksheet, MDCAT Card, Domicile","Science Subjects:Biology Physics Chemistry mandatory"
-Business & Management Policy,specific,business,50,50,"Pre-Engineering, ICS, Pre-Medical, Commerce, Arts",No,"None:0","Open Merit (All Pakistan)",26,0,"Matric Marksheet, FSc Marksheet, CNIC","Open Stream:All intermediate streams eligible"`;
+            content = `Policy_Title,Scope,Tag,Prospectus_Prompt
+Standard Engineering & CS Policy,global,,"Min 60% FSc Pre-Engineering or ICS with Math. Min 50% Matric. NTS NAT-IE score min 50% or FAST Test min 50%. Punjab Domicile only. Required documents: Matric, FSc, CNIC, Test Scorecard. Pass in 1st attempt required."
+Medical & Dental Policy,specific,medical,"Min 70% FSc Pre-Medical and 60% Matric. MDCAT Entrance Test is mandatory with min 55% score. Open Merit Punjab Only. Documents: Matric Result, FSc Transcript, MDCAT Card, Domicile & CNIC. Biology Physics Chemistry mandatory in 1st attempt."
+Business Administration Policy,specific,business,"Min 50% FSc or FA or I.Com. No Entry Test required. Open Merit all Pakistan. Documents: Matric, FSc, CNIC. All intermediate streams eligible."`;
             break;
 
         case 'faculty':
