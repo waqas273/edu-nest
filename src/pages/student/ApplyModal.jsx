@@ -289,10 +289,52 @@ const ApplyModal = ({ isOpen, onClose, university, program, studentId, onApplySu
                                                 <span className="text-slate-500">Min Matric:</span>
                                                 <span className="font-bold text-slate-800 dark:text-white">{program?.minMatricPercentage || 50}% Marks</span>
                                             </div>
+                                            {program?.allowedDomicile && (
+                                                <div className="p-2.5 rounded-xl bg-white dark:bg-slate-800/60 border border-slate-100 dark:border-white/5 flex items-center justify-between">
+                                                    <span className="text-slate-500">Domicile:</span>
+                                                    <span className="font-bold text-purple-600 dark:text-purple-400">{program.allowedDomicile}</span>
+                                                </div>
+                                            )}
+                                            {program?.maxAgeLimit > 0 && (
+                                                <div className="p-2.5 rounded-xl bg-white dark:bg-slate-800/60 border border-slate-100 dark:border-white/5 flex items-center justify-between">
+                                                    <span className="text-slate-500">Max Age Limit:</span>
+                                                    <span className="font-bold text-slate-800 dark:text-white">{program.maxAgeLimit} Years</span>
+                                                </div>
+                                            )}
+                                            {program?.minBachelorCgpa > 0 && (
+                                                <div className="col-span-2 p-2.5 rounded-xl bg-white dark:bg-slate-800/60 border border-slate-100 dark:border-white/5 flex items-center justify-between">
+                                                    <span className="text-slate-500">Min Bachelor CGPA:</span>
+                                                    <span className="font-bold text-slate-800 dark:text-white">{program.minBachelorCgpa} / 4.0</span>
+                                                </div>
+                                            )}
                                             {program?.entryTestName && program?.entryTestName !== 'None' && (
                                                 <div className="col-span-2 p-2.5 rounded-xl bg-white dark:bg-slate-800/60 border border-slate-100 dark:border-white/5 flex items-center justify-between">
                                                     <span className="text-slate-500">Required Test:</span>
                                                     <span className="font-bold text-cyan-600 dark:text-cyan-400">{program.entryTestName} (Min {program.minTestScore || 50}%)</span>
+                                                </div>
+                                            )}
+                                            {program?.allowedInterStreams && program.allowedInterStreams.length > 0 && (
+                                                <div className="col-span-2 p-2.5 rounded-xl bg-white dark:bg-slate-800/60 border border-slate-100 dark:border-white/5 space-y-1">
+                                                    <span className="text-slate-500 block font-medium">Eligible Intermediate Streams:</span>
+                                                    <div className="flex flex-wrap gap-1">
+                                                        {(Array.isArray(program.allowedInterStreams) ? program.allowedInterStreams : [program.allowedInterStreams]).map((st, sIdx) => (
+                                                            <span key={sIdx} className="px-2 py-0.5 rounded bg-slate-100 dark:bg-slate-700 font-bold text-[10px] text-slate-700 dark:text-slate-200">
+                                                                {st}
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            )}
+                                            {program?.requiredDocuments && program.requiredDocuments.length > 0 && (
+                                                <div className="col-span-2 p-2.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 space-y-1">
+                                                    <span className="text-emerald-600 dark:text-emerald-400 block font-bold text-[11px]">📋 Required Attachments Checklist:</span>
+                                                    <div className="flex flex-wrap gap-1.5">
+                                                        {(Array.isArray(program.requiredDocuments) ? program.requiredDocuments : [program.requiredDocuments]).map((docItem, dIdx) => (
+                                                            <span key={dIdx} className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-semibold text-[10px]">
+                                                                ✓ {docItem}
+                                                            </span>
+                                                        ))}
+                                                    </div>
                                                 </div>
                                             )}
                                         </div>

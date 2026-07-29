@@ -284,8 +284,14 @@ const ManagerPrograms = () => {
         scholarships: [],
         minInterPercentage: 60,
         minMatricPercentage: 50,
+        allowedInterStreams: ["Pre-Engineering", "ICS"],
+        requireEntryTest: true,
         entryTestName: 'NTS NAT / University Test',
         minTestScore: 50,
+        allowedDomicile: 'Open Merit (All Pakistan)',
+        maxAgeLimit: 0,
+        minBachelorCgpa: 0,
+        requiredDocuments: ["Matric Marksheet", "FSc / Inter Marksheet", "CNIC / B-Form", "Test Scorecard"],
         extraRequirements: ''
     };
 
@@ -362,11 +368,17 @@ const ManagerPrograms = () => {
                 ...prev,
                 minInterPercentage: result.minInterPercentage,
                 minMatricPercentage: result.minMatricPercentage,
+                allowedInterStreams: result.allowedInterStreams,
+                requireEntryTest: result.requireEntryTest,
                 entryTestName: result.entryTestName,
                 minTestScore: result.minTestScore,
+                allowedDomicile: result.allowedDomicile,
+                maxAgeLimit: result.maxAgeLimit,
+                minBachelorCgpa: result.minBachelorCgpa,
+                requiredDocuments: result.requiredDocuments,
                 extraRequirements: result.extraRequirements
             }));
-            alert("✨ Admission requirements successfully extracted using Groq AI!");
+            alert("✨ Comprehensive admission requirements successfully extracted using Groq AI!");
         } catch (err) {
             alert("AI Extraction error: " + (err.message || "Failed to extract requirements."));
         } finally {
@@ -398,8 +410,14 @@ const ManagerPrograms = () => {
                 scholarships: finalScholarships, // Save flat list for students view
                 minInterPercentage: parseFloat(formData.minInterPercentage) || 60,
                 minMatricPercentage: parseFloat(formData.minMatricPercentage) || 50,
+                allowedInterStreams: Array.isArray(formData.allowedInterStreams) ? formData.allowedInterStreams : ["Pre-Engineering", "ICS"],
+                requireEntryTest: Boolean(formData.requireEntryTest),
                 entryTestName: formData.entryTestName || 'NTS NAT / University Test',
                 minTestScore: parseFloat(formData.minTestScore) || 50,
+                allowedDomicile: formData.allowedDomicile || 'Open Merit (All Pakistan)',
+                maxAgeLimit: parseInt(formData.maxAgeLimit) || 0,
+                minBachelorCgpa: parseFloat(formData.minBachelorCgpa) || 0,
+                requiredDocuments: Array.isArray(formData.requiredDocuments) ? formData.requiredDocuments : ["Matric Marksheet", "FSc / Inter Marksheet", "CNIC / B-Form", "Test Scorecard"],
                 extraRequirements: formData.extraRequirements || '',
                 universityId: currentUser.uid,
                 universityName: userProfile?.universityName || 'Unknown University',
@@ -436,8 +454,14 @@ const ManagerPrograms = () => {
             scholarships: program.scholarshipTags || [], // Load selected tags
             minInterPercentage: program.minInterPercentage ?? 60,
             minMatricPercentage: program.minMatricPercentage ?? 50,
+            allowedInterStreams: Array.isArray(program.allowedInterStreams) ? program.allowedInterStreams : ["Pre-Engineering", "ICS"],
+            requireEntryTest: program.requireEntryTest !== false,
             entryTestName: program.entryTestName || 'NTS NAT / University Test',
             minTestScore: program.minTestScore ?? 50,
+            allowedDomicile: program.allowedDomicile || 'Open Merit (All Pakistan)',
+            maxAgeLimit: program.maxAgeLimit ?? 0,
+            minBachelorCgpa: program.minBachelorCgpa ?? 0,
+            requiredDocuments: Array.isArray(program.requiredDocuments) ? program.requiredDocuments : ["Matric Marksheet", "FSc / Inter Marksheet", "CNIC / B-Form", "Test Scorecard"],
             extraRequirements: program.extraRequirements || ''
         });
         setIsModalOpen(true);
@@ -547,10 +571,22 @@ const ManagerPrograms = () => {
                     initialMap['minInterPercentage'] = index;
                 } else if (hLower.includes('matric')) {
                     initialMap['minMatricPercentage'] = index;
+                } else if (hLower.includes('stream') || hLower.includes('discipline')) {
+                    initialMap['allowedInterStreams'] = index;
+                } else if (hLower.includes('require_test') || hLower.includes('require_entry')) {
+                    initialMap['requireEntryTest'] = index;
                 } else if (hLower.includes('test_name') || hLower.includes('entry_test')) {
                     initialMap['entryTestName'] = index;
                 } else if (hLower.includes('test_score') || hLower.includes('min_test')) {
                     initialMap['minTestScore'] = index;
+                } else if (hLower.includes('domicile')) {
+                    initialMap['allowedDomicile'] = index;
+                } else if (hLower.includes('age')) {
+                    initialMap['maxAgeLimit'] = index;
+                } else if (hLower.includes('cgpa')) {
+                    initialMap['minBachelorCgpa'] = index;
+                } else if (hLower.includes('document')) {
+                    initialMap['requiredDocuments'] = index;
                 } else if (hLower.includes('extra') || hLower.includes('criteria') || hLower.includes('requirement')) {
                     initialMap['extraRequirements'] = index;
                 }
@@ -574,6 +610,19 @@ const ManagerPrograms = () => {
                 ? rawTagsString.split(',').map(t => t.trim().toLowerCase()).filter(t => t && t !== 'none')
                 : [];
 
+            const rawStreamsString = getVal('allowedInterStreams');
+            const parsedStreams = rawStreamsString
+                ? rawStreamsString.split(',').map(s => s.trim()).filter(Boolean)
+                : ["Pre-Engineering", "ICS"];
+
+            const rawDocsString = getVal('requiredDocuments');
+            const parsedDocs = rawDocsString
+                ? rawDocsString.split(',').map(d => d.trim()).filter(Boolean)
+                : ["Matric Marksheet", "FSc / Inter Marksheet", "CNIC / B-Form", "Test Scorecard"];
+
+            const rawReqTest = getVal('requireEntryTest').toLowerCase();
+            const requireEntryTest = rawReqTest ? (rawReqTest === 'yes' || rawReqTest === 'true' || rawReqTest === '1') : true;
+
             return {
                 id: idx,
                 title: getVal('title'),
@@ -585,8 +634,14 @@ const ManagerPrograms = () => {
                 scholarshipTags: parsedTags,
                 minInterPercentage: parseFloat(getVal('minInterPercentage')) || 60,
                 minMatricPercentage: parseFloat(getVal('minMatricPercentage')) || 50,
+                allowedInterStreams: parsedStreams,
+                requireEntryTest: requireEntryTest,
                 entryTestName: getVal('entryTestName') || 'NTS NAT / University Test',
                 minTestScore: parseFloat(getVal('minTestScore')) || 50,
+                allowedDomicile: getVal('allowedDomicile') || 'Open Merit (All Pakistan)',
+                maxAgeLimit: parseInt(getVal('maxAgeLimit')) || 0,
+                minBachelorCgpa: parseFloat(getVal('minBachelorCgpa')) || 0,
+                requiredDocuments: parsedDocs,
                 extraRequirements: getVal('extraRequirements') || ''
             };
         });
@@ -615,8 +670,14 @@ const ManagerPrograms = () => {
                     scholarships: mergedScholarships,
                     minInterPercentage: d.minInterPercentage,
                     minMatricPercentage: d.minMatricPercentage,
+                    allowedInterStreams: d.allowedInterStreams,
+                    requireEntryTest: d.requireEntryTest,
                     entryTestName: d.entryTestName,
                     minTestScore: d.minTestScore,
+                    allowedDomicile: d.allowedDomicile,
+                    maxAgeLimit: d.maxAgeLimit,
+                    minBachelorCgpa: d.minBachelorCgpa,
+                    requiredDocuments: d.requiredDocuments,
                     extraRequirements: d.extraRequirements,
                     universityId: currentUser.uid,
                     universityName: userProfile?.universityName || 'Unknown University',
@@ -1148,6 +1209,43 @@ const ManagerPrograms = () => {
                                                 />
                                             </div>
                                             <div>
+                                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Allowed Domicile Restriction</label>
+                                                <select
+                                                    value={formData.allowedDomicile}
+                                                    onChange={(e) => setFormData({ ...formData, allowedDomicile: e.target.value })}
+                                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-white/[0.02] border border-slate-250 dark:border-white/[0.08] rounded-xl text-slate-900 dark:text-white font-semibold"
+                                                >
+                                                    <option value="Open Merit (All Pakistan)">Open Merit (All Pakistan)</option>
+                                                    <option value="Punjab Only">Punjab Domicile Only</option>
+                                                    <option value="Sindh Only">Sindh Domicile Only</option>
+                                                    <option value="KPK Only">KPK Domicile Only</option>
+                                                    <option value="Balochistan Only">Balochistan Domicile Only</option>
+                                                    <option value="Islamabad Capital Territory">Islamabad CT Only</option>
+                                                </select>
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Max Age Limit (Years)</label>
+                                                <input
+                                                    type="number"
+                                                    min="0" max="60"
+                                                    value={formData.maxAgeLimit}
+                                                    onChange={(e) => setFormData({ ...formData, maxAgeLimit: e.target.value })}
+                                                    placeholder="0 = No Age Limit"
+                                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-white/[0.02] border border-slate-250 dark:border-white/[0.08] rounded-xl text-slate-900 dark:text-white font-semibold"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Min Bachelor CGPA (for MS/PhD)</label>
+                                                <input
+                                                    type="number"
+                                                    step="0.1" min="0" max="4.0"
+                                                    value={formData.minBachelorCgpa}
+                                                    onChange={(e) => setFormData({ ...formData, minBachelorCgpa: e.target.value })}
+                                                    placeholder="e.g. 2.5 (0 for Undergrad)"
+                                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-white/[0.02] border border-slate-250 dark:border-white/[0.08] rounded-xl text-slate-900 dark:text-white font-semibold"
+                                                />
+                                            </div>
+                                            <div>
                                                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Required Entry Test Name</label>
                                                 <input
                                                     type="text"
@@ -1164,6 +1262,26 @@ const ManagerPrograms = () => {
                                                     min="0" max="100"
                                                     value={formData.minTestScore}
                                                     onChange={(e) => setFormData({ ...formData, minTestScore: e.target.value })}
+                                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-white/[0.02] border border-slate-250 dark:border-white/[0.08] rounded-xl text-slate-900 dark:text-white font-semibold"
+                                                />
+                                            </div>
+                                            <div className="sm:col-span-2">
+                                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Allowed Intermediate Streams (Comma Separated)</label>
+                                                <input
+                                                    type="text"
+                                                    value={Array.isArray(formData.allowedInterStreams) ? formData.allowedInterStreams.join(', ') : formData.allowedInterStreams}
+                                                    onChange={(e) => setFormData({ ...formData, allowedInterStreams: e.target.value.split(',').map(s => s.trim()) })}
+                                                    placeholder="e.g. Pre-Engineering, ICS, Pre-Medical, A-Levels, DAE"
+                                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-white/[0.02] border border-slate-250 dark:border-white/[0.08] rounded-xl text-slate-900 dark:text-white font-semibold"
+                                                />
+                                            </div>
+                                            <div className="sm:col-span-2">
+                                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Required Documents Checklist (Comma Separated)</label>
+                                                <input
+                                                    type="text"
+                                                    value={Array.isArray(formData.requiredDocuments) ? formData.requiredDocuments.join(', ') : formData.requiredDocuments}
+                                                    onChange={(e) => setFormData({ ...formData, requiredDocuments: e.target.value.split(',').map(d => d.trim()) })}
+                                                    placeholder="e.g. Matric Marksheet, FSc Marksheet, CNIC / B-Form, Test Scorecard, Domicile"
                                                     className="w-full px-3 py-2 bg-slate-50 dark:bg-white/[0.02] border border-slate-250 dark:border-white/[0.08] rounded-xl text-slate-900 dark:text-white font-semibold"
                                                 />
                                             </div>
