@@ -307,10 +307,35 @@ const ApplyModal = ({ isOpen, onClose, university, program, studentId, onApplySu
                                                     <span className="font-bold text-slate-800 dark:text-white">{program.minBachelorCgpa} / 4.0</span>
                                                 </div>
                                             )}
-                                            {program?.entryTestName && program?.entryTestName !== 'None' && (
+                                            {Array.isArray(program?.entryTests) && program.entryTests.length > 0 ? (
+                                                <div className="col-span-2 p-2.5 rounded-xl bg-white dark:bg-slate-800/60 border border-slate-100 dark:border-white/5 space-y-1">
+                                                    <span className="text-slate-500 block font-medium">Accepted Entry Tests:</span>
+                                                    <div className="flex flex-wrap gap-1.5">
+                                                        {program.entryTests.map((t, tIdx) => (
+                                                            <span key={tIdx} className="px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 font-bold text-[10px] border border-cyan-500/20">
+                                                                {t.testName} (Min {t.minScore}%)
+                                                            </span>
+                                                        ))}
+                                                    </div>
+                                                </div>
+                                            ) : program?.entryTestName && program?.entryTestName !== 'None' ? (
                                                 <div className="col-span-2 p-2.5 rounded-xl bg-white dark:bg-slate-800/60 border border-slate-100 dark:border-white/5 flex items-center justify-between">
                                                     <span className="text-slate-500">Required Test:</span>
                                                     <span className="font-bold text-cyan-600 dark:text-cyan-400">{program.entryTestName} (Min {program.minTestScore || 50}%)</span>
+                                                </div>
+                                            ) : null}
+
+                                            {Array.isArray(program?.customRules) && program.customRules.length > 0 && (
+                                                <div className="col-span-2 p-2.5 rounded-xl bg-purple-500/10 border border-purple-500/20 space-y-1">
+                                                    <span className="text-purple-600 dark:text-purple-300 block font-bold text-[11px]">⚡ Specific Degree Criteria & Rules:</span>
+                                                    <div className="space-y-1">
+                                                        {program.customRules.map((cr, cIdx) => (
+                                                            <div key={cIdx} className="flex items-center justify-between text-[11px]">
+                                                                <span className="font-bold text-purple-700 dark:text-purple-300">{cr.label}:</span>
+                                                                <span className="text-slate-600 dark:text-slate-300">{cr.value}</span>
+                                                            </div>
+                                                        ))}
+                                                    </div>
                                                 </div>
                                             )}
                                             {program?.allowedInterStreams && program.allowedInterStreams.length > 0 && (

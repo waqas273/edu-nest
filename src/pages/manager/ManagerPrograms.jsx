@@ -286,12 +286,14 @@ const ManagerPrograms = () => {
         minMatricPercentage: 50,
         allowedInterStreams: ["Pre-Engineering", "ICS"],
         requireEntryTest: true,
-        entryTestName: 'NTS NAT / University Test',
-        minTestScore: 50,
+        entryTests: [{ testName: 'NTS NAT-IE / FAST Entry Test', minScore: 50 }],
         allowedDomicile: 'Open Merit (All Pakistan)',
         maxAgeLimit: 0,
         minBachelorCgpa: 0,
         requiredDocuments: ["Matric Marksheet", "FSc / Inter Marksheet", "CNIC / B-Form", "Test Scorecard"],
+        customRules: [
+            { label: "Math Requirement", value: "Must have studied Mathematics in FSc" }
+        ],
         extraRequirements: ''
     };
 
@@ -319,6 +321,114 @@ const ManagerPrograms = () => {
 
         return () => unsubscribe();
     }, [currentUser]);
+
+    // Helper handlers for dynamic arrays in Program Form Modal
+    const addEntryTestItem = () => {
+        setFormData(prev => ({
+            ...prev,
+            entryTests: [...(prev.entryTests || []), { testName: 'NTS NAT / FAST Test', minScore: 50 }]
+        }));
+    };
+
+    const removeEntryTestItem = (idx) => {
+        setFormData(prev => ({
+            ...prev,
+            entryTests: (prev.entryTests || []).filter((_, i) => i !== idx)
+        }));
+    };
+
+    const updateEntryTestItem = (idx, field, val) => {
+        setFormData(prev => {
+            const updated = [...(prev.entryTests || [])];
+            updated[idx] = { ...updated[idx], [field]: val };
+            return { ...prev, entryTests: updated };
+        });
+    };
+
+    const addCustomRuleItem = () => {
+        setFormData(prev => ({
+            ...prev,
+            customRules: [...(prev.customRules || []), { label: 'Criteria Rule', value: 'Details...' }]
+        }));
+    };
+
+    const removeCustomRuleItem = (idx) => {
+        setFormData(prev => ({
+            ...prev,
+            customRules: (prev.customRules || []).filter((_, i) => i !== idx)
+        }));
+    };
+
+    const updateCustomRuleItem = (idx, field, val) => {
+        setFormData(prev => {
+            const updated = [...(prev.customRules || [])];
+            updated[idx] = { ...updated[idx], [field]: val };
+            return { ...prev, customRules: updated };
+        });
+    };
+
+    // Central Admission Policies Directory state & handlers
+    const admissionPoliciesDirectory = userProfile?.admissionPoliciesDirectory || [];
+    const [isPolicyModalOpen, setIsPolicyModalOpen] = useState(false);
+    const [editingPolicyId, setEditingPolicyId] = useState(null);
+    const [policyFormData, setPolicyFormData] = useState({
+        policyTitle: '',
+        scope: 'global', // 'global' | 'specific'
+        tag: '',
+        minInterPercentage: 60,
+        minMatricPercentage: 50,
+        requireEntryTest: true,
+        entryTests: [{ testName: 'NTS NAT-IE', minScore: 50 }],
+        allowedDomicile: 'Open Merit (All Pakistan)',
+        requiredDocuments: ["Matric Marksheet", "FSc / Inter Marksheet", "CNIC / B-Form"],
+        customRules: []
+    });
+
+    const handleSaveAdmissionPolicy = async (e) => {
+        e.preventDefault();
+        if (!policyFormData.policyTitle) {
+            alert("Policy Title is required!");
+            return;
+        }
+
+        try {
+            let updatedDirectory = [...admissionPoliciesDirectory];
+            const newPolicy = {
+                ...policyFormData,
+                id: editingPolicyId || Math.random().toString(36).substring(7),
+                tag: policyFormData.scope === 'global' ? '' : policyFormData.tag.toLowerCase().replace(/[^a-z0-9_-]/g, '')
+            };
+
+            if (editingPolicyId) {
+                updatedDirectory = updatedDirectory.map(p => p.id === editingPolicyId ? newPolicy : p);
+            } else {
+                updatedDirectory.push(newPolicy);
+            }
+
+            await updateUserProfile(currentUser.uid, {
+                admissionPoliciesDirectory: updatedDirectory
+            });
+
+            setIsPolicyModalOpen(false);
+            setEditingPolicyId(null);
+            alert("Admission Policy saved successfully!");
+        } catch (err) {
+            console.error("Failed to save policy:", err);
+            alert("Failed to save Admission Policy.");
+        }
+    };
+
+    const handleDeleteAdmissionPolicy = async (id) => {
+        if (!window.confirm("Delete this admission policy template?")) return;
+        try {
+            const updatedDirectory = admissionPoliciesDirectory.filter(p => p.id !== id);
+            await updateUserProfile(currentUser.uid, {
+                admissionPoliciesDirectory: updatedDirectory
+            });
+        } catch (err) {
+            console.error("Failed to delete policy:", err);
+        }
+    };
 
     const handleCloseModal = () => {
         setIsModalOpen(false);
@@ -370,12 +480,12 @@ const ManagerPrograms = () => {
                 minMatricPercentage: result.minMatricPercentage,
                 allowedInterStreams: result.allowedInterStreams,
                 requireEntryTest: result.requireEntryTest,
-                entryTestName: result.entryTestName,
-                minTestScore: result.minTestScore,
+                entryTests: result.entryTests || [{ testName: result.entryTestName || 'NTS NAT', minScore: result.minTestScore || 50 }],
                 allowedDomicile: result.allowedDomicile,
                 maxAgeLimit: result.maxAgeLimit,
                 minBachelorCgpa: result.minBachelorCgpa,
                 requiredDocuments: result.requiredDocuments,
+                customRules: result.customRules || [],
                 extraRequirements: result.extraRequirements
             }));
             alert("✨ Comprehensive admission requirements successfully extracted using Groq AI!");
@@ -412,12 +522,16 @@ const ManagerPrograms = () => {
                 minMatricPercentage: parseFloat(formData.minMatricPercentage) || 50,
                 allowedInterStreams: Array.isArray(formData.allowedInterStreams) ? formData.allowedInterStreams : ["Pre-Engineering", "ICS"],
                 requireEntryTest: Boolean(formData.requireEntryTest),
-                entryTestName: formData.entryTestName || 'NTS NAT / University Test',
-                minTestScore: parseFloat(formData.minTestScore) || 50,
+                entryTests: Array.isArray(formData.entryTests) && formData.entryTests.length > 0
+                    ? formData.entryTests
+                    : [{ testName: formData.entryTestName || 'NTS NAT / University Test', minScore: parseFloat(formData.minTestScore) || 50 }],
+                entryTestName: formData.entryTests?.[0]?.testName || formData.entryTestName || 'NTS NAT / University Test',
+                minTestScore: parseFloat(formData.entryTests?.[0]?.minScore || formData.minTestScore) || 50,
                 allowedDomicile: formData.allowedDomicile || 'Open Merit (All Pakistan)',
                 maxAgeLimit: parseInt(formData.maxAgeLimit) || 0,
                 minBachelorCgpa: parseFloat(formData.minBachelorCgpa) || 0,
                 requiredDocuments: Array.isArray(formData.requiredDocuments) ? formData.requiredDocuments : ["Matric Marksheet", "FSc / Inter Marksheet", "CNIC / B-Form", "Test Scorecard"],
+                customRules: Array.isArray(formData.customRules) ? formData.customRules : [],
                 extraRequirements: formData.extraRequirements || '',
                 universityId: currentUser.uid,
                 universityName: userProfile?.universityName || 'Unknown University',
@@ -456,12 +570,16 @@ const ManagerPrograms = () => {
             minMatricPercentage: program.minMatricPercentage ?? 50,
             allowedInterStreams: Array.isArray(program.allowedInterStreams) ? program.allowedInterStreams : ["Pre-Engineering", "ICS"],
             requireEntryTest: program.requireEntryTest !== false,
+            entryTests: Array.isArray(program.entryTests) && program.entryTests.length > 0
+                ? program.entryTests
+                : [{ testName: program.entryTestName || 'NTS NAT / University Test', minScore: program.minTestScore ?? 50 }],
             entryTestName: program.entryTestName || 'NTS NAT / University Test',
             minTestScore: program.minTestScore ?? 50,
             allowedDomicile: program.allowedDomicile || 'Open Merit (All Pakistan)',
             maxAgeLimit: program.maxAgeLimit ?? 0,
             minBachelorCgpa: program.minBachelorCgpa ?? 0,
             requiredDocuments: Array.isArray(program.requiredDocuments) ? program.requiredDocuments : ["Matric Marksheet", "FSc / Inter Marksheet", "CNIC / B-Form", "Test Scorecard"],
+            customRules: Array.isArray(program.customRules) ? program.customRules : [],
             extraRequirements: program.extraRequirements || ''
         });
         setIsModalOpen(true);
@@ -891,6 +1009,17 @@ const ManagerPrograms = () => {
                             >
                                 Scholarships Directory
                             </button>
+                            <button
+                                onClick={() => setActiveView('admission_policies')}
+                                className={cn(
+                                    "px-4 py-2 rounded-lg text-xs font-bold uppercase tracking-wider transition-all",
+                                    activeView === 'admission_policies'
+                                        ? "bg-white dark:bg-white/10 text-slate-900 dark:text-white shadow-sm border border-slate-200 dark:border-white/[0.08]"
+                                        : "text-slate-500 dark:text-white/40 hover:text-slate-800 dark:hover:text-white/70"
+                                )}
+                            >
+                                Admission Policies Directory
+                            </button>
                         </div>
 
                         {/* Import Button (Only shown in programs directory) */}
@@ -1082,6 +1211,122 @@ const ManagerPrograms = () => {
                         )}
                     </motion.div>
                 )}
+
+                {/* ===== ADMISSION POLICIES DIRECTORY VIEW ===== */}
+                {activeView === 'admission_policies' && (
+                    <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+                        <div className="flex justify-between items-center mb-6">
+                            <div>
+                                <h2 className="text-xl font-bold text-slate-800 dark:text-white">Central Admission Policies Directory</h2>
+                                <p className="text-slate-500 dark:text-slate-455 text-xs">Create reusable admission policy templates (Global or Tag-specific) to auto-fill program requirements</p>
+                            </div>
+                            <button
+                                onClick={() => {
+                                    setEditingPolicyId(null);
+                                    setPolicyFormData({
+                                        policyTitle: '',
+                                        scope: 'global',
+                                        tag: '',
+                                        minInterPercentage: 60,
+                                        minMatricPercentage: 50,
+                                        requireEntryTest: true,
+                                        entryTests: [{ testName: 'NTS NAT-IE', minScore: 50 }],
+                                        allowedDomicile: 'Open Merit (All Pakistan)',
+                                        requiredDocuments: ["Matric Marksheet", "FSc / Inter Marksheet", "CNIC / B-Form"],
+                                        customRules: []
+                                    });
+                                    setIsPolicyModalOpen(true);
+                                }}
+                                className="px-4 py-2.5 bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-bold rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-purple-500/20 flex items-center gap-1.5 hover:opacity-95"
+                            >
+                                <Plus size={14} /> Add Admission Policy Template
+                            </button>
+                        </div>
+
+                        {admissionPoliciesDirectory.length === 0 ? (
+                            <div className="text-center py-20 border-2 border-dashed border-slate-200 dark:border-white/[0.06] rounded-3xl bg-white dark:bg-white/[0.01]">
+                                <Award size={36} className="text-purple-400 mx-auto mb-3" />
+                                <h3 className="text-base font-bold text-slate-850 dark:text-white mb-0.5">No Admission Policy Templates Created</h3>
+                                <p className="text-slate-400 text-xs max-w-sm mx-auto mb-4">Create baseline policies here to apply them to your degree programs with 1 click.</p>
+                                <button
+                                    onClick={() => {
+                                        setEditingPolicyId(null);
+                                        setPolicyFormData({
+                                            policyTitle: 'Standard Engineering & CS Policy',
+                                            scope: 'global',
+                                            tag: '',
+                                            minInterPercentage: 60,
+                                            minMatricPercentage: 50,
+                                            requireEntryTest: true,
+                                            entryTests: [{ testName: 'NTS NAT-IE / FAST Test', minScore: 50 }],
+                                            allowedDomicile: 'Open Merit (All Pakistan)',
+                                            requiredDocuments: ["Matric Marksheet", "FSc / Inter Marksheet", "CNIC / B-Form", "Test Scorecard"],
+                                            customRules: [{ label: "Math Requirement", value: "Must have studied Mathematics in FSc" }]
+                                        });
+                                        setIsPolicyModalOpen(true);
+                                    }}
+                                    className="px-5 py-2.5 bg-purple-500/10 border border-purple-500/20 text-purple-600 dark:text-purple-300 rounded-xl text-xs font-bold"
+                                >
+                                    + Create Sample Policy Template
+                                </button>
+                            </div>
+                        ) : (
+                            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
+                                {admissionPoliciesDirectory.map((pol) => (
+                                    <div key={pol.id} className="relative bg-white dark:bg-white/[0.02] border border-slate-200 dark:border-white/[0.07] rounded-2xl p-5 overflow-hidden flex flex-col shadow-sm">
+                                        <div className={cn("absolute top-0 bottom-0 left-0 w-1.5 bg-gradient-to-b", pol.scope === 'global' ? 'from-purple-400 to-indigo-500' : 'from-cyan-400 to-blue-500')} />
+                                        
+                                        <div className="flex justify-between items-start mb-3 pl-3">
+                                            <div>
+                                                <h4 className="font-bold text-slate-900 dark:text-white text-base leading-tight">{pol.policyTitle}</h4>
+                                                <span className={cn("text-[9px] font-black uppercase tracking-wider mt-1 px-2 py-0.5 rounded-full inline-block border",
+                                                    pol.scope === 'global'
+                                                        ? 'bg-purple-500/10 border-purple-500/20 text-purple-600 dark:text-purple-400'
+                                                        : 'bg-cyan-500/10 border-cyan-500/20 text-cyan-600 dark:text-cyan-400'
+                                                )}>
+                                                    {pol.scope === 'global' ? 'Global Policy Template' : `Tag Template (${pol.tag})`}
+                                                </span>
+                                            </div>
+                                            <div className="flex gap-1">
+                                                <button
+                                                    onClick={() => {
+                                                        setEditingPolicyId(pol.id);
+                                                        setPolicyFormData(pol);
+                                                        setIsPolicyModalOpen(true);
+                                                    }}
+                                                    className="p-1.5 rounded-lg text-slate-400 hover:text-purple-600 dark:hover:text-purple-400 hover:bg-slate-100 dark:hover:bg-white/5 transition"
+                                                >
+                                                    <Pencil size={13} />
+                                                </button>
+                                                <button
+                                                    onClick={() => handleDeleteAdmissionPolicy(pol.id)}
+                                                    className="p-1.5 rounded-lg text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:text-red-400 dark:hover:bg-red-500/10 transition"
+                                                >
+                                                    <Trash2 size={13} />
+                                                </button>
+                                            </div>
+                                        </div>
+
+                                        <div className="space-y-2 bg-slate-50 dark:bg-slate-900/50 p-3 rounded-xl pl-3 flex-1 border border-slate-100 dark:border-white/[0.04] text-xs">
+                                            <div className="flex justify-between text-slate-600 dark:text-slate-350">
+                                                <span>Min FSc / Matric:</span>
+                                                <b className="text-slate-900 dark:text-white">{pol.minInterPercentage}% / {pol.minMatricPercentage}%</b>
+                                            </div>
+                                            <div className="flex justify-between text-slate-600 dark:text-slate-350">
+                                                <span>Entry Tests ({pol.entryTests?.length || 0}):</span>
+                                                <b className="text-cyan-500">{pol.entryTests?.map(t => t.testName).join(', ') || 'NTS NAT'}</b>
+                                            </div>
+                                            <div className="flex justify-between text-slate-600 dark:text-slate-350">
+                                                <span>Domicile:</span>
+                                                <b className="text-purple-500">{pol.allowedDomicile || 'Open Merit'}</b>
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                    </motion.div>
+                )}
             </div>
 
             {/* ===== PROGRAM MANUAL ADD/EDIT MODAL ===== */}
@@ -1245,26 +1490,65 @@ const ManagerPrograms = () => {
                                                     className="w-full px-3 py-2 bg-slate-50 dark:bg-white/[0.02] border border-slate-250 dark:border-white/[0.08] rounded-xl text-slate-900 dark:text-white font-semibold"
                                                 />
                                             </div>
-                                            <div>
-                                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Required Entry Test Name</label>
-                                                <input
-                                                    type="text"
-                                                    value={formData.entryTestName}
-                                                    onChange={(e) => setFormData({ ...formData, entryTestName: e.target.value })}
-                                                    placeholder="e.g., NTS NAT-IE, MDCAT, University Test"
-                                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-white/[0.02] border border-slate-250 dark:border-white/[0.08] rounded-xl text-slate-900 dark:text-white font-semibold"
-                                                />
+                                            {/* Dynamic Entry Tests Array Builder */}
+                                            <div className="sm:col-span-2 p-4 bg-slate-100/80 dark:bg-white/[0.02] border border-slate-200 dark:border-slate-800 rounded-2xl space-y-3">
+                                                <div className="flex items-center justify-between">
+                                                    <label className="flex items-center gap-2 cursor-pointer text-xs font-bold text-slate-800 dark:text-white">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={formData.requireEntryTest}
+                                                            onChange={(e) => setFormData({ ...formData, requireEntryTest: e.target.checked })}
+                                                            className="w-4 h-4 accent-cyan-500 rounded cursor-pointer"
+                                                        />
+                                                        Require Entry Test?
+                                                    </label>
+                                                    {formData.requireEntryTest && (
+                                                        <button
+                                                            type="button"
+                                                            onClick={addEntryTestItem}
+                                                            className="px-2.5 py-1 bg-cyan-500/20 text-cyan-600 dark:text-cyan-400 border border-cyan-500/30 rounded-lg text-[11px] font-bold hover:bg-cyan-500/30 transition flex items-center gap-1"
+                                                        >
+                                                            <Plus size={12} /> Add Entry Test
+                                                        </button>
+                                                    )}
+                                                </div>
+
+                                                {formData.requireEntryTest && (
+                                                    <div className="space-y-2">
+                                                        {formData.entryTests?.map((t, tIdx) => (
+                                                            <div key={tIdx} className="flex items-center gap-2 p-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+                                                                <input
+                                                                    type="text"
+                                                                    value={t.testName}
+                                                                    onChange={(e) => updateEntryTestItem(tIdx, 'testName', e.target.value)}
+                                                                    placeholder="Entry Test Name (e.g. NTS NAT-IE)"
+                                                                    className="flex-1 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-white font-semibold"
+                                                                />
+                                                                <div className="flex items-center gap-1">
+                                                                    <span className="text-[10px] text-slate-400 font-medium">Min %:</span>
+                                                                    <input
+                                                                        type="number"
+                                                                        min="0" max="100"
+                                                                        value={t.minScore}
+                                                                        onChange={(e) => updateEntryTestItem(tIdx, 'minScore', parseFloat(e.target.value) || 0)}
+                                                                        className="w-16 px-2 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-white font-semibold text-center"
+                                                                    />
+                                                                </div>
+                                                                {formData.entryTests.length > 1 && (
+                                                                    <button
+                                                                        type="button"
+                                                                        onClick={() => removeEntryTestItem(tIdx)}
+                                                                        className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition"
+                                                                    >
+                                                                        <Trash2 size={13} />
+                                                                    </button>
+                                                                )}
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
                                             </div>
-                                            <div>
-                                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Min Test Score (%)</label>
-                                                <input
-                                                    type="number"
-                                                    min="0" max="100"
-                                                    value={formData.minTestScore}
-                                                    onChange={(e) => setFormData({ ...formData, minTestScore: e.target.value })}
-                                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-white/[0.02] border border-slate-250 dark:border-white/[0.08] rounded-xl text-slate-900 dark:text-white font-semibold"
-                                                />
-                                            </div>
+
                                             <div className="sm:col-span-2">
                                                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Allowed Intermediate Streams (Comma Separated)</label>
                                                 <input
@@ -1285,6 +1569,53 @@ const ManagerPrograms = () => {
                                                     className="w-full px-3 py-2 bg-slate-50 dark:bg-white/[0.02] border border-slate-250 dark:border-white/[0.08] rounded-xl text-slate-900 dark:text-white font-semibold"
                                                 />
                                             </div>
+
+                                            {/* Dynamic Custom Rules Array Builder */}
+                                            <div className="sm:col-span-2 p-4 bg-purple-500/5 border border-purple-500/10 rounded-2xl space-y-3">
+                                                <div className="flex items-center justify-between">
+                                                    <span className="text-xs font-bold text-purple-600 dark:text-purple-400">Custom Dynamic Criteria & Rules</span>
+                                                    <button
+                                                        type="button"
+                                                        onClick={addCustomRuleItem}
+                                                        className="px-2.5 py-1 bg-purple-500/20 text-purple-600 dark:text-purple-300 border border-purple-500/30 rounded-lg text-[11px] font-bold hover:bg-purple-500/30 transition flex items-center gap-1"
+                                                    >
+                                                        <Plus size={12} /> Add Custom Rule
+                                                    </button>
+                                                </div>
+
+                                                {formData.customRules?.length === 0 ? (
+                                                    <p className="text-[11px] text-slate-400 italic">No custom rules added. Click "+ Add Custom Rule" for degree-specific conditions.</p>
+                                                ) : (
+                                                    <div className="space-y-2">
+                                                        {formData.customRules?.map((r, rIdx) => (
+                                                            <div key={rIdx} className="flex items-center gap-2 p-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800">
+                                                                <input
+                                                                    type="text"
+                                                                    value={r.label}
+                                                                    onChange={(e) => updateCustomRuleItem(rIdx, 'label', e.target.value)}
+                                                                    placeholder="Rule Label (e.g. Work Experience)"
+                                                                    className="w-1/3 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-white font-bold"
+                                                                />
+                                                                <input
+                                                                    type="text"
+                                                                    value={r.value}
+                                                                    onChange={(e) => updateCustomRuleItem(rIdx, 'value', e.target.value)}
+                                                                    placeholder="Rule Value (e.g. Min 2 years corporate experience)"
+                                                                    className="flex-1 px-3 py-1.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs text-slate-900 dark:text-white"
+                                                                />
+                                                                <button
+                                                                    type="button"
+                                                                    onClick={() => removeCustomRuleItem(rIdx)}
+                                                                    className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition"
+                                                                >
+                                                                    <Trash2 size={13} />
+                                                                </button>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+
                                             <div className="sm:col-span-2">
                                                 <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Extra Requirements & Specific Rules</label>
                                                 <textarea
