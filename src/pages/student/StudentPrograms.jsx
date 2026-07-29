@@ -237,6 +237,35 @@ const ProgramDetailsModal = ({ prog, uniName, uniLocation, uniId, isOpen, onClos
                             </div>
                         )}
 
+                        {/* Admission Requirements */}
+                        <div className="p-4 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 space-y-3">
+                            <div className="flex items-center gap-2">
+                                <Award size={15} className="text-purple-500" />
+                                <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Admission Eligibility Requirements</p>
+                            </div>
+                            <div className="grid grid-cols-2 gap-2 text-xs">
+                                <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-700/50 flex justify-between">
+                                    <span className="text-slate-400">Min FSc / Inter:</span>
+                                    <span className="font-bold text-slate-800 dark:text-white">{prog.minInterPercentage || 60}%</span>
+                                </div>
+                                <div className="p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:slate-700/50 flex justify-between">
+                                    <span className="text-slate-400">Min Matric:</span>
+                                    <span className="font-bold text-slate-800 dark:text-white">{prog.minMatricPercentage || 50}%</span>
+                                </div>
+                                {prog.entryTestName && prog.entryTestName !== 'None' && (
+                                    <div className="col-span-2 p-2.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-100 dark:slate-700/50 flex justify-between">
+                                        <span className="text-slate-400">Required Test:</span>
+                                        <span className="font-bold text-cyan-500">{prog.entryTestName} (Min {prog.minTestScore || 50}%)</span>
+                                    </div>
+                                )}
+                            </div>
+                            {prog.extraRequirements && (
+                                <p className="text-xs text-slate-600 dark:text-slate-300 italic bg-purple-500/10 border border-purple-500/20 p-2.5 rounded-xl">
+                                    <b>Note:</b> {prog.extraRequirements}
+                                </p>
+                            )}
+                        </div>
+
                         {/* Scholarships */}
                         {hasScholarship && (
                             <div>

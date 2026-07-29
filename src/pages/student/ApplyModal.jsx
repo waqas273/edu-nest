@@ -269,6 +269,41 @@ const ApplyModal = ({ isOpen, onClose, university, program, studentId, onApplySu
                                 </div>
                             ) : (
                                 <form onSubmit={handleSubmit} className="space-y-6">
+                                    {/* Program Admission Requirements Card */}
+                                    <div className="p-5 rounded-2xl bg-slate-50 dark:bg-white/[0.02] border border-slate-200 dark:border-white/10 space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2 text-cyan-600 dark:text-cyan-400 font-bold text-xs uppercase tracking-wider">
+                                                <Award size={16} /> Admission Eligibility Criteria
+                                            </div>
+                                            <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-cyan-500/10 text-cyan-600 dark:text-cyan-400 border border-cyan-500/20">
+                                                University Standard
+                                            </span>
+                                        </div>
+
+                                        <div className="grid grid-cols-2 gap-2 text-xs">
+                                            <div className="p-2.5 rounded-xl bg-white dark:bg-slate-800/60 border border-slate-100 dark:border-white/5 flex items-center justify-between">
+                                                <span className="text-slate-500">Min FSc / Inter:</span>
+                                                <span className="font-bold text-slate-800 dark:text-white">{program?.minInterPercentage || 60}% Marks</span>
+                                            </div>
+                                            <div className="p-2.5 rounded-xl bg-white dark:bg-slate-800/60 border border-slate-100 dark:border-white/5 flex items-center justify-between">
+                                                <span className="text-slate-500">Min Matric:</span>
+                                                <span className="font-bold text-slate-800 dark:text-white">{program?.minMatricPercentage || 50}% Marks</span>
+                                            </div>
+                                            {program?.entryTestName && program?.entryTestName !== 'None' && (
+                                                <div className="col-span-2 p-2.5 rounded-xl bg-white dark:bg-slate-800/60 border border-slate-100 dark:border-white/5 flex items-center justify-between">
+                                                    <span className="text-slate-500">Required Test:</span>
+                                                    <span className="font-bold text-cyan-600 dark:text-cyan-400">{program.entryTestName} (Min {program.minTestScore || 50}%)</span>
+                                                </div>
+                                            )}
+                                        </div>
+
+                                        {program?.extraRequirements && (
+                                            <p className="text-xs text-slate-600 dark:text-slate-400 italic bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-xl">
+                                                📌 <b>Note:</b> {program.extraRequirements}
+                                            </p>
+                                        )}
+                                    </div>
+
                                     {/* Auto-filled Section */}
                                     <div className="space-y-4">
                                         <h4 className="text-sm font-bold text-slate-500 uppercase tracking-wider flex items-center gap-2">

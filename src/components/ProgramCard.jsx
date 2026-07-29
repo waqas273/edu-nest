@@ -101,6 +101,18 @@ const ProgramCard = ({ program, studentProfile, onApply, myApplicationStatus, in
 
 
 
+                    {/* Admission Requirements Badge */}
+                    <div className="flex flex-wrap items-center gap-1.5 mb-4">
+                        <span className="px-2 py-0.5 rounded-md bg-slate-100 dark:bg-slate-700/50 text-slate-600 dark:text-slate-300 text-[10px] font-bold">
+                            Min {program.minInterPercentage || 60}% Inter
+                        </span>
+                        {program.entryTestName && program.entryTestName !== 'None' && (
+                            <span className="px-2 py-0.5 rounded-md bg-cyan-500/10 text-cyan-700 dark:text-cyan-400 text-[10px] font-bold border border-cyan-500/20">
+                                {program.entryTestName}
+                            </span>
+                        )}
+                    </div>
+
                     {/* Details Grid */}
                     <div className="grid grid-cols-2 gap-3 mb-6 mt-auto">
                         <div className="flex flex-col gap-1 p-2 rounded-xl bg-slate-50 dark:bg-slate-700/30">

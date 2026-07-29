@@ -3,9 +3,10 @@ import { motion, AnimatePresence, useMotionValue, useSpring, useTransform } from
 import {
     BookOpen, Plus, Trash2, X, Loader2, ArrowRight, GraduationCap,
     Clock, DollarSign, Search, Sparkles, Pencil, Layers,
-    CheckCircle, Award, Calendar, Users, UploadCloud, Info, Check, ShieldAlert, Download
+    CheckCircle, Award, Calendar, Users, UploadCloud, Info, Check, ShieldAlert, Download, Wand2
 } from 'lucide-react';
 import { downloadSampleCSV } from '../../utils/csvSampleDownloader';
+import { extractAdmissionRequirementsWithGroq } from '../../utils/groqService';
 import {
     collection, query, where, onSnapshot,
     addDoc, deleteDoc, doc, serverTimestamp, updateDoc
@@ -243,6 +244,10 @@ const ManagerPrograms = () => {
     const [searchTerm, setSearchTerm] = useState('');
     const [submitting, setSubmitting] = useState(false);
 
+    // AI Extraction state
+    const [aiProspectusText, setAiProspectusText] = useState('');
+    const [isExtractingAi, setIsExtractingAi] = useState(false);
+
     // CSV Import State
     const [isImportModalOpen, setIsImportModalOpen] = useState(false);
     const [parsedData, setParsedData] = useState([]);
@@ -276,7 +281,12 @@ const ManagerPrograms = () => {
         totalSemesters: '',
         estimatedFee: '',
         description: '',
-        scholarships: [] // Selected specific scholarship IDs/tags
+        scholarships: [],
+        minInterPercentage: 60,
+        minMatricPercentage: 50,
+        entryTestName: 'NTS NAT / University Test',
+        minTestScore: 50,
+        extraRequirements: ''
     };
 
     const [formData, setFormData] = useState(initialFormData);
@@ -340,6 +350,30 @@ const ManagerPrograms = () => {
         return flatList;
     };
 
+    const handleAiExtract = async () => {
+        if (!aiProspectusText.trim()) {
+            alert("Please paste prospectus text first.");
+            return;
+        }
+        try {
+            setIsExtractingAi(true);
+            const result = await extractAdmissionRequirementsWithGroq(aiProspectusText);
+            setFormData(prev => ({
+                ...prev,
+                minInterPercentage: result.minInterPercentage,
+                minMatricPercentage: result.minMatricPercentage,
+                entryTestName: result.entryTestName,
+                minTestScore: result.minTestScore,
+                extraRequirements: result.extraRequirements
+            }));
+            alert("✨ Admission requirements successfully extracted using Groq AI!");
+        } catch (err) {
+            alert("AI Extraction error: " + (err.message || "Failed to extract requirements."));
+        } finally {
+            setIsExtractingAi(false);
+        }
+    };
+
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!formData.title || !formData.estimatedFee) {
@@ -362,6 +396,11 @@ const ManagerPrograms = () => {
                 description: formData.description,
                 scholarshipTags: formData.scholarships, // Save the tags for editing
                 scholarships: finalScholarships, // Save flat list for students view
+                minInterPercentage: parseFloat(formData.minInterPercentage) || 60,
+                minMatricPercentage: parseFloat(formData.minMatricPercentage) || 50,
+                entryTestName: formData.entryTestName || 'NTS NAT / University Test',
+                minTestScore: parseFloat(formData.minTestScore) || 50,
+                extraRequirements: formData.extraRequirements || '',
                 universityId: currentUser.uid,
                 universityName: userProfile?.universityName || 'Unknown University',
                 updatedAt: serverTimestamp()
@@ -394,7 +433,12 @@ const ManagerPrograms = () => {
             totalSemesters: program.totalSemesters || '',
             estimatedFee: program.estimatedFee || '',
             description: program.description || '',
-            scholarships: program.scholarshipTags || [] // Load selected tags
+            scholarships: program.scholarshipTags || [], // Load selected tags
+            minInterPercentage: program.minInterPercentage ?? 60,
+            minMatricPercentage: program.minMatricPercentage ?? 50,
+            entryTestName: program.entryTestName || 'NTS NAT / University Test',
+            minTestScore: program.minTestScore ?? 50,
+            extraRequirements: program.extraRequirements || ''
         });
         setIsModalOpen(true);
     };
@@ -499,8 +543,16 @@ const ManagerPrograms = () => {
                     initialMap['estimatedFee'] = index;
                 } else if (hLower.includes('description') || hLower.includes('overview') || hLower.includes('about')) {
                     initialMap['description'] = index;
-                } else if (hLower.includes('scholarship')) {
-                    initialMap['scholarshipTags'] = index;
+                } else if (hLower.includes('inter') || hLower.includes('fsc')) {
+                    initialMap['minInterPercentage'] = index;
+                } else if (hLower.includes('matric')) {
+                    initialMap['minMatricPercentage'] = index;
+                } else if (hLower.includes('test_name') || hLower.includes('entry_test')) {
+                    initialMap['entryTestName'] = index;
+                } else if (hLower.includes('test_score') || hLower.includes('min_test')) {
+                    initialMap['minTestScore'] = index;
+                } else if (hLower.includes('extra') || hLower.includes('criteria') || hLower.includes('requirement')) {
+                    initialMap['extraRequirements'] = index;
                 }
             });
             setMappingColumns(initialMap);
@@ -530,7 +582,12 @@ const ManagerPrograms = () => {
                 totalSemesters: getVal('totalSemesters') || '8',
                 estimatedFee: getVal('estimatedFee'),
                 description: getVal('description') || 'No description provided.',
-                scholarshipTags: parsedTags
+                scholarshipTags: parsedTags,
+                minInterPercentage: parseFloat(getVal('minInterPercentage')) || 60,
+                minMatricPercentage: parseFloat(getVal('minMatricPercentage')) || 50,
+                entryTestName: getVal('entryTestName') || 'NTS NAT / University Test',
+                minTestScore: parseFloat(getVal('minTestScore')) || 50,
+                extraRequirements: getVal('extraRequirements') || ''
             };
         });
         setParsedData(processed);
@@ -556,6 +613,11 @@ const ManagerPrograms = () => {
                     description: d.description,
                     scholarshipTags: d.scholarshipTags,
                     scholarships: mergedScholarships,
+                    minInterPercentage: d.minInterPercentage,
+                    minMatricPercentage: d.minMatricPercentage,
+                    entryTestName: d.entryTestName,
+                    minTestScore: d.minTestScore,
+                    extraRequirements: d.extraRequirements,
                     universityId: currentUser.uid,
                     universityName: userProfile?.universityName || 'Unknown University',
                     createdAt: serverTimestamp(),
@@ -1025,6 +1087,96 @@ const ManagerPrograms = () => {
                                             <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Course Overview</label>
                                             <textarea required rows={4} placeholder="Briefly introduce curriculum, highlights, etc..." className="w-full px-4 py-3 bg-slate-50 dark:bg-white/[0.02] border border-slate-250 dark:border-white/[0.08] rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-cyan-500/30 text-sm font-medium resize-none leading-relaxed"
                                                 value={formData.description} onChange={e => setFormData({ ...formData, description: e.target.value })} />
+                                        </div>
+                                    </div>
+
+                                    {/* Dynamic Admission Requirements & Groq AI Section */}
+                                    <div className="pt-5 border-t border-slate-100 dark:border-slate-800 space-y-4">
+                                        <div className="flex items-center justify-between">
+                                            <div className="flex items-center gap-2">
+                                                <Award size={18} className="text-cyan-500" />
+                                                <h3 className="text-sm font-bold text-slate-800 dark:text-white">Admission Eligibility Requirements</h3>
+                                            </div>
+                                        </div>
+
+                                        {/* Groq AI Prospectus Auto-Fill Card */}
+                                        <div className="p-4 rounded-2xl bg-gradient-to-r from-cyan-500/10 via-purple-500/10 to-blue-500/10 border border-cyan-500/20 space-y-3">
+                                            <div className="flex items-center justify-between">
+                                                <div className="flex items-center gap-2 text-xs font-bold text-cyan-600 dark:text-cyan-400">
+                                                    <Wand2 size={14} /> Auto-Fill Requirements with Groq AI (LLaMA-3)
+                                                </div>
+                                                <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-cyan-500/20 text-cyan-500">Groq Powered</span>
+                                            </div>
+                                            <textarea
+                                                rows={2}
+                                                value={aiProspectusText}
+                                                onChange={(e) => setAiProspectusText(e.target.value)}
+                                                placeholder="Paste prospectus text here (e.g. 'Min 60% FSc Pre-Eng or ICS with Math. NTS NAT test score min 50%. Punjab Domicile only')..."
+                                                className="w-full p-2.5 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl text-xs text-slate-800 dark:text-white placeholder-slate-400 resize-none focus:outline-none focus:border-cyan-500"
+                                            />
+                                            <button
+                                                type="button"
+                                                disabled={isExtractingAi}
+                                                onClick={handleAiExtract}
+                                                className="px-4 py-2 bg-gradient-to-r from-cyan-500 to-blue-600 text-white font-bold text-xs rounded-xl shadow-md flex items-center gap-1.5 hover:opacity-95 disabled:opacity-50"
+                                            >
+                                                {isExtractingAi ? <Loader2 size={14} className="animate-spin" /> : <Wand2 size={14} />}
+                                                {isExtractingAi ? "Extracting with Groq..." : "✨ Auto-Fill Fields with AI"}
+                                            </button>
+                                        </div>
+
+                                        {/* Numeric & Text Baseline Inputs */}
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Min Intermediate %</label>
+                                                <input
+                                                    type="number"
+                                                    min="0" max="100"
+                                                    value={formData.minInterPercentage}
+                                                    onChange={(e) => setFormData({ ...formData, minInterPercentage: e.target.value })}
+                                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-white/[0.02] border border-slate-250 dark:border-white/[0.08] rounded-xl text-slate-900 dark:text-white font-semibold"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Min Matriculation %</label>
+                                                <input
+                                                    type="number"
+                                                    min="0" max="100"
+                                                    value={formData.minMatricPercentage}
+                                                    onChange={(e) => setFormData({ ...formData, minMatricPercentage: e.target.value })}
+                                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-white/[0.02] border border-slate-250 dark:border-white/[0.08] rounded-xl text-slate-900 dark:text-white font-semibold"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Required Entry Test Name</label>
+                                                <input
+                                                    type="text"
+                                                    value={formData.entryTestName}
+                                                    onChange={(e) => setFormData({ ...formData, entryTestName: e.target.value })}
+                                                    placeholder="e.g., NTS NAT-IE, MDCAT, University Test"
+                                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-white/[0.02] border border-slate-250 dark:border-white/[0.08] rounded-xl text-slate-900 dark:text-white font-semibold"
+                                                />
+                                            </div>
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Min Test Score (%)</label>
+                                                <input
+                                                    type="number"
+                                                    min="0" max="100"
+                                                    value={formData.minTestScore}
+                                                    onChange={(e) => setFormData({ ...formData, minTestScore: e.target.value })}
+                                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-white/[0.02] border border-slate-250 dark:border-white/[0.08] rounded-xl text-slate-900 dark:text-white font-semibold"
+                                                />
+                                            </div>
+                                            <div className="sm:col-span-2">
+                                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Extra Requirements & Specific Rules</label>
+                                                <textarea
+                                                    rows={2}
+                                                    value={formData.extraRequirements}
+                                                    onChange={(e) => setFormData({ ...formData, extraRequirements: e.target.value })}
+                                                    placeholder="e.g., Must have studied FSc Pre-Engineering or ICS with Math. Domicile of Punjab required."
+                                                    className="w-full px-3 py-2 bg-slate-50 dark:bg-white/[0.02] border border-slate-250 dark:border-white/[0.08] rounded-xl text-slate-900 dark:text-white font-semibold resize-none"
+                                                />
+                                            </div>
                                         </div>
                                     </div>
 

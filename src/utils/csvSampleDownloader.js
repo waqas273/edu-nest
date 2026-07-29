@@ -10,11 +10,11 @@ export const downloadSampleCSV = (type) => {
     switch (type) {
         case 'programs':
             filename = 'edu_nest_programs_sample.csv';
-            content = `Title,Degree Type,Duration,Total Semesters,Estimated Fee,Description,Scholarship Tags
-BS Computer Science,BS,4 Years,8,450000,"Comprehensive undergraduate program covering Software Engineering, AI and Data Science.","need-based, merit-based"
-MS Data Science,MS,2 Years,4,350000,"Advanced post-graduate program covering machine learning and big data analytics.","merit-based"
-BS Electrical Engineering,BS,4 Years,8,500000,"State of the art engineering curriculum focusing on robotics and IoT.","need-based"
-BS Business Administration,BBA,4 Years,8,400000,"Modern business administration degree focusing on marketing and finance.","sports-based"`;
+            content = `Title,Degree Type,Duration,Total Semesters,Estimated Fee,Description,Scholarship Tags,Min_Inter_Pct,Min_Matric_Pct,Entry_Test_Name,Min_Test_Score,Extra_Requirements
+BS Computer Science,BS,4 Years,8,450000,"Comprehensive undergraduate program covering Software Engineering, AI and Data Science.","need-based, merit-based",60,50,"NTS NAT-IE / FAST Test",50,"FSc Pre-Engineering or ICS with Math. Punjab Domicile only."
+MS Data Science,MS,2 Years,4,350000,"Advanced post-graduate program covering machine learning and big data analytics.","merit-based",60,50,"GAT General",50,"16-Year Bachelor Degree in CS/Math with CGPA >= 2.5."
+BS Electrical Engineering,BS,4 Years,8,500000,"State of the art engineering curriculum focusing on robotics and IoT.","need-based",60,50,"ECAT / University Test",50,"FSc Pre-Engineering mandatory."
+BS Business Administration,BBA,4 Years,8,400000,"Modern business administration degree focusing on marketing and finance.","sports-based",50,50,"University Entry Test",45,"Open for Arts, Commerce and Science graduates."`;
             break;
 
         case 'scholarships':
