@@ -709,30 +709,10 @@ const ManagerPrograms = () => {
                     initialMap['totalSemesters'] = index;
                 } else if (hLower.includes('fee') || hLower.includes('charges') || hLower.includes('price')) {
                     initialMap['estimatedFee'] = index;
-                } else if (hLower.includes('description') || hLower.includes('overview') || hLower.includes('about')) {
-                    initialMap['description'] = index;
-                } else if (hLower.includes('inter') || hLower.includes('fsc')) {
-                    initialMap['minInterPercentage'] = index;
-                } else if (hLower.includes('matric')) {
-                    initialMap['minMatricPercentage'] = index;
-                } else if (hLower.includes('stream') || hLower.includes('discipline')) {
-                    initialMap['allowedInterStreams'] = index;
-                } else if (hLower.includes('require_test') || hLower.includes('require_entry')) {
-                    initialMap['requireEntryTest'] = index;
-                } else if (hLower.includes('test_name') || hLower.includes('entry_test')) {
-                    initialMap['entryTestName'] = index;
-                } else if (hLower.includes('test_score') || hLower.includes('min_test')) {
-                    initialMap['minTestScore'] = index;
-                } else if (hLower.includes('domicile')) {
-                    initialMap['allowedDomicile'] = index;
-                } else if (hLower.includes('age')) {
-                    initialMap['maxAgeLimit'] = index;
-                } else if (hLower.includes('cgpa')) {
-                    initialMap['minBachelorCgpa'] = index;
-                } else if (hLower.includes('document')) {
-                    initialMap['requiredDocuments'] = index;
-                } else if (hLower.includes('extra') || hLower.includes('criteria') || hLower.includes('requirement')) {
-                    initialMap['extraRequirements'] = index;
+                } else if (hLower.includes('scholarship')) {
+                    initialMap['scholarshipTags'] = index;
+                } else if (hLower.includes('policy') || hLower.includes('admission_policy')) {
+                    initialMap['admissionPolicyTags'] = index;
                 }
             });
             setMappingColumns(initialMap);
@@ -754,18 +734,10 @@ const ManagerPrograms = () => {
                 ? rawTagsString.split(',').map(t => t.trim().toLowerCase()).filter(t => t && t !== 'none')
                 : [];
 
-            const rawStreamsString = getVal('allowedInterStreams');
-            const parsedStreams = rawStreamsString
-                ? rawStreamsString.split(',').map(s => s.trim()).filter(Boolean)
-                : ["Pre-Engineering", "ICS"];
-
-            const rawDocsString = getVal('requiredDocuments');
-            const parsedDocs = rawDocsString
-                ? rawDocsString.split(',').map(d => d.trim()).filter(Boolean)
-                : ["Matric Marksheet", "FSc / Inter Marksheet", "CNIC / B-Form", "Test Scorecard"];
-
-            const rawReqTest = getVal('requireEntryTest').toLowerCase();
-            const requireEntryTest = rawReqTest ? (rawReqTest === 'yes' || rawReqTest === 'true' || rawReqTest === '1') : true;
+            const rawPolicyTagsString = getVal('admissionPolicyTags');
+            const parsedPolicyTags = rawPolicyTagsString
+                ? rawPolicyTagsString.split(',').map(t => t.trim().toLowerCase()).filter(t => t && t !== 'none')
+                : [];
 
             return {
                 id: idx,
@@ -776,17 +748,7 @@ const ManagerPrograms = () => {
                 estimatedFee: getVal('estimatedFee'),
                 description: getVal('description') || 'No description provided.',
                 scholarshipTags: parsedTags,
-                minInterPercentage: parseFloat(getVal('minInterPercentage')) || 60,
-                minMatricPercentage: parseFloat(getVal('minMatricPercentage')) || 50,
-                allowedInterStreams: parsedStreams,
-                requireEntryTest: requireEntryTest,
-                entryTestName: getVal('entryTestName') || 'NTS NAT / University Test',
-                minTestScore: parseFloat(getVal('minTestScore')) || 50,
-                allowedDomicile: getVal('allowedDomicile') || 'Open Merit (All Pakistan)',
-                maxAgeLimit: parseInt(getVal('maxAgeLimit')) || 0,
-                minBachelorCgpa: parseFloat(getVal('minBachelorCgpa')) || 0,
-                requiredDocuments: parsedDocs,
-                extraRequirements: getVal('extraRequirements') || ''
+                admissionPolicyTags: parsedPolicyTags
             };
         });
         setParsedData(processed);
@@ -803,6 +765,8 @@ const ManagerPrograms = () => {
         try {
             const batchPromises = parsedData.map(d => {
                 const mergedScholarships = getMergedScholarships(d.scholarshipTags);
+                const mergedRequirements = getMergedAdmissionRequirements(d.admissionPolicyTags);
+
                 return addDoc(collection(db, 'degrees'), {
                     title: d.title,
                     degreeType: d.degreeType,
@@ -812,17 +776,21 @@ const ManagerPrograms = () => {
                     description: d.description,
                     scholarshipTags: d.scholarshipTags,
                     scholarships: mergedScholarships,
-                    minInterPercentage: d.minInterPercentage,
-                    minMatricPercentage: d.minMatricPercentage,
-                    allowedInterStreams: d.allowedInterStreams,
-                    requireEntryTest: d.requireEntryTest,
-                    entryTestName: d.entryTestName,
-                    minTestScore: d.minTestScore,
-                    allowedDomicile: d.allowedDomicile,
-                    maxAgeLimit: d.maxAgeLimit,
-                    minBachelorCgpa: d.minBachelorCgpa,
-                    requiredDocuments: d.requiredDocuments,
-                    extraRequirements: d.extraRequirements,
+                    admissionPolicyTags: d.admissionPolicyTags,
+
+                    minInterPercentage: mergedRequirements.minInterPercentage,
+                    minMatricPercentage: mergedRequirements.minMatricPercentage,
+                    allowedInterStreams: mergedRequirements.allowedInterStreams,
+                    requireEntryTest: mergedRequirements.requireEntryTest,
+                    entryTests: mergedRequirements.entryTests,
+                    entryTestName: mergedRequirements.entryTests?.[0]?.testName || 'NTS NAT / University Test',
+                    minTestScore: mergedRequirements.entryTests?.[0]?.minScore || 50,
+                    allowedDomicile: mergedRequirements.allowedDomicile,
+                    maxAgeLimit: mergedRequirements.maxAgeLimit || 0,
+                    minBachelorCgpa: mergedRequirements.minBachelorCgpa || 0,
+                    requiredDocuments: mergedRequirements.requiredDocuments,
+                    customRules: mergedRequirements.customRules,
+                    extraRequirements: mergedRequirements.extraRequirements,
                     universityId: currentUser.uid,
                     universityName: userProfile?.universityName || 'Unknown University',
                     createdAt: serverTimestamp(),
