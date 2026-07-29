@@ -1069,6 +1069,7 @@ const ManagerPrograms = () => {
                 alert("Error processing CSV file.");
             } finally {
                 setIsExtractingAi(false);
+            }
         };
         reader.readAsText(file);
     };
