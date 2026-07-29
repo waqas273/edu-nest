@@ -107,7 +107,7 @@ const UserProfileModal = ({ isOpen, onClose, userId, userData = null, hideChatBu
 
                 // Fetch applications
                 const appsQuery = query(
-                    collection(db, 'applications'),
+                    collection(db, 'admissions'),
                     where('studentId', '==', profile.id),
                     limit(5)
                 );

@@ -126,7 +126,7 @@ const ProgramCard = ({ program, studentProfile, onApply, myApplicationStatus, in
                         {myApplicationStatus ? (
                             <div className={cn(
                                 "flex items-center justify-center gap-2 w-full py-3.5 rounded-xl font-bold text-sm",
-                                myApplicationStatus === 'approved' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' :
+                                (myApplicationStatus === 'approved' || myApplicationStatus === 'accepted') ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-500/20 dark:text-emerald-400' :
                                     myApplicationStatus === 'rejected' ? 'bg-red-100 text-red-700 dark:bg-red-500/20 dark:text-red-400' :
                                         'bg-amber-100 text-amber-700 dark:bg-amber-500/20 dark:text-amber-400'
                             )}>
