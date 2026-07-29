@@ -2514,8 +2514,8 @@ const ManagerPrograms = () => {
                                         <p className="text-xs text-slate-400 text-center max-w-xs leading-relaxed mb-4">Drag and drop your policies CSV sheet here or click to browse files.</p>
                                         
                                         <div className="p-4 bg-slate-100 dark:bg-white/[0.03] border border-slate-200 dark:border-white/[0.05] rounded-xl text-left max-w-md w-full text-[10px] text-slate-500 dark:text-slate-400 leading-normal">
-                                            <div className="font-bold uppercase tracking-wider mb-2 text-slate-400">💡 Recommended CSV Headers:</div>
-                                            <code className="font-mono text-purple-600 dark:text-purple-400 font-bold block mb-3">Policy_Title, Scope, Tag, Min_Inter_Pct, Min_Matric_Pct, Allowed_Streams, Require_Entry_Test, Entry_Tests, Allowed_Domicile, Custom_Rules</code>
+                                            <div className="font-bold uppercase tracking-wider mb-2 text-slate-400">💡 Recommended AI-Powered CSV Headers:</div>
+                                            <code className="font-mono text-purple-600 dark:text-purple-400 font-bold block mb-3">Policy_Title, Scope, Tag, Prospectus_Prompt</code>
                                             <button
                                                 type="button"
                                                 onClick={(e) => { e.stopPropagation(); downloadSampleCSV('admission_policies'); }}
