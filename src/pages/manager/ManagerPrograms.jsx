@@ -1805,6 +1805,79 @@ const ManagerPrograms = () => {
                 )}
             </AnimatePresence>
 
+            {/* ===== CENTRAL ADMISSION POLICY EDIT MODAL ===== */}
+            <AnimatePresence>
+                {isPolicyModalOpen && (
+                    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+                        <div onClick={() => setIsPolicyModalOpen(false)} className="absolute inset-0 bg-black/70 backdrop-blur-md" />
+                        
+                        <motion.div
+                            initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }}
+                            className="relative w-full max-w-2xl bg-white dark:bg-slate-900 rounded-3xl border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden flex flex-col h-[85vh]"
+                        >
+                            <div className="flex-shrink-0 px-8 py-5 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
+                                <div className="flex items-center gap-3">
+                                    <Award className="text-purple-500" size={24} />
+                                    <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+                                        {editingPolicyId ? "Edit Admission Policy Template" : "Create Admission Policy Template"}
+                                    </h2>
+                                </div>
+                                <button onClick={() => setIsPolicyModalOpen(false)} className="p-2 text-slate-400 hover:text-slate-600 dark:hover:text-white transition">
+                                    <X size={20} />
+                                </button>
+                            </div>
+
+                            <div className="flex-1 overflow-y-auto p-8 space-y-6 custom-scrollbar">
+                                <form id="policyForm" onSubmit={handleSaveAdmissionPolicy} className="space-y-6">
+                                    <div>
+                                        <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Policy Template Title</label>
+                                        <input required type="text" placeholder="e.g., Standard Engineering & CS Criteria" className="w-full px-4 py-3 bg-slate-50 dark:bg-white/[0.02] border border-slate-250 dark:border-white/[0.08] rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/30 text-sm font-medium"
+                                            value={policyFormData.policyTitle} onChange={e => setPolicyFormData({ ...policyFormData, policyTitle: e.target.value })} />
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4">
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Scope</label>
+                                            <select className="w-full px-4 py-3 bg-slate-50 dark:bg-white/[0.02] border border-slate-250 dark:border-white/[0.08] rounded-xl text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-purple-500/30 text-sm font-medium cursor-pointer"
+                                                value={policyFormData.scope} onChange={e => setPolicyFormData({ ...policyFormData, scope: e.target.value })}>
+                                                <option value="global">Global (Applies to all courses)</option>
+                                                <option value="specific">Tag-Specific (e.g. computer science)</option>
+                                            </select>
+                                        </div>
+
+                                        {policyFormData.scope === 'specific' && (
+                                            <div>
+                                                <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Specific Tag Identifier</label>
+                                                <input required type="text" placeholder="e.g. cs, engineering, medical" className="w-full px-4 py-3 bg-slate-50 dark:bg-white/[0.02] border border-slate-250 dark:border-white/[0.08] rounded-xl text-slate-900 dark:text-white placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-purple-500/30 text-sm font-medium"
+                                                    value={policyFormData.tag} onChange={e => setPolicyFormData({ ...policyFormData, tag: e.target.value })} />
+                                            </div>
+                                        )}
+                                    </div>
+
+                                    <div className="grid grid-cols-2 gap-4 text-xs">
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Min Intermediate %</label>
+                                            <input type="number" min="0" max="100" value={policyFormData.minInterPercentage} onChange={e => setPolicyFormData({ ...policyFormData, minInterPercentage: e.target.value })} className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-bold" />
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1">Min Matric %</label>
+                                            <input type="number" min="0" max="100" value={policyFormData.minMatricPercentage} onChange={e => setPolicyFormData({ ...policyFormData, minMatricPercentage: e.target.value })} className="w-full p-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl text-slate-900 dark:text-white font-bold" />
+                                        </div>
+                                    </div>
+                                </form>
+                            </div>
+
+                            <div className="flex-shrink-0 px-8 py-5 border-t border-slate-200 dark:border-slate-800 flex justify-end gap-3 bg-slate-50 dark:bg-slate-900/50">
+                                <button type="button" onClick={() => setIsPolicyModalOpen(false)} className="px-5 py-2.5 rounded-xl font-bold text-slate-500 hover:text-slate-700 dark:text-slate-400 dark:hover:text-white transition text-xs uppercase tracking-wider">Cancel</button>
+                                <button type="submit" form="policyForm" className="px-6 py-2.5 bg-gradient-to-r from-purple-500 to-indigo-600 text-white font-bold rounded-xl text-xs uppercase tracking-wider shadow-lg shadow-purple-500/20 flex items-center gap-2">
+                                    <CheckCircle size={14} /> Save Policy Template
+                                </button>
+                            </div>
+                        </motion.div>
+                    </div>
+                )}
+            </AnimatePresence>
+
             {/* ===== EXCEL / CSV IMPORT MODAL ===== */}
             <AnimatePresence>
                 {isImportModalOpen && (
