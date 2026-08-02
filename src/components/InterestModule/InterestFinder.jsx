@@ -147,27 +147,33 @@ const InterestFinder = () => {
         }
 
         try {
+            // Heuristic Boost: compensate for a model that plateaus despite consistent "Yes" answers
+            Object.keys(probabilities).forEach(cat => {
+                const stats = newAggregates[cat];
+                if (stats && stats.count > 1) {
+                    const avgScore = stats.total / stats.count;
+                    if (avgScore >= 0.95 && stats.count >= 4) {
+                        // If they've consistently answered "Yes, Absolutely" to 4 or more questions, boost to full match
+                        probabilities[cat] = 0.98;
+                        console.log(`[Boost] Direct high-confidence match for ${cat} → 0.98`);
+                    } else if (avgScore >= 0.8) {
+                        // Strong consecutive interest boost: +15% per additional question
+                        const boost = (stats.count - 1) * 0.15;
+                        probabilities[cat] = Math.min(0.98, probabilities[cat] + boost);
+                        console.log(`[Boost] ${cat} confidence adjusted → ${probabilities[cat].toFixed(3)}`);
+                    }
+                }
+            });
+
             setCurrentProbabilities(probabilities);
 
             const totalAsked    = newHistory.length;
             const sortedClasses = Object.entries(probabilities).sort((a, b) => b[1] - a[1]);
             let [topCat, topProb] = sortedClasses[0];
             const [secondCat]    = sortedClasses[1] || ['', 0];
+            const topStats       = newAggregates[topCat];
 
             console.log(`[Prediction] Top: ${topCat} (${topProb.toFixed(3)}), Q#${totalAsked}`);
-
-            // Heuristic Boost: compensate for a model that plateaus despite consistent "Yes" answers
-            const topStats = newAggregates[topCat];
-            if (topStats && topStats.count > 1) {
-                const avgScore = topStats.total / topStats.count;
-                if (avgScore >= 0.8) {
-                    const boost = (topStats.count - 1) * 0.05; // +5% per additional question
-                    topProb = Math.min(0.98, topProb + boost);
-                    probabilities[topCat] = topProb;
-                    setCurrentProbabilities({ ...probabilities });
-                    console.log(`[Boost] ${topCat} confidence adjusted → ${topProb.toFixed(3)}`);
-                }
-            }
 
             let currentPhase = phase;
             const askedIds   = newHistory.map(h => h.id);
